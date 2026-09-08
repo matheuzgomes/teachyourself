@@ -3,6 +3,7 @@ import TrackLayout from '../layouts/TrackLayout.astro';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { NetworkIcon, DatabaseIcon, ServerIcon, GitBranchIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import RetroComputer3D from '../components/retro-3d/RetroComputer3D';
+import { withBase } from '../utils/paths';
 ---
 
 <TrackLayout
@@ -32,7 +33,7 @@ import RetroComputer3D from '../components/retro-3d/RetroComputer3D';
       {/* Botões em Pílula: Primário dominante + Secundário para grade curricular */}
       <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
         <a
-          href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+          href={withBase("/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock")}
           class="inline-flex items-center gap-2.5 rounded-full bg-off-black px-8 py-4 min-h-[48px] text-sm font-mono uppercase tracking-wider text-white hover:bg-black active:scale-[0.98] transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
         >
           Iniciar Módulo 00: Lógica Digital & CMOS <HugeiconsIcon icon={ArrowRight01Icon} className="h-4 w-4" />
@@ -103,61 +104,61 @@ import RetroComputer3D from '../components/retro-3d/RetroComputer3D';
 
               <div class="pt-2 flex flex-wrap items-center gap-2.5">
                 <a
-                  href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+                  href={withBase("/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock")}
                   class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 00: CMOS <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5 ml-1" />
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante"
+                  href={withBase("/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 01: Dados
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64"
+                  href={withBase("/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 02: Assembly
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards"
+                  href={withBase("/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 03: Pipeline
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade"
+                  href={withBase("/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 04: Caches
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao"
+                  href={withBase("/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 05: MMU
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls"
+                  href={withBase("/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 06: Kernel
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao"
+                  href={withBase("/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 07: Concorrência
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade"
+                  href={withBase("/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade")}
                   class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Módulo 08: I/O & FS
                 </a>
                 <a
-                  href="/tracks/01-hardware-and-os"
+                  href={withBase("/tracks/01-hardware-and-os")}
                   class="rounded-full bg-white/70 border border-ash hover:border-off-black active:scale-[0.98] text-graphite hover:text-off-black px-3.5 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
                 >
                   Índice
@@ -317,13 +318,13 @@ import RetroComputer3D from '../components/retro-3d/RetroComputer3D';
       </p>
       <div class="flex flex-wrap items-center justify-center gap-4">
         <a
-          href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+          href={withBase("/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock")}
           class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-8 py-3.5 min-h-[44px] inline-flex items-center text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
         >
           Iniciar Módulo 00: Lógica Digital <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5 ml-1.5" />
         </a>
         <a
-          href="/tracks/01-hardware-and-os"
+          href={withBase("/tracks/01-hardware-and-os")}
           class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-6 py-3.5 min-h-[44px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
         >
           Explorar Trilha 01

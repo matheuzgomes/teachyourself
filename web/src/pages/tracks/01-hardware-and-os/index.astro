@@ -1,5 +1,6 @@
 ---
 import TrackLayout from '../../../layouts/TrackLayout.astro';
+import { withBase } from '../../../utils/paths';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CpuIcon, ArrowRight01Icon, ShieldCheckIcon, PlayIcon, BookOpen01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
 
@@ -272,7 +273,7 @@ const modules = [
 
                 {isActive && (
                   <a
-                    href={`/tracks/01-hardware-and-os/${m.slug}`}
+                    href={withBase(`/tracks/01-hardware-and-os/${m.slug}`)}
                     class="rounded-full bg-off-black text-white hover:bg-black px-6 py-3 min-h-[44px] inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment shrink-0"
                   >
                     Abrir Módulo <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5" />
@@ -315,7 +316,7 @@ const modules = [
                 </div>
                 {isActive && (
                   <a
-                    href={`/tracks/01-hardware-and-os/${m.slug}`}
+                    href={withBase(`/tracks/01-hardware-and-os/${m.slug}`)}
                     class="text-xs font-mono font-medium text-lake-blue hover:underline inline-flex items-center gap-1"
                   >
                     Estudar este conteúdo &rarr;

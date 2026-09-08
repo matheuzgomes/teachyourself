@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CpuIcon, NetworkIcon, DatabaseIcon, ServerIcon, GitBranchIcon } from '@hugeicons/core-free-icons';
+import { withBase } from '../utils/paths';
 
 interface Props {
   title?: string;
@@ -28,7 +29,7 @@ const headings = Astro.props.headings || props.headings;
 const isOverview = trackId === 'overview';
 
 const tracks = [
-  { id: 'hardware-and-os', path: '/tracks/01-hardware-and-os', title: 'Sistemas de Computação', icon: CpuIcon, active: trackId.includes('hardware-and-os'), count: '9 Módulos Ativos' },
+  { id: 'hardware-and-os', path: withBase('/tracks/01-hardware-and-os'), title: 'Sistemas de Computação', icon: CpuIcon, active: trackId.includes('hardware-and-os'), count: '9 Módulos Ativos' },
   { id: 'networks', path: '#', title: 'Redes e Comunicação de Dados', icon: NetworkIcon, active: trackId.includes('networks'), count: 'Em desenvolvimento' },
   { id: 'databases', path: '#', title: 'Bancos de Dados & Storage Engines', icon: DatabaseIcon, active: trackId.includes('databases'), count: 'Em desenvolvimento' },
   { id: 'distributed-systems', path: '#', title: 'Sistemas Distribuídos & Consenso', icon: ServerIcon, active: trackId.includes('distributed-systems'), count: 'Em desenvolvimento' },
@@ -66,7 +67,7 @@ const tracks = [
           C11 VERIFIED
         </span>
         <a
-          href="/tracks/01-hardware-and-os"
+          href={withBase("/tracks/01-hardware-and-os")}
           class="text-xs uppercase tracking-wider text-sky-blue hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-blue rounded"
         >
           Trilha 01 &rarr;
@@ -77,7 +78,7 @@ const tracks = [
     {/* Navbar Superior (~80px, Nível 1: Parchment com Hairline Ash) */}
     <header class="sticky top-0 z-50 flex h-20 items-center justify-between border-b border-ash bg-parchment/90 px-6 md:px-10 backdrop-blur-md">
       <div class="flex items-center gap-3">
-        <a href="/" class="flex items-center gap-2.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment">
+        <a href={withBase("/")} class="flex items-center gap-2.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment">
           <div class="h-9 w-9 rounded-full bg-off-black text-parchment flex items-center justify-center font-serif text-lg font-normal shadow-sm">
             T
           </div>
@@ -93,7 +94,7 @@ const tracks = [
 
         {!isOverview && (
           <div class="hidden lg:flex items-center gap-2 pl-4 text-xs text-smoke border-l border-ash">
-            <a href="/tracks/01-hardware-and-os" class="hover:text-off-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black rounded">
+            <a href={withBase("/tracks/01-hardware-and-os")} class="hover:text-off-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black rounded">
               Trilha: <span class="text-off-black font-medium">{trackTitle}</span>
             </a>
           </div>
@@ -103,9 +104,9 @@ const tracks = [
       {/* Seletor Rápido de Módulos no Topo */}
       <nav aria-label="Navegação rápida" class="hidden md:flex items-center gap-1 rounded-full border border-ash bg-white/60 p-1 text-xs font-mono">
         <a
-          href="/tracks/01-hardware-and-os"
+          href={withBase("/tracks/01-hardware-and-os")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
-            Astro.url.pathname === '/tracks/01-hardware-and-os' || Astro.url.pathname === '/tracks/01-hardware-and-os/'
+            Astro.url.pathname === withBase('/tracks/01-hardware-and-os') || Astro.url.pathname === withBase('/tracks/01-hardware-and-os/')
               ? 'bg-off-black text-white shadow-sm'
               : 'text-graphite hover:text-off-black'
           }`}
@@ -113,7 +114,7 @@ const tracks = [
           Grade
         </a>
         <a
-          href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+          href={withBase("/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('00-logica')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -123,7 +124,7 @@ const tracks = [
           Módulo 00
         </a>
         <a
-          href="/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante"
+          href={withBase("/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('01-representacao')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -133,7 +134,7 @@ const tracks = [
           Módulo 01
         </a>
         <a
-          href="/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64"
+          href={withBase("/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('02-representacao')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -143,7 +144,7 @@ const tracks = [
           Módulo 02
         </a>
         <a
-          href="/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards"
+          href={withBase("/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('03-arquitetura')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -153,7 +154,7 @@ const tracks = [
           Módulo 03
         </a>
         <a
-          href="/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade"
+          href={withBase("/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('04-hierarquia')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -163,7 +164,7 @@ const tracks = [
           Módulo 04
         </a>
         <a
-          href="/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao"
+          href={withBase("/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('05-memoria')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -173,7 +174,7 @@ const tracks = [
           Módulo 05
         </a>
         <a
-          href="/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls"
+          href={withBase("/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('06-processos')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -183,7 +184,7 @@ const tracks = [
           Módulo 06
         </a>
         <a
-          href="/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao"
+          href={withBase("/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('07-concorrencia')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -193,7 +194,7 @@ const tracks = [
           Módulo 07
         </a>
         <a
-          href="/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade"
+          href={withBase("/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade")}
           class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
             Astro.url.pathname.includes('08-io-page-cache')
               ? 'bg-lake-blue text-white shadow-sm'
@@ -206,7 +207,7 @@ const tracks = [
 
       <div class="flex items-center gap-3">
         <a
-          href={isOverview ? '/tracks/01-hardware-and-os' : '/'}
+          href={isOverview ? withBase('/tracks/01-hardware-and-os') : withBase('/')}
           class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-6 py-2.5 min-h-[44px] inline-flex items-center justify-center text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
         >
           {isOverview ? 'Explorar Trilha 01 ▸' : 'Página Inicial'}
@@ -255,7 +256,7 @@ const tracks = [
                 Módulos da Trilha 01
               </span>
               <a
-                href="/tracks/01-hardware-and-os"
+                href={withBase("/tracks/01-hardware-and-os")}
                 class="text-xs font-mono font-medium text-lake-blue hover:underline"
               >
                 Catálogo
@@ -263,7 +264,7 @@ const tracks = [
             </div>
             <div class="space-y-2">
               <a
-                href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+                href={withBase("/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('00-logica')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -280,7 +281,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante"
+                href={withBase("/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('01-representacao')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -297,7 +298,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64"
+                href={withBase("/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('02-representacao')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -314,7 +315,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards"
+                href={withBase("/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('03-arquitetura')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -331,7 +332,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade"
+                href={withBase("/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('04-hierarquia')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -348,7 +349,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao"
+                href={withBase("/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('05-memoria')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -365,7 +366,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls"
+                href={withBase("/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('06-processos')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -382,7 +383,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao"
+                href={withBase("/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('07-concorrencia')
                     ? 'bg-white border-ash text-off-black shadow-monad'
@@ -399,7 +400,7 @@ const tracks = [
               </a>
 
               <a
-                href="/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade"
+                href={withBase("/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade")}
                 class={`block rounded-2xl p-3 text-xs transition-all border ${
                   Astro.url.pathname.includes('08-io-page-cache')
                     ? 'bg-white border-ash text-off-black shadow-monad'
