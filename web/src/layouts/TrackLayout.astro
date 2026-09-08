@@ -1,0 +1,467 @@
+---
+import '../styles/global.css';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CpuIcon, NetworkIcon, DatabaseIcon, ServerIcon, GitBranchIcon } from '@hugeicons/core-free-icons';
+
+interface Props {
+  title?: string;
+  description?: string;
+  trackId?: string;
+  trackTitle?: string;
+  headings?: { depth: number; slug: string; text: string }[];
+  frontmatter?: {
+    title?: string;
+    description?: string;
+    trackId?: string;
+    trackTitle?: string;
+    headings?: { depth: number; slug: string; text: string }[];
+  };
+}
+
+const props = Astro.props.frontmatter || Astro.props;
+const title = props.title;
+const description = props.description;
+const trackId = (props.trackId || '') as string;
+const trackTitle = (props.trackTitle || '') as string;
+const headings = Astro.props.headings || props.headings;
+
+const isOverview = trackId === 'overview';
+
+const tracks = [
+  { id: 'hardware-and-os', path: '/tracks/01-hardware-and-os', title: 'Sistemas de Computação', icon: CpuIcon, active: trackId.includes('hardware-and-os'), count: '9 Módulos Ativos' },
+  { id: 'networks', path: '#', title: 'Redes e Comunicação de Dados', icon: NetworkIcon, active: trackId.includes('networks'), count: 'Em desenvolvimento' },
+  { id: 'databases', path: '#', title: 'Bancos de Dados & Storage Engines', icon: DatabaseIcon, active: trackId.includes('databases'), count: 'Em desenvolvimento' },
+  { id: 'distributed-systems', path: '#', title: 'Sistemas Distribuídos & Consenso', icon: ServerIcon, active: trackId.includes('distributed-systems'), count: 'Em desenvolvimento' },
+  { id: 'algorithms-and-design', path: '#', title: 'Algoritmos & Design de Software', icon: GitBranchIcon, active: trackId.includes('algorithms-and-design'), count: 'Em desenvolvimento' },
+];
+---
+
+<!doctype html>
+<html lang="pt-BR" class="scroll-smooth scroll-pt-24 bg-parchment text-off-black">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} | TeachYourself</title>
+    <meta name="description" content={description || 'Periódico técnico editorial sobre fundamentos de computação.'} />
+  </head>
+  <body class="bg-parchment text-off-black min-h-screen flex flex-col font-sans antialiased">
+    {/* Link acessível de salto para conteúdo (WCAG 2.4.1) */}
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-off-black focus:text-white focus:rounded-full focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-lake-blue focus:font-mono focus:text-xs"
+    >
+      Pular para o conteúdo principal
+    </a>
+
+    {/* Announcement Bar (Nível 4: Ink #000000) */}
+    <aside aria-label="Aviso editorial" class="w-full bg-ink text-parchment px-4 md:px-8 py-2.5 flex items-center justify-between text-xs font-mono border-b border-ash/20">
+      <div class="flex items-center gap-2.5">
+        <span class="inline-block h-2 w-2 rounded-full bg-mint" />
+        <span class="tracking-wider text-xs">
+          TEACHYOURSELF : SISTEMA DE DESTILAÇÃO TÉCNICA E CIÊNCIA DA COMPUTAÇÃO
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="hidden sm:inline-block rounded-full border border-ash/40 px-2.5 py-0.5 text-xs uppercase tracking-wider text-parchment/80">
+          C11 VERIFIED
+        </span>
+        <a
+          href="/tracks/01-hardware-and-os"
+          class="text-xs uppercase tracking-wider text-sky-blue hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-blue rounded"
+        >
+          Trilha 01 &rarr;
+        </a>
+      </div>
+    </aside>
+
+    {/* Navbar Superior (~80px, Nível 1: Parchment com Hairline Ash) */}
+    <header class="sticky top-0 z-50 flex h-20 items-center justify-between border-b border-ash bg-parchment/90 px-6 md:px-10 backdrop-blur-md">
+      <div class="flex items-center gap-3">
+        <a href="/" class="flex items-center gap-2.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment">
+          <div class="h-9 w-9 rounded-full bg-off-black text-parchment flex items-center justify-center font-serif text-lg font-normal shadow-sm">
+            T
+          </div>
+          <div class="flex flex-col">
+            <span class="font-serif text-2xl font-normal tracking-[-0.02em] text-off-black group-hover:text-lake-blue transition-colors">
+              TeachYourself
+            </span>
+            <span class="text-xs font-mono tracking-widest text-smoke uppercase -mt-0.5">
+              Editorial Tech Journal
+            </span>
+          </div>
+        </a>
+
+        {!isOverview && (
+          <div class="hidden lg:flex items-center gap-2 pl-4 text-xs text-smoke border-l border-ash">
+            <a href="/tracks/01-hardware-and-os" class="hover:text-off-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black rounded">
+              Trilha: <span class="text-off-black font-medium">{trackTitle}</span>
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* Seletor Rápido de Módulos no Topo */}
+      <nav aria-label="Navegação rápida" class="hidden md:flex items-center gap-1 rounded-full border border-ash bg-white/60 p-1 text-xs font-mono">
+        <a
+          href="/tracks/01-hardware-and-os"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname === '/tracks/01-hardware-and-os' || Astro.url.pathname === '/tracks/01-hardware-and-os/'
+              ? 'bg-off-black text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Grade
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('00-logica')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 00
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('01-representacao')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 01
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('02-representacao')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 02
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('03-arquitetura')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 03
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('04-hierarquia')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 04
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('05-memoria')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 05
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('06-processos')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 06
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('07-concorrencia')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 07
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade"
+          class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment ${
+            Astro.url.pathname.includes('08-io-page-cache')
+              ? 'bg-lake-blue text-white shadow-sm'
+              : 'text-graphite hover:text-off-black'
+          }`}
+        >
+          Módulo 08
+        </a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <a
+          href={isOverview ? '/tracks/01-hardware-and-os' : '/'}
+          class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-6 py-2.5 min-h-[44px] inline-flex items-center justify-center text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
+        >
+          {isOverview ? 'Explorar Trilha 01 ▸' : 'Página Inicial'}
+        </a>
+      </div>
+    </header>
+
+    {/* Estrutura do Conteúdo */}
+    {isOverview ? (
+      /* Layout Editorial Amplo para a Página Inicial */
+      <main id="main-content" class="w-full max-w-[1432px] mx-auto px-6 md:px-12 py-10 md:py-16 flex-1">
+        <slot />
+      </main>
+    ) : (
+      /* Layout de Leitura Técnica com Navegação Lateral */
+      <div class="flex-1 flex w-full max-w-[1432px] mx-auto">
+        {/* Sidebar Esquerda (Trilhas e Navegação) */}
+        <aside class="hidden lg:block w-72 shrink-0 border-r border-ash bg-parchment/60 p-6 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
+          <div class="text-xs font-mono font-medium uppercase tracking-wider text-smoke mb-4">
+            Trilhas de Conhecimento
+          </div>
+          <nav class="space-y-2">
+            {tracks.map((t) => (
+              <a
+                href={t.path}
+                class={`flex items-start gap-3 rounded-2xl p-3 text-xs transition-all border ${
+                  t.active
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'text-graphite hover:bg-white/50 hover:text-off-black border-transparent'
+                }`}
+              >
+                <div class={`mt-0.5 rounded-xl p-1.5 ${t.active ? 'bg-periwinkle-mist text-lake-blue' : 'bg-ash/30 text-smoke'}`}>
+                  <HugeiconsIcon icon={t.icon} className="h-4 w-4" />
+                </div>
+                <div>
+                  <div class="font-medium leading-tight">{t.title}</div>
+                  <div class="text-xs font-mono text-smoke mt-0.5">{t.count}</div>
+                </div>
+              </a>
+            ))}
+          </nav>
+
+          <div class="mt-8 pt-5 border-t border-ash">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-mono font-medium uppercase tracking-wider text-smoke">
+                Módulos da Trilha 01
+              </span>
+              <a
+                href="/tracks/01-hardware-and-os"
+                class="text-xs font-mono font-medium text-lake-blue hover:underline"
+              >
+                Catálogo
+              </a>
+            </div>
+            <div class="space-y-2">
+              <a
+                href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('00-logica')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 00</span>
+                  {Astro.url.pathname.includes('00-logica') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Da Chave ao Clock: Lógica Digital & CMOS</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('01-representacao')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 01</span>
+                  {Astro.url.pathname.includes('01-representacao') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Representação, Inteiros & IEEE 754</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('02-representacao')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 02</span>
+                  {Astro.url.pathname.includes('02-representacao') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Assembly x86-64, Registradores & Pilha</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('03-arquitetura')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 03</span>
+                  {Astro.url.pathname.includes('03-arquitetura') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Pipelining, Estágios & Hazards</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('04-hierarquia')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 04</span>
+                  {Astro.url.pathname.includes('04-hierarquia') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Caches, Localidade & Memory Wall</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('05-memoria')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 05</span>
+                  {Astro.url.pathname.includes('05-memoria') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Memória Virtual, MMU & Paginação</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('06-processos')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 06</span>
+                  {Astro.url.pathname.includes('06-processos') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Processos, Threads & Syscalls</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('07-concorrencia')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 07</span>
+                  {Astro.url.pathname.includes('07-concorrencia') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">Concorrência, Atômicos & Sincronização</div>
+              </a>
+
+              <a
+                href="/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade"
+                class={`block rounded-2xl p-3 text-xs transition-all border ${
+                  Astro.url.pathname.includes('08-io-page-cache')
+                    ? 'bg-white border-ash text-off-black shadow-monad'
+                    : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
+                }`}
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-mono text-xs text-lake-blue font-medium">MÓDULO 08</span>
+                  {Astro.url.pathname.includes('08-io-page-cache') && (
+                    <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                  )}
+                </div>
+                <div class="font-medium leading-tight">I/O, Page Cache, FS & Durabilidade</div>
+              </a>
+            </div>
+          </div>
+        </aside>
+
+        {/* Conteúdo Principal de Leitura */}
+        <main id="main-content" class="flex-1 min-w-0 px-6 py-8 md:px-12 md:py-10 max-w-4xl mx-auto">
+          <slot />
+        </main>
+
+        {/* Sidebar Direita (Índice Dinâmico do Módulo) */}
+        <aside class="hidden xl:block w-64 shrink-0 p-6 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto border-l border-ash">
+          <div class="text-xs font-mono font-medium uppercase tracking-wider text-smoke mb-4">
+            Neste Módulo
+          </div>
+          {headings && headings.length > 0 ? (
+            <ul class="space-y-1.5 text-xs text-graphite font-mono">
+              {headings
+                .filter((h: any) => h.depth === 2 || h.depth === 3)
+                .map((h: any) => (
+                  <li class={h.depth === 3 ? 'pl-3 text-xs text-smoke hover:text-off-black' : 'font-medium text-off-black pt-1.5'}>
+                    <a
+                      href={`#${h.slug}`}
+                      class="block hover:text-lake-blue transition-colors leading-snug py-0.5"
+                    >
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <p class="text-xs text-smoke">Navegação pelo conteúdo</p>
+          )}
+        </aside>
+      </div>
+    )}
+
+    {/* Rodapé Editorial */}
+    <footer class="border-t border-ash bg-parchment py-8 px-6 text-center text-xs text-smoke font-mono">
+      <div class="max-w-[1432px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <span>TeachYourself : Tratado Técnico Editorial de Baixo Nível e Sistemas</span>
+        <div class="flex items-center gap-4 text-xs font-mono uppercase tracking-wider">
+          <span class="text-graphite">C11 & GCC Sanitized</span>
+          <span>&middot;</span>
+          <span class="text-graphite">IEEE 754-2019</span>
+          <span>&middot;</span>
+          <span class="text-graphite">x86-64 System V ABI</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

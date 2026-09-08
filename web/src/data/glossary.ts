@@ -1,0 +1,171 @@
+export interface GlossaryTerm {
+  abbr: string;
+  fullName: string;
+  category: 'Hardware' | 'Sistemas' | 'Linguagens' | 'Padrões';
+  location: string;
+  description: string;
+}
+
+export const glossary: Record<string, GlossaryTerm> = {
+  ALU: {
+    abbr: 'ALU',
+    fullName: 'Arithmetic Logic Unit (Unidade Lógica e Aritmética)',
+    category: 'Hardware',
+    location: 'Dentro do núcleo da CPU, conectada aos registradores',
+    description: 'O circuito digital fundamental do processador que executa operações aritméticas (soma, subtração, multiplicação) e operações lógicas bit a bit (AND, OR, XOR, NOT, shifts).',
+  },
+  LSB: {
+    abbr: 'LSB',
+    fullName: 'Least Significant Byte / Bit (Byte ou Bit Menos Significativo)',
+    category: 'Hardware',
+    location: 'A posição de menor peso em uma palavra binária',
+    description: 'O bit ou byte correspondente às unidades (peso 2^0 = 1). Em somas aritméticas, o cálculo começa obrigatoriamente pelo LSB para calcular o transporte (carry) para a próxima casa.',
+  },
+  MSB: {
+    abbr: 'MSB',
+    fullName: 'Most Significant Byte / Bit (Byte ou Bit Mais Significativo)',
+    category: 'Hardware',
+    location: 'A posição de maior peso em uma palavra binária',
+    description: 'O bit ou byte que carrega o maior peso numérico (peso 2^(w-1)). Em Complemento de Dois, o MSB atua como o Bit de Sinal com peso aritmético estritamente negativo.',
+  },
+  FPU: {
+    abbr: 'FPU',
+    fullName: 'Floating-Point Unit (Unidade de Ponto Flutuante)',
+    category: 'Hardware',
+    location: 'Coprocessador matemático integrado ao núcleo da CPU',
+    description: 'Circuito especializado em manipular números reais com casas decimais conforme o padrão IEEE 754, executando operações em registradores vetoriais como XMM/YMM.',
+  },
+  GDB: {
+    abbr: 'GDB',
+    fullName: 'GNU Debugger (Depurador do Projeto GNU)',
+    category: 'Sistemas',
+    location: 'Ferramenta de linha de comando do sistema operacional',
+    description: 'O depurador padrão do Linux/Unix que permite pausar a execução de programas compilados, inspecionar a memória RAM bruta, registradores da CPU e frames da pilha (stack).',
+  },
+  UB: {
+    abbr: 'UB',
+    fullName: 'Undefined Behavior (Comportamento Indefinido)',
+    category: 'Linguagens',
+    location: 'Especificação dos padrões C (C99/C11/C17) e C++',
+    description: 'Situação em que o padrão da linguagem não impõe nenhum requisito ao compilador. O compilador pode assumir que o evento nunca ocorre e apagar verificações de segurança ou gerar código imprevisível.',
+  },
+  RAM: {
+    abbr: 'RAM',
+    fullName: 'Random Access Memory (Memória de Acesso Aleatório)',
+    category: 'Hardware',
+    location: 'Módulos físicos conectados ao barramento de memória da placa-mãe',
+    description: 'A memória principal volátil do computador, estruturada como uma fita linear de bytes onde qualquer endereço pode ser lido ou gravado no mesmo intervalo de tempo.',
+  },
+  SRI: {
+    abbr: 'SRI',
+    fullName: 'Système de Référence Inertielle (Sistema de Referência Inercial)',
+    category: 'Sistemas',
+    location: 'Computador de orientação e navegação aeroespacial',
+    description: 'O subsistema do foguete Ariane que utiliza acelerômetros e giroscópios para calcular a atitude, inclinação e velocidade horizontal da aeronave em tempo real.',
+  },
+  OBC: {
+    abbr: 'OBC',
+    fullName: 'On-Board Computer (Computador de Bordo Principal)',
+    category: 'Hardware',
+    location: 'Unidade central de processamento e comando do veículo',
+    description: 'O computador mestre que recebe telemetria de navegação e envia comandos elétricos diretos para os atuadores hidráulicos dos motores de propulsão.',
+  },
+  IEEE: {
+    abbr: 'IEEE',
+    fullName: 'Institute of Electrical and Electronics Engineers',
+    category: 'Padrões',
+    location: 'Organização internacional de padronização técnica',
+    description: 'A entidade que formulou a norma IEEE 754, padronizando universalmente o formato de ponto flutuante adotado por todos os fabricantes de hardware do mundo.',
+  },
+  GCU: {
+    abbr: 'GCU',
+    fullName: 'Generator Control Unit (Unidade de Controle de Geradores)',
+    category: 'Sistemas',
+    location: 'Controlador embarcado do sistema elétrico de aeronaves',
+    description: 'Computador de tempo real dedicado a gerenciar a distribuição elétrica e proteger os geradores de turbina contra sobrecargas.',
+  },
+  ISA: {
+    abbr: 'ISA',
+    fullName: 'Instruction Set Architecture (Arquitetura do Conjunto de Instruções)',
+    category: 'Hardware',
+    location: 'A fronteira contratual entre o software e o hardware do processador',
+    description: 'A especificação formal que define o vocabulário de instruções que o processador entende: os registradores visíveis, os modos de endereçamento de memória e o formato binário dos comandos.',
+  },
+  ABI: {
+    abbr: 'ABI',
+    fullName: 'Application Binary Interface (Interface Binária de Aplicação)',
+    category: 'Padrões',
+    location: 'Especificação do sistema operacional e do compilador (System V AMD64 ABI)',
+    description: 'O conjunto de regras de baixo nível que dita como funções trocam dados no binário: quais registradores passam argumentos, qual registrador devolve o retorno e como a pilha deve ser alinhada.',
+  },
+  RIP: {
+    abbr: 'RIP',
+    fullName: 'Instruction Pointer (Ponteiro de Instrução de 64 bits)',
+    category: 'Hardware',
+    location: 'Registrador especial do núcleo da CPU',
+    description: 'O registrador que guarda o endereço da próxima instrução de máquina que a CPU vai buscar na memória RAM para decodificar e executar.',
+  },
+  RSP: {
+    abbr: 'RSP',
+    fullName: 'Stack Pointer (Ponteiro do Topo da Pilha)',
+    category: 'Hardware',
+    location: 'Registrador de propósito geral (%rsp) no núcleo da CPU',
+    description: 'O registrador que aponta sempre para o endereço de memória mais baixo atualmente alocado na pilha de execução (stack). Ele diminui quando você empilha dados e aumenta quando desempilha.',
+  },
+  RBP: {
+    abbr: 'RBP',
+    fullName: 'Base Pointer / Frame Pointer (Ponteiro de Base de Frame)',
+    category: 'Hardware',
+    location: 'Registrador de propósito geral (%rbp) no núcleo da CPU',
+    description: 'Historicamente usado para marcar a base fixa do frame de uma função na pilha, permitindo acessar argumentos e variáveis locais com offsets fixos.',
+  },
+  ASLR: {
+    abbr: 'ASLR',
+    fullName: 'Address Space Layout Randomization (Randomização do Layout do Espaço de Endereçamento)',
+    category: 'Sistemas',
+    location: 'Subsistema de segurança do Kernel do Sistema Operacional',
+    description: 'Mecanismo de defesa que sorteia aleatoriamente a posição da pilha, do heap e das bibliotecas na memória a cada execução, impedindo que invasores saibam onde injetar código.',
+  },
+  NX: {
+    abbr: 'NX',
+    fullName: 'No-Execute bit / W^X (Write XOR Execute)',
+    category: 'Hardware',
+    location: 'Bit de permissão na Tabela de Páginas da MMU do processador',
+    description: 'Recurso de hardware que impede a CPU de executar instruções em áreas de memória reservadas apenas para gravação de dados (como a pilha e o heap), neutralizando códigos maliciosos injetados.',
+  },
+  CISC: {
+    abbr: 'CISC',
+    fullName: 'Complex Instruction Set Computer (Computador com Conjunto Complexo de Instruções)',
+    category: 'Hardware',
+    location: 'Filosofia de projeto de processadores (ex: família x86)',
+    description: 'Arquitetura onde uma única instrução de máquina pode realizar operações complexas, combinando leitura de memória, aritmética na ALU e gravação em um único comando.',
+  },
+  RISC: {
+    abbr: 'RISC',
+    fullName: 'Reduced Instruction Set Computer (Computador com Conjunto Reduzido de Instruções)',
+    category: 'Hardware',
+    location: 'Filosofia de projeto de processadores (ex: ARM, RISC-V, MIPS)',
+    description: 'Arquitetura baseada em instruções simples e uniformes que executam em 1 ciclo de clock, exigindo instruções explícitas de carga (load) e gravação (store) para tocar na memória.',
+  },
+  SIMD: {
+    abbr: 'SIMD',
+    fullName: 'Single Instruction, Multiple Data (Única Instrução, Múltiplos Dados)',
+    category: 'Hardware',
+    location: 'Unidade de execução vetorial da CPU',
+    description: 'Técnica de paralelismo no hardware onde um único comando do processador aplica a mesma operação matemática simultaneamente sobre múltiplos números guardados em registradores largos.',
+  },
+  AVX: {
+    abbr: 'AVX',
+    fullName: 'Advanced Vector Extensions (Extensões Vetoriais Avançadas)',
+    category: 'Hardware',
+    location: 'Conjunto de instruções vetoriais da Intel e AMD',
+    description: 'Extensão da arquitetura x86 que adicionou registradores de 256 bits (%ymm0 a %ymm15) e 512 bits (%zmm), acelerando cálculos de ponto flutuante, gráficos e aprendizado de máquina.',
+  },
+  SSE: {
+    abbr: 'SSE',
+    fullName: 'Streaming SIMD Extensions',
+    category: 'Hardware',
+    location: 'Extensão de registradores vetoriais de 128 bits (%xmm)',
+    description: 'O conjunto padrão de registradores de 128 bits (%xmm0 a %xmm15) utilizado pela arquitetura x86-64 para executar operações de ponto flutuante com alta velocidade.',
+  },
+};

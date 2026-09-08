@@ -1,0 +1,28 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<div class="my-8 rounded-card border border-ash bg-white p-6 md:p-8 text-graphite shadow-sm transition-all">
+  <div class="flex items-center gap-3 border-b border-ash pb-4 mb-5">
+    <span class="rounded-full bg-periwinkle-mist p-2 text-lake-blue border border-lake-blue/20">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+      </svg>
+    </span>
+    <div class="flex-1">
+      <div class="text-[11px] uppercase tracking-wider font-mono text-smoke">
+        Aprofundamento de Engenharia : Indo Mais Fundo no Hardware
+      </div>
+      <div class="font-serif text-xl font-normal text-off-black tracking-tight mt-0.5">{title}</div>
+    </div>
+  </div>
+
+  <div class="space-y-3 font-mono text-xs md:text-sm leading-relaxed text-graphite">
+    <slot />
+  </div>
+</div>

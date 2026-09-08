@@ -1,0 +1,62 @@
+# Ambientes virtuais e compilados Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Web Astro e Node.js
+web/node_modules/
+web/.astro/
+web/dist/
+web/*.html
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Binarios e objetos compilados (C e Assembly)
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.out
+*.exe
+test_runner
+test_assembly_runner
+
+# Pesquisa e dossies brutos
+/research/
+/dossiers/
+tools/cache/
+*.pdf
+*.epub
+
+# Artefatos, rascunhos e ferramentas de agentes de IA
+/scratch/
+/walkthrough.md
+/.impeccable/
+.gemini/
+.agent/
+.antigravity/
+/CONTEXT.md
+/CURRICULUM.md
+
+# Base de conhecimento, ferramentas internas e trilhas em markdown (raiz)
+/knowledge/
+/tools/
+/tracks/
+/PRODUCT.md
+/DESIGN.md
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

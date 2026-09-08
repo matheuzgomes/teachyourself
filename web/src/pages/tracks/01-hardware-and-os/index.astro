@@ -1,0 +1,331 @@
+---
+import TrackLayout from '../../../layouts/TrackLayout.astro';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CpuIcon, ArrowRight01Icon, ShieldCheckIcon, PlayIcon, BookOpen01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
+
+const modules = [
+  {
+    id: '00',
+    slug: '00-logica-digital-transistores-circuitos-clock',
+    title: 'Módulo 00: Da Chave ao Clock: Lógica Digital, Circuitos e Registradores',
+    subtitle: 'A física da computação: de transistores MOSFET ao inversor CMOS, portas universais, somadores e o relógio do sistema.',
+    status: 'active',
+    sectionsCount: '5 Seções Fundamentais',
+    simulatorsCount: '1 Simulador Interativo (4 Modos)',
+    testStatus: '36/36 Gates Verificados',
+    description: 'Descubra a raiz material do computador: o semicondutor dopado, a tecnologia CMOS sem consumo estático, a universalidade da porta NAND, o atraso de propagação de somadores, o Latch bi-estável, o Flip-Flop D disparado por borda e a física do clock.',
+    topics: [
+      { num: '0A', name: 'O Transistor como Interruptor: MOSFETs, Silício Dopado e o Par Complementar CMOS' },
+      { num: '0B', name: 'Portas Lógicas Universais: NAND, NOR e o Teorema da Universalidade Booleana' },
+      { num: '0C', name: 'Circuitos Combinacionais: Meio Somador, Somador Completo, Cascata e Atraso de Propagação' },
+      { num: '0D', name: 'Circuitos Sequenciais e Memória: Realimentação, Latch SR, Latch D e Flip-Flop D' },
+      { num: '0E', name: 'O Relógio (Clock), Setup/Hold Time e a Construção Física do Banco de Registradores' }
+    ]
+  },
+  {
+    id: '01',
+    slug: '01-representacao-informacao-inteiros-ponto-flutuante',
+    title: 'Módulo 01: Representação de Informação, Inteiros e Ponto Flutuante IEEE 754',
+    subtitle: 'Da aritmética modular de odômetro à catástrofe do Ariane 5: como grandezas matemáticas residem em registradores finitos.',
+    status: 'active',
+    sectionsCount: '3 Capítulos (7 Seções)',
+    simulatorsCount: '10 Simuladores',
+    testStatus: 'C11 Sanitized (100% Pass)',
+    description: 'Compreenda a física do byte, a aritmética circular em Complemento de Dois, o segredo dos números negativos sem circuitos subtratores, os perigos do casting em C, o Lema de Sterbenz e o subfluxo gradual no padrão IEEE 754.',
+    topics: [
+      { num: '1A', name: 'Representação Inteira: Caixinhas Finitas, Ariane 5, Complemento de Dois e Unificação de Circuitos na ALU' },
+      { num: '1B', name: 'Organização dos Bytes: Memória Linear, Hexadecimal, Endianness, Network Byte Order e a Armadilha do Casting' },
+      { num: '1C', name: 'Ponto Flutuante IEEE 754: Geometria Discreta, Números Subnormais, Lema de Sterbenz e a Falha do Míssil Patriot' },
+      { num: 'Síntese', name: 'Matriz de Custos de Latência da ALU e Diretrizes de Segurança em Produção' }
+    ]
+  },
+  {
+    id: '02',
+    slug: '02-representacao-programas-assembly-x86-64',
+    title: 'Módulo 02: Como o Computador Executa Instruções: Assembly x86-64, Registradores e a Pilha',
+    subtitle: 'A anatomia da máquina: registradores, pilha de execução, cálculo de ponteiros e invasões de memória.',
+    status: 'active',
+    sectionsCount: '9 Seções',
+    simulatorsCount: '4 Simuladores',
+    testStatus: 'C11 Sanitized (100% Pass)',
+    description: 'Aprenda como o código C vira instruções de máquina, explore os 16 registradores de 64 bits, a regra de zeramento de 32 bits, o truque aritmético do leaq, o mecanismo de stack frames e como o Morris Worm explorou buffer overflows.',
+    topics: [
+      { num: '1', name: 'O que é uma ISA e a Cadeia de Tradução (Compilador, Assembler, Linker e Loader)' },
+      { num: '2', name: 'A Bancada da CPU: Os 16 Registradores x86-64 e o Zeramento Automático de 32 Bits' },
+      { num: '3', name: 'A Convenção de Chamada System V AMD64 ABI (Caller-Saved vs Callee-Saved)' },
+      { num: '4', name: 'Modos de Endereçamento e a Aritmética sem Memória da AGU (leaq)' },
+      { num: '5', name: 'Controle de Fluxo: Flags de Condição e Tabelas de Salto O(1)' },
+      { num: '6', name: 'A Pilha de Execução, Alinhamento de 16 Bytes e o Par callq/retq' },
+      { num: '7', name: 'Alinhamento de Memória e Reorganização de Structs sem Padding' },
+      { num: '8', name: 'Buffer Overflow, Ataque do Morris Worm e Defesas Modernas (Canary, ASLR, NX)' }
+    ]
+  },
+  {
+    id: '03',
+    slug: '03-arquitetura-processadores-pipelining-hazards',
+    title: 'Módulo 03: Arquitetura de Processadores: Pipelining, Hazards e Execução Especulativa',
+    subtitle: 'A linha de montagem de instruções: estágios de execução, pipeline registers e a anatomia dos hazards.',
+    status: 'active',
+    sectionsCount: '6 Seções',
+    simulatorsCount: '1 Simulador Interativo',
+    testStatus: '28/28 Gates Verificados',
+    description: 'Estudo aprofundado da linha de montagem de instruções: do processador de ciclo único ao pipeline de 5 estágios, vazão vs latência, conflitos RAW, Data Forwarding, a bolha inevitável de Load-Use, predição dinâmica de saltos com contador Smith de 2 bits e vulnerabilidades da família Spectre.',
+    topics: [
+      { num: '1', name: 'Da Execução Sequencial à Linha de Montagem: A Gênese do Pipelining' },
+      { num: '2', name: 'Quando a Linha de Montagem Colide: A Anatomia dos Hazards (RAW, WAR, WAW e Estruturais)' },
+      { num: '3', name: 'Data Forwarding (Bypassing): O Atalho Físico no Caminho de Dados' },
+      { num: '4', name: 'O Hazard Load-Use, a Bolha de 1 Ciclo e Reordenação pelo Compilador' },
+      { num: '5', name: 'Desvios Condicionais, Predição Smith de 2 Bits e Execução Especulativa (Spectre)' },
+      { num: '6', name: 'Síntese de Arquitetura e Quatro Heurísticas de Otimização de Software' }
+    ]
+  },
+  {
+    id: '04',
+    slug: '04-hierarquia-memoria-caches-localidade',
+    title: 'Módulo 04: Hierarquia de Memória e Caches: A Barreira da Memória e Princípios de Localidade',
+    subtitle: 'O abismo de velocidade entre CPU e DRAM: a Barreira da Memória e os princípios de localidade.',
+    status: 'active',
+    sectionsCount: '6 Seções',
+    simulatorsCount: '1 Simulador Interativo',
+    testStatus: '28/28 Gates Verificados',
+    description: 'A física da SRAM vs DRAM, linhas de cache de 64B, Tag/Set/Offset, mapeamento associativo em conjunto N-way, políticas Write-Back com dirty bit, substituição LRU e a métrica de tempo médio de acesso (AMAT).',
+    topics: [
+      { num: '1', name: 'A Barreira da Memória (Memory Wall): O Abismo entre CPU e DRAM e a Fórmula AMAT' },
+      { num: '2', name: 'A Física das Memórias: Células SRAM de 6 Transistores vs DRAM 1T1C' },
+      { num: '3', name: 'Princípios de Localidade: Temporal, Espacial e o Desempenho em Matrizes' },
+      { num: '4', name: 'Anatomia da Cache: Linhas de 64 Bytes, Tag, Set Index e Block Offset' },
+      { num: '5', name: 'Mapeamento Associativo em Conjunto (N-Way), Falhas 3C e Substituição LRU' },
+      { num: '6', name: 'Políticas de Escrita (Write-Back vs Write-Through) e Heurísticas de Otimização' }
+    ]
+  },
+  {
+    id: '05',
+    slug: '05-memoria-virtual-mmu-paginacao',
+    title: 'Módulo 05: Memória Virtual e a MMU: Paginação, Tradução via MMU e Isolamento do Kernel',
+    subtitle: 'A ilusão de isolamento perfeito: como a MMU e o Kernel traduzem endereços virtuais para físicos.',
+    status: 'active',
+    sectionsCount: '6 Seções',
+    simulatorsCount: '1 Simulador Interativo',
+    testStatus: '34/34 Gates Verificados',
+    description: 'Tabelas de páginas multinível (PML4 no x86-64), tradução de endereços na MMU, aceleração com TLB, faltas de página (Page Faults) menores e maiores, e o mecanismo de alocação preguiçosa com Copy-on-Write (COW).',
+    topics: [
+      { num: '1', name: 'A Ilusão do Espaço Linear Contíguo e a Necessidade de Isolamento' },
+      { num: '2', name: 'A Unidade de Gerenciamento de Memória (MMU) e Molduras de Página (Page Frames)' },
+      { num: '3', name: 'Tabelas de Páginas Multinível no x86-64 (PML4) e a Anatomia da Entrada (PTE)' },
+      { num: '4', name: 'O Acelerador de Tradução: Translation Lookaside Buffer (TLB)' },
+      { num: '5', name: 'Faltas de Página (Page Faults), Alocação Sob Demanda e Copy-on-Write (COW)' },
+      { num: '6', name: 'Diretrizes de Engenharia e Observabilidade de Memória' }
+    ]
+  },
+  {
+    id: '06',
+    slug: '06-processos-threads-kernel-syscalls',
+    title: 'Módulo 06: Processos, Threads e a Fronteira do Kernel: System Calls e Troca de Contexto',
+    subtitle: 'A fronteira inviolável entre espaço de usuário e supervisor: chamadas de sistema e troca de contexto.',
+    status: 'active',
+    sectionsCount: '6 Seções',
+    simulatorsCount: '1 Simulador Interativo',
+    testStatus: '34/34 Gates Verificados',
+    description: 'Anéis de proteção de hardware (Ring 3 vs Ring 0), a transição rápida via syscall e IA32_LSTAR, a estrutura task_struct, a equivalência ontológica de clone(), a mecânica de switch_to e o ciclo de sinais POSIX.',
+    topics: [
+      { num: '1', name: 'A Ilusão da Execução Exclusiva e a Fronteira de Privilégios (Ring 3 vs Ring 0)' },
+      { num: '2', name: 'A Fronteira do Kernel: A Transição Rápida com syscall e sysret' },
+      { num: '3', name: 'A Estrutura de Controle do Processo no Kernel: task_struct, Memória e Arquivos' },
+      { num: '4', name: 'A Equivalência Ontológica no Linux: Processos vs Threads via clone()' },
+      { num: '5', name: 'A Mecânica da Troca de Contexto (Context Switch): Da Pilha do Kernel ao %cr3' },
+      { num: '6', name: 'Síntese de Engenharia, Latências e Heurísticas de Sistema' }
+    ]
+  },
+  {
+    id: '07',
+    slug: '07-concorrencia-silicio-atomicos-sincronizacao',
+    title: 'Módulo 07: Concorrência no Silício: Primitivas Atômicas, Locks e Sincronização de Hardware',
+    subtitle: 'Coerência de cache, reordenação de memória, instruções atômicas e primitivas de sincronização no kernel.',
+    status: 'active',
+    sectionsCount: '10 Seções',
+    simulatorsCount: '1 Simulador Interativo',
+    testStatus: '36/36 Gates Verificados',
+    description: 'Protocolo de coerência MESI, invalidações no barramento, falso compartilhamento, modelos de memória (TSO vs Relaxed), instruções atômicas de hardware (lock cmpxchg), modelo C11 stdatomic, spinlocks vs futexes no Linux e prevenção determinística de deadlocks por condições de Coffman.',
+    topics: [
+      { num: '1', name: 'A Ilusão da Memória Compartilhada e o Protocolo MESI de Coerência' },
+      { num: '2', name: 'O Efeito Colateral Físico: Falso Compartilhamento (False Sharing) e Linhas de 64B' },
+      { num: '3', name: 'Modelos de Consistência de Memória: Total Store Order (TSO) vs Modelos Relaxados' },
+      { num: '4', name: 'O Problema de Read-Modify-Write e Primitivas Atômicas de Hardware (lock cmpxchg)' },
+      { num: '5', name: 'O Modelo de Memória ISO C11, Spinlocks e o Futex do Linux' },
+      { num: '6', name: 'Anatomia de Falhas de Concorrência: Condições de Coffman e Prevenção de Deadlocks' }
+    ]
+  },
+  {
+    id: '08',
+    slug: '08-io-page-cache-sistemas-arquivos-durabilidade',
+    title: 'Módulo 08: Subsistema de Entrada e Saída (I/O) e Sistemas de Arquivos: Do Barramento ao Disco',
+    subtitle: 'Barramentos PCIe, DMA, interrupções, subsistema de blocos e persistência com journaling.',
+    status: 'active',
+    sectionsCount: '6 Seções',
+    simulatorsCount: '1 Simulador Interativo',
+    testStatus: '36/36 Gates Verificados',
+    description: 'Como a CPU conversa com o mundo exterior: Port I/O, MMIO, DMA sem intervenção da CPU, o ciclo de vida da escrita e dirty pages no Page Cache, o mito do write() persistente, primitivas fsync/fdatasync/O_DIRECT, crash consistency e Journaling (WAL).',
+    topics: [
+      { num: '1', name: 'A Fronteira Física de I/O: Port I/O, MMIO e Controladores de DMA' },
+      { num: '2', name: 'O Ciclo de Vida da Escrita e o Page Cache do Kernel' },
+      { num: '3', name: 'O Mito do write() Seguro: Por que write() Não Persiste Dados' },
+      { num: '4', name: 'Primitivas de Durabilidade: fsync(), fdatasync() e O_DIRECT' },
+      { num: '5', name: 'Consistência Contra Quedas (Crash Consistency) e Journaling' },
+      { num: '6', name: 'Síntese de Arquitetura, Latências e Heurísticas de Produção' }
+    ]
+  }
+];
+---
+
+<TrackLayout
+  title="Trilha 01: Sistemas de Computação: Do Bit ao Kernel | Catálogo de Módulos"
+  trackId="01-hardware-and-os"
+  trackTitle="01. Sistemas de Computação: Do Bit ao Kernel"
+>
+  <div class="space-y-12 md:space-y-16 py-4">
+    {/* Cabeçalho da Trilha Editorial */}
+    <div class="border-b border-ash pb-10">
+      <div class="inline-flex items-center gap-2 rounded-full border border-ash bg-white/80 px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-graphite mb-5 shadow-sm">
+        <HugeiconsIcon icon={CpuIcon} className="h-3.5 w-3.5 text-lake-blue" />
+        <span>Trilha 01 : Sistemas de Computação</span>
+      </div>
+      <h1 class="font-serif text-[clamp(2rem,5vw,3rem)] font-normal tracking-[-0.02em] text-off-black mb-4 leading-[1.2]">
+        Sistemas de Computação: Do Bit ao Kernel
+      </h1>
+      <p class="font-sans text-base text-graphite leading-relaxed max-w-3xl">
+        Aprenda como o software realmente vira atividade física dentro da máquina e interage com registradores, esteiras de execução, hierarquia de memória, sistema operacional e periféricos. Esta trilha constrói uma progressão causal estrita: cada módulo resolve o problema físico ou de isolamento deixado pelo módulo anterior.
+      </p>
+
+      {/* Métricas e Badges em Pílulas Editoriais */}
+      <div class="mt-8 flex flex-wrap gap-3 text-xs font-mono">
+        <div class="rounded-full border border-ash bg-white px-4 py-2 flex items-center gap-2 shadow-sm text-graphite">
+          <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4 text-lake-blue" />
+          <span class="text-smoke">Módulos Disponíveis:</span>
+          <span class="font-medium text-off-black">9 Ativos (Trilha Completa: Módulos 00 a 08)</span>
+        </div>
+        <div class="rounded-full border border-ash bg-white px-4 py-2 flex items-center gap-2 shadow-sm text-graphite">
+          <HugeiconsIcon icon={PlayIcon} className="h-4 w-4 text-lake-blue" />
+          <span class="text-smoke">Simuladores Interativos:</span>
+          <span class="font-medium text-off-black">21 Ferramentas</span>
+        </div>
+        <div class="rounded-full border border-ash bg-white px-4 py-2 flex items-center gap-2 shadow-sm text-graphite">
+          <HugeiconsIcon icon={ShieldCheckIcon} className="h-4 w-4 text-lake-blue" />
+          <span class="text-smoke">Auditoria Epistêmica:</span>
+          <span class="font-medium text-off-black">100% Gates Aprovados</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Lista de Seleção de Módulos */}
+    <div class="space-y-8">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+        <div>
+          <span class="font-mono text-xs uppercase tracking-widest text-smoke">
+            Estrutura da Trilha
+          </span>
+          <h2 class="font-serif text-[clamp(1.5rem,3.5vw,2.25rem)] font-normal text-off-black tracking-[-0.02em] mt-1 border-0 pb-0 leading-[1.25]">
+            Escolha um Módulo para Iniciar
+          </h2>
+        </div>
+        <p class="text-xs font-mono text-smoke">
+          Selecione o módulo ou explore os tópicos específicos
+        </p>
+      </div>
+
+      <div class="space-y-8">
+        {modules.map((m) => {
+          const isActive = m.status === 'active';
+          return (
+            <div
+              class={`rounded-card border transition-all ${
+                isActive
+                  ? 'border-ash bg-white p-6 md:p-10 shadow-sm hover:border-lake-blue/40'
+                  : 'border-ash/70 bg-white/60 p-6 md:p-10 opacity-75'
+              }`}
+            >
+              {/* Cabeçalho do Card do Módulo */}
+              <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2.5">
+                    <span class={`rounded-full px-3 py-1 font-mono text-xs font-medium ${
+                      isActive ? 'bg-periwinkle-mist text-lake-blue' : 'bg-ash/30 text-smoke'
+                    }`}>
+                      MÓDULO {m.id}
+                    </span>
+                    {isActive ? (
+                      <span class="rounded-full bg-mint/25 border border-mint px-3 py-0.5 text-xs font-mono font-medium text-off-black">
+                        Disponível Agora
+                      </span>
+                    ) : (
+                      <span class="rounded-full bg-parchment border border-ash px-3 py-0.5 text-xs font-mono text-smoke">
+                        {m.sectionsCount}
+                      </span>
+                    )}
+                  </div>
+                  <h3 class="font-serif text-xl md:text-2xl font-normal text-off-black leading-snug tracking-[-0.02em]">
+                    {m.title}
+                  </h3>
+                  <p class="font-mono text-xs text-smoke font-normal">
+                    {m.subtitle}
+                  </p>
+                </div>
+
+                {isActive && (
+                  <a
+                    href={`/tracks/01-hardware-and-os/${m.slug}`}
+                    class="rounded-full bg-off-black text-white hover:bg-black px-6 py-3 min-h-[44px] inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment shrink-0"
+                  >
+                    Abrir Módulo <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+
+              <p class="font-sans text-base text-graphite leading-relaxed mb-6 max-w-[70ch]">
+                {m.description}
+              </p>
+
+              {/* Tópicos Detalhados em Pergaminho com Borda Ash */}
+              {m.topics.length > 0 && (
+                <div class="rounded-2xl border border-ash bg-parchment p-5 md:p-6 font-mono">
+                  <div class="text-xs font-medium uppercase tracking-wider text-smoke mb-3.5 flex items-center gap-2">
+                    <HugeiconsIcon icon={BookOpen01Icon} className="h-3.5 w-3.5 text-lake-blue" />
+                    <span>Tópicos deste Módulo:</span>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    {m.topics.map((t) => (
+                      <div class="flex items-start gap-2 text-graphite">
+                        <span class="font-mono text-xs font-medium text-lake-blue shrink-0">
+                          {t.num}.
+                        </span>
+                        <span class="leading-relaxed text-xs">{t.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Rodapé do Card com Tags */}
+              <div class="mt-6 pt-4 border-t border-ash/60 flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-smoke">
+                <div class="flex items-center gap-3">
+                  <span>{m.sectionsCount}</span>
+                  <span>&middot;</span>
+                  <span>{m.simulatorsCount}</span>
+                  <span>&middot;</span>
+                  <span>{m.testStatus}</span>
+                </div>
+                {isActive && (
+                  <a
+                    href={`/tracks/01-hardware-and-os/${m.slug}`}
+                    class="text-xs font-mono font-medium text-lake-blue hover:underline inline-flex items-center gap-1"
+                  >
+                    Estudar este conteúdo &rarr;
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+</TrackLayout>

@@ -1,0 +1,60 @@
+---
+interface Props {
+  title: string;
+  action: string;
+  takeaway: string;
+}
+
+const { title, action, takeaway } = Astro.props;
+---
+
+<div class="my-8 rounded-card border border-ash bg-white p-6 md:p-8 shadow-sm transition-all">
+  {/* Header da Missão de Observação */}
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-ash pb-4 mb-6">
+    <div class="flex items-center gap-3">
+      <span class="rounded-full bg-lake-blue/10 p-2 text-lake-blue border border-lake-blue/20">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </span>
+      <div>
+        <h4 class="font-serif text-lg font-normal text-off-black tracking-tight">{title}</h4>
+        <p class="font-mono text-xs text-smoke">Experimento Interativo no Hardware</p>
+      </div>
+    </div>
+    <div class="inline-flex items-center gap-2 rounded-full border border-ash bg-parchment px-3.5 py-1.5 font-mono text-xs text-graphite shadow-sm">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lake-blue opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-lake-blue"></span>
+      </span>
+      <span class="font-medium">Fluxo em Execução</span>
+    </div>
+  </div>
+
+  {/* Ação Guiada de Teste */}
+  <div class="mb-6 rounded-2xl bg-parchment p-4 text-xs font-mono border border-ash flex items-start gap-3">
+    <span class="font-bold uppercase text-lake-blue text-[11px] tracking-wider mt-0.5 shrink-0">O que testar:</span>
+    <span class="text-graphite leading-relaxed">{action}</span>
+  </div>
+
+  {/* Componente Interativo Embutido */}
+  <div class="py-2">
+    <slot />
+  </div>
+
+  {/* Conclusão e Insight Físico */}
+  <div class="mt-6 pt-4 border-t border-ash rounded-2xl bg-periwinkle-mist/20 p-4 text-xs border border-lake-blue/20 flex items-start gap-3">
+    <span class="text-lake-blue mt-0.5 shrink-0">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18h6" />
+        <path d="M10 22h4" />
+        <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+      </svg>
+    </span>
+    <div class="text-graphite leading-relaxed">
+      <strong class="text-off-black font-semibold">O que você percebeu: </strong>
+      {takeaway}
+    </div>
+  </div>
+</div>

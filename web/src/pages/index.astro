@@ -1,0 +1,334 @@
+---
+import TrackLayout from '../layouts/TrackLayout.astro';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { NetworkIcon, DatabaseIcon, ServerIcon, GitBranchIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import RetroComputer3D from '../components/retro-3d/RetroComputer3D';
+---
+
+<TrackLayout
+  title="TeachYourself : Tratado Editorial de Baixo Nível e Sistemas"
+  trackId="overview"
+  trackTitle="Visão Geral do Currículo"
+>
+  <div class="space-y-20 md:space-y-28">
+    {/* HERO SECTION EDITORIAL LIMPO NO PERGAMINHO */}
+    <section class="relative pt-6 md:pt-12 pb-8 text-center max-w-5xl mx-auto">
+      {/* Tag de Contexto Monospace */}
+      <div class="inline-flex items-center gap-2 rounded-full border border-ash bg-white/80 px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-graphite mb-8 shadow-sm">
+        <span class="h-1.5 w-1.5 rounded-full bg-lake-blue" />
+        <span>SISTEMA DE ENSINO DETERMINÍSTICO</span>
+      </div>
+
+      {/* Título Display em Untitled Serif (Newsreader 400 - Nunca Negrito) */}
+      <h1 class="font-serif text-[clamp(2rem,5vw,3rem)] font-normal leading-[1.2] tracking-[-0.02em] text-off-black [text-wrap:balance]">
+        Computação em baixo nível com rigor mecânico e empírico.
+      </h1>
+
+      {/* Subtexto em Graphite */}
+      <p class="font-sans text-base md:text-lg text-graphite leading-relaxed max-w-3xl mx-auto mt-8 tracking-[-0.01em] [text-wrap:pretty]">
+        Um periódico técnico editorial de alta precisão. Destilação profunda de hardware, compiladores, redes, motores de banco de dados e sistemas distribuídos a partir de fontes primárias e testes bit a bit.
+      </p>
+
+      {/* Botões em Pílula: Primário dominante + Secundário para grade curricular */}
+      <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <a
+          href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+          class="inline-flex items-center gap-2.5 rounded-full bg-off-black px-8 py-4 min-h-[48px] text-sm font-mono uppercase tracking-wider text-white hover:bg-black active:scale-[0.98] transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
+        >
+          Iniciar Módulo 00: Lógica Digital & CMOS <HugeiconsIcon icon={ArrowRight01Icon} className="h-4 w-4" />
+        </a>
+
+        <a
+          href="#grade-curricular"
+          class="inline-flex items-center gap-2 rounded-full border border-ash bg-white/70 hover:bg-white active:scale-[0.98] px-7 py-4 min-h-[48px] text-sm font-mono uppercase tracking-wider text-off-black hover:border-off-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
+        >
+          Consultar Grade Curricular
+        </a>
+      </div>
+    </section>
+
+    {/* FAIXA DE ESPECIFICAÇÕES DE REFERÊNCIA VERIFICADAS */}
+    <section class="border-y border-ash py-5">
+      <div class="flex flex-wrap items-center justify-between gap-4 sm:gap-6 text-xs font-mono uppercase tracking-wider text-graphite">
+        <span class="text-off-black font-medium">Especificações de Referência:</span>
+        <span>ISO/IEC 9899 (C11)</span>
+        <span>x86-64 System V ABI</span>
+        <span>IEEE 754-2019</span>
+        <span>POSIX.1-2017</span>
+        <span>IETF RFC 9293 (TCP)</span>
+        <span>ARIES Recovery (1992)</span>
+      </div>
+    </section>
+
+    {/* SEÇÃO DO COMPUTADOR ANOS 90 E ARQUITETURA DE HARDWARE (THREE.JS 3D) */}
+    <section class="space-y-6">
+      <div class="min-h-[540px]">
+        <RetroComputer3D client:visible={{ rootMargin: '200px' }} />
+      </div>
+    </section>
+
+    {/* SEÇÃO DE TRILHAS: COM CARTÃO HERO PERIWINKLE MIST */}
+    <section id="grade-curricular" class="space-y-8 scroll-mt-10">
+      <div>
+        <span class="font-mono text-xs uppercase tracking-widest text-graphite">
+          Grade Curricular
+        </span>
+        <h2 class="font-serif text-[clamp(1.5rem,3.5vw,2.25rem)] font-normal leading-[1.25] text-off-black tracking-[-0.02em] mt-1 border-0 pb-0 [text-wrap:balance]">
+          Trilhas de Especialização Vertical
+        </h2>
+      </div>
+
+      <div class="space-y-6">
+        {/* CARTÃO HERO ELEVADO EM PERIWINKLE MIST (TRILHA 01) */}
+        <div class="relative overflow-hidden rounded-card border border-ash bg-periwinkle-mist p-8 md:p-12 shadow-sm transition-all">
+          <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Informações da Trilha */}
+            <div class="lg:col-span-7 space-y-5">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="rounded-full bg-white border border-ash px-3.5 py-1 text-xs font-mono uppercase tracking-wider text-off-black font-medium">
+                  Trilha 01 &middot; Ativa
+                </span>
+                <span class="rounded-full bg-white/70 border border-ash px-3 py-1 text-xs font-mono text-graphite">
+                  9 Módulos Disponíveis
+                </span>
+              </div>
+
+              <h3 class="font-serif text-2xl sm:text-3xl font-normal text-off-black leading-tight tracking-[-0.02em] mt-2 mb-0 [text-wrap:balance]">
+                01. Sistemas de Computação: Do Bit ao Kernel
+              </h3>
+
+              <p class="font-sans text-base text-graphite leading-relaxed tracking-[-0.01em] [text-wrap:pretty]">
+                A ponte mecânica entre o software e a máquina: da física de transistores CMOS e portas lógicas à representação binária, inteiros, ponto flutuante IEEE 754, Assembly x86-64, registradores, esteira de pipelining, hierarquia de memória e caches, memória virtual via MMU, anéis de proteção do kernel, concorrência no silício e durabilidade de I/O com sistemas de arquivos.
+              </p>
+
+              <div class="pt-2 flex flex-wrap items-center gap-2.5">
+                <a
+                  href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+                  class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 00: CMOS <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5 ml-1" />
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 01: Dados
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/02-representacao-programas-assembly-x86-64"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 02: Assembly
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/03-arquitetura-processadores-pipelining-hazards"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 03: Pipeline
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/04-hierarquia-memoria-caches-localidade"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 04: Caches
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/05-memoria-virtual-mmu-paginacao"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 05: MMU
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 06: Kernel
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 07: Concorrência
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Módulo 08: I/O & FS
+                </a>
+                <a
+                  href="/tracks/01-hardware-and-os"
+                  class="rounded-full bg-white/70 border border-ash hover:border-off-black active:scale-[0.98] text-graphite hover:text-off-black px-3.5 py-2.5 min-h-[40px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-periwinkle-mist"
+                >
+                  Índice
+                </a>
+              </div>
+              </div>
+            </div>
+
+            {/* Painel Ilustrativo de Laboratório / CPU Architecture */}
+            <div class="lg:col-span-5">
+              <div class="rounded-3xl border border-ash bg-white/90 p-6 font-mono text-xs text-off-black shadow-monad">
+                <div class="flex items-center justify-between border-b border-ash/70 pb-3 mb-4">
+                  <div class="flex items-center gap-2">
+                    <span class="h-2.5 w-2.5 rounded-full bg-coral" />
+                    <span class="h-2.5 w-2.5 rounded-full bg-gold" />
+                    <span class="h-2.5 w-2.5 rounded-full bg-mint" />
+                  </div>
+                  <span class="text-xs text-smoke uppercase tracking-wider">x86-64 Execution State</span>
+                </div>
+
+                <div class="space-y-2.5 text-xs font-mono">
+                  <div class="flex justify-between items-center py-1 border-b border-ash/30">
+                    <span class="text-smoke">%rax (Retorno):</span>
+                    <span class="font-medium text-off-black">0x000000000000002a</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1 border-b border-ash/30">
+                    <span class="text-smoke">%rdi (1º Arg):</span>
+                    <span class="text-graphite">0x00007ffe4892c010</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1 border-b border-ash/30">
+                    <span class="text-smoke">%rsp (Pilha):</span>
+                    <span class="text-graphite">0x00007ffe4892bff8</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1">
+                    <span class="text-smoke">%rip (Instrução):</span>
+                    <span class="text-lake-blue font-medium">soma+0x14 (retq)</span>
+                  </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-ash/50 flex items-center justify-between text-xs text-smoke">
+                  <span>Stack Alignment: 16-Byte Clean</span>
+                  <span class="rounded-full bg-mint/30 border border-mint/60 px-2 py-0.5 text-xs text-off-black font-medium">&bull; Verificado</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* GRADE DE TRILHAS PLANEJADAS (CARTÕES EM PARCHMENT DE 40PX) */}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Trilha 2 */}
+          <div class="rounded-card border border-ash bg-white/60 p-8 md:p-10 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-parchment border border-ash p-2.5 text-off-black">
+                  <HugeiconsIcon icon={NetworkIcon} className="h-5 w-5" />
+                </div>
+                <span class="rounded-full border border-ash bg-parchment px-3 py-0.5 text-xs font-mono uppercase tracking-wider text-graphite font-medium">
+                  Em desenvolvimento
+                </span>
+              </div>
+              <h3 class="font-serif text-2xl font-normal text-off-black mb-3 border-0 pb-0 [text-wrap:balance]">
+                02. Redes e Comunicação de Dados
+              </h3>
+              <p class="font-sans text-sm md:text-base text-graphite leading-relaxed [text-wrap:pretty]">
+                Sockets de baixo nível POSIX, controle de congestionamento de Van Jacobson, RFC 9293 consolidada, handshake TLS 1.3 e análise de tráfego com Wireshark e tcpdump.
+              </p>
+            </div>
+            <div class="mt-8 pt-4 border-t border-ash/40 flex items-center justify-between text-xs font-mono text-graphite">
+              <span>Camada 4 até o Kernel</span>
+              <span class="text-smoke">Norma: RFC 9293</span>
+            </div>
+          </div>
+
+          {/* Trilha 3 */}
+          <div class="rounded-card border border-ash bg-white/60 p-8 md:p-10 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-parchment border border-ash p-2.5 text-off-black">
+                  <HugeiconsIcon icon={DatabaseIcon} className="h-5 w-5" />
+                </div>
+                <span class="rounded-full border border-ash bg-parchment px-3 py-0.5 text-xs font-mono uppercase tracking-wider text-graphite font-medium">
+                  Em desenvolvimento
+                </span>
+              </div>
+              <h3 class="font-serif text-2xl font-normal text-off-black mb-3 border-0 pb-0 [text-wrap:balance]">
+                03. Bancos de Dados & Storage Engines
+              </h3>
+              <p class="font-sans text-sm md:text-base text-graphite leading-relaxed [text-wrap:pretty]">
+                B-Trees com paginação em disco, LSM-Trees em memória e SSTables, Write-Ahead Logging com o protocolo ARIES (Mohan 1992) e isolamento transacional MVCC.
+              </p>
+            </div>
+            <div class="mt-8 pt-4 border-t border-ash/40 flex items-center justify-between text-xs font-mono text-graphite">
+              <span>Memória Flash e Storage NVMe</span>
+              <span class="text-smoke">Protocolo ARIES (1992)</span>
+            </div>
+          </div>
+
+          {/* Trilha 4 */}
+          <div class="rounded-card border border-ash bg-white/60 p-8 md:p-10 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-parchment border border-ash p-2.5 text-off-black">
+                  <HugeiconsIcon icon={ServerIcon} className="h-5 w-5" />
+                </div>
+                <span class="rounded-full border border-ash bg-parchment px-3 py-0.5 text-xs font-mono uppercase tracking-wider text-graphite font-medium">
+                  Em desenvolvimento
+                </span>
+              </div>
+              <h3 class="font-serif text-2xl font-normal text-off-black mb-3 border-0 pb-0 [text-wrap:balance]">
+                04. Sistemas Distribuídos & Consenso
+              </h3>
+              <p class="font-sans text-sm md:text-base text-graphite leading-relaxed [text-wrap:pretty]">
+                Relógios lógicos escalares de Lamport, resultado de impossibilidade FLP (1985), Teorema CAP formalizado, Paxos clássico e o algoritmo de consenso Raft.
+              </p>
+            </div>
+            <div class="mt-8 pt-4 border-t border-ash/40 flex items-center justify-between text-xs font-mono text-graphite">
+              <span>Redes Assíncronas com Falha</span>
+              <span class="text-smoke">Consenso Raft & Paxos</span>
+            </div>
+          </div>
+
+          {/* Trilha 5 */}
+          <div class="rounded-card border border-ash bg-white/60 p-8 md:p-10 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-parchment border border-ash p-2.5 text-off-black">
+                  <HugeiconsIcon icon={GitBranchIcon} className="h-5 w-5" />
+                </div>
+                <span class="rounded-full border border-ash bg-parchment px-3 py-0.5 text-xs font-mono uppercase tracking-wider text-graphite font-medium">
+                  Em desenvolvimento
+                </span>
+              </div>
+              <h3 class="font-serif text-2xl font-normal text-off-black mb-3 border-0 pb-0 [text-wrap:balance]">
+                05. Algoritmos & Design de Software
+              </h3>
+              <p class="font-sans text-sm md:text-base text-graphite leading-relaxed [text-wrap:pretty]">
+                O princípio de Information Hiding (Parnas 1972), arquitetura de Módulos Profundos de Ousterhout, interpretador metacircular de Lisp do SICP e combinatória formal.
+              </p>
+            </div>
+            <div class="mt-8 pt-4 border-t border-ash/40 flex items-center justify-between text-xs font-mono text-graphite">
+              <span>Decomposição e Complexidade</span>
+              <span class="text-smoke">Parnas & Deep Modules</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* SEÇÃO FINAL: CHAMADA EDITORIAL DE ESTUDO */}
+    <section class="rounded-card border border-ash bg-white/50 p-8 md:p-12 text-center max-w-4xl mx-auto">
+      <h2 class="font-serif text-[clamp(1.5rem,3.5vw,2.25rem)] font-normal leading-[1.25] text-off-black tracking-[-0.02em] mb-4 border-0 pb-0 [text-wrap:balance]">
+        Pronto para inspecionar os bytes no registrador?
+      </h2>
+      <p class="font-sans text-base text-graphite max-w-xl mx-auto mb-8 leading-relaxed [text-wrap:pretty]">
+        Comece pela Trilha 01. Entenda como o processador lê números em complemento de dois, decodifica mnemônicos e organiza a memória de execução.
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-4">
+        <a
+          href="/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock"
+          class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-8 py-3.5 min-h-[44px] inline-flex items-center text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
+        >
+          Iniciar Módulo 00: Lógica Digital <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5 ml-1.5" />
+        </a>
+        <a
+          href="/tracks/01-hardware-and-os"
+          class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-6 py-3.5 min-h-[44px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
+        >
+          Explorar Trilha 01
+        </a>
+      </div>
+    </section>
+  </div>
+</TrackLayout>
