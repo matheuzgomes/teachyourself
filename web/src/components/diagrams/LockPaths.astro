@@ -1,0 +1,36 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Trava otimista"
+  title="Caminho Rápido contra Caminho Lento"
+  subtitle="CAS atômico em Ring 3 decide: trava livre executa em nanossegundos, trava ocupada dorme no kernel."
+  steps={[
+    '<strong>Passo 1:</strong> parta da tentativa de aquisição com CAS atômico, sem sair do Ring 3.',
+    '<strong>Passo 2:</strong> siga o ramo livre: execução em cerca de 15 ns, zero syscalls, zero troca de anel.',
+    '<strong>Passo 3:</strong> siga o ramo ocupado: syscall com FUTEX_WAIT, thread suspensa na fila do kernel, acordada depois via FUTEX_WAKE.',
+  ]}
+  conclusion="Trava bem projetada custa quase nada sem contenção e só paga o preço do kernel sob contenção real. O CAS em espaço de usuário separa o caso comum rápido do caso raro que precisa dormir."
+>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-xs">
+    <div class="rounded-2xl border-2 border-[#0e7c54] bg-[#a7fccd]/20 p-4">
+      <div class="font-bold text-[#0e7c54] text-sm mb-1">Caminho rápido (livre)</div>
+      <p class="text-graphite mb-3">CAS vence de primeira</p>
+      <ul class="space-y-2 text-off-black">
+        <li class="rounded-xl bg-white border border-ash p-2.5">Executa em ~15 ns</li>
+        <li class="rounded-xl bg-white border border-ash p-2.5">Zero syscalls</li>
+        <li class="rounded-xl bg-white border border-ash p-2.5">Zero mudança de anel</li>
+      </ul>
+    </div>
+    <div class="rounded-2xl border border-ash bg-parchment p-4">
+      <div class="font-bold text-[#b93815] text-sm mb-1">Caminho lento (ocupada)</div>
+      <p class="text-graphite mb-3">CAS perde, invoca o kernel</p>
+      <ul class="space-y-2 text-off-black">
+        <li class="rounded-xl bg-white border border-ash p-2.5">syscall FUTEX_WAIT</li>
+        <li class="rounded-xl bg-white border border-ash p-2.5">Thread suspensa na fila do kernel</li>
+        <li class="rounded-xl bg-white border border-ash p-2.5">Acordada via FUTEX_WAKE</li>
+      </ul>
+    </div>
+  </div>
+</DiagramFrame>

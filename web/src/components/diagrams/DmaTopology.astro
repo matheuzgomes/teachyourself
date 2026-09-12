@@ -1,0 +1,36 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="DMA"
+  title="O Disco Fala com a RAM sem Acordar a CPU"
+  subtitle="A CPU programa a transferência e volta ao trabalho. A controladora move os blocos e interrompe no fim."
+  steps={[
+    '<strong>Passo 1:</strong> localize a CPU programando a transferência e liberada em seguida, sem polling contínuo.',
+    '<strong>Passo 2:</strong> siga os blocos da controladora até a memória pela interconexão, sem tocar na CPU.',
+    '<strong>Passo 3:</strong> feche com a interrupção de conclusão: só então a CPU volta a olhar para o I/O.',
+  ]}
+  conclusion="DMA troca espera ocupada por conclusão assíncrona: a CPU delega a cópia ao hardware e só é chamada de volta na interrupção. Sem isso, cada byte de disco custaria ciclos de processador."
+>
+  <div class="font-mono text-xs md:text-sm">
+    <div class="rounded-2xl border border-ash bg-parchment p-4 text-center">
+      <span class="font-bold text-off-black">Processador (CPU)</span>
+      <span class="block text-graphite mt-1">Programa a transferência. Sem polling contínuo.</span>
+    </div>
+    <div class="text-center text-graphite py-1.5">barramento de interconexão</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="rounded-2xl border-2 border-lake-blue bg-[#2b59d1]/5 p-4">
+        <span class="font-bold text-lake-blue">Controladora DMA</span>
+        <span class="block text-graphite mt-1">Transfere blocos direto para a RAM</span>
+      </div>
+      <div class="rounded-2xl border border-ash bg-parchment p-4">
+        <span class="font-bold text-off-black">Memória DRAM física</span>
+        <span class="block text-graphite mt-1">Recebe as molduras de dados</span>
+      </div>
+    </div>
+    <div class="mt-3 rounded-2xl border border-ash bg-white p-3 text-center text-graphite">
+      Dispara interrupção de hardware ao concluir. Só então a CPU retorna ao I/O.
+    </div>
+  </div>
+</DiagramFrame>

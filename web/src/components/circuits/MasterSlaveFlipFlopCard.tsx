@@ -101,13 +101,13 @@ export default function MasterSlaveFlipFlopCard() {
                 stroke="#3c3836"
                 strokeWidth="1.5"
               />
-              <text x="162" y="60" textAnchor="middle" font-family="monospace" font-size="14" font-weight="bold" fill="#2c2825">
+              <text x="162" y="60" textAnchor="middle" fontFamily="monospace" fontSize="14" fontWeight="bold" fill="#2c2825">
                 Latch Mestre
               </text>
-              <text x="162" y="82" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill={clock === 0 ? "#2d5a27" : "#5c554e"}>
+              <text x="162" y="82" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={clock === 0 ? "#2d5a27" : "#5c554e"}>
                 {clock === 0 ? "TRANSPARENTE (Le D)" : "TRANCADO (Isolado)"}
               </text>
-              <text x="162" y="108" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">
+              <text x="162" y="108" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">
                 Q_m = {qMaster}
               </text>
 
@@ -122,35 +122,35 @@ export default function MasterSlaveFlipFlopCard() {
                 stroke="#3c3836"
                 strokeWidth="1.5"
               />
-              <text x="417" y="60" textAnchor="middle" font-family="monospace" font-size="14" font-weight="bold" fill="#2c2825">
+              <text x="417" y="60" textAnchor="middle" fontFamily="monospace" fontSize="14" fontWeight="bold" fill="#2c2825">
                 Latch Escravo
               </text>
-              <text x="417" y="82" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill={clock === 1 ? "#2d5a27" : "#5c554e"}>
+              <text x="417" y="82" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={clock === 1 ? "#2d5a27" : "#5c554e"}>
                 {clock === 1 ? "TRANSPARENTE (Copia Q_m)" : "TRANCADO (Mantem Q)"}
               </text>
-              <text x="417" y="108" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">
+              <text x="417" y="108" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">
                 Q = {qOutput}
               </text>
 
               {/* Fio de Entrada D */}
               <line x1="20" y1="85" x2="80" y2="85" stroke={dataD === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={dataD === 1 ? "3.5" : "2"} />
               <circle cx="20" cy="85" r="5" fill={dataD === 1 ? "#2d5a27" : "#8c827a"} />
-              <text x="20" y="68" font-family="monospace" font-size="13" font-weight="bold" fill={dataD === 1 ? "#2d5a27" : "#2c2825"}>
+              <text x="20" y="68" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={dataD === 1 ? "#2d5a27" : "#2c2825"}>
                 D = {dataD}
               </text>
 
               {/* Fio entre Mestre e Escravo */}
               <line x1="245" y1="85" x2="335" y2="85" stroke={qMaster === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={qMaster === 1 ? "3" : "2"} />
-              <text x="290" y="75" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill="#5c554e">
+              <text x="290" y="75" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#5c554e">
                 Q_m
               </text>
 
               {/* Fio de Saida Final Q */}
               <line x1="500" y1="85" x2="550" y2="85" stroke={qOutput === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={qOutput === 1 ? "3.5" : "2"} markerEnd="url(#ffArrow)" />
-              <text x="560" y="80" font-family="monospace" font-size="14" font-weight="bold" fill={qOutput === 1 ? "#2d5a27" : "#2c2825"}>
+              <text x="560" y="80" fontFamily="monospace" fontSize="14" fontWeight="bold" fill={qOutput === 1 ? "#2d5a27" : "#2c2825"}>
                 Q = {qOutput}
               </text>
-              <text x="560" y="100" font-family="monospace" font-size="12" font-weight="bold" fill="#5c554e">
+              <text x="560" y="100" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#5c554e">
                 {qOutput === 1 ? "3.3V" : "0V"}
               </text>
 
@@ -158,7 +158,7 @@ export default function MasterSlaveFlipFlopCard() {
               <line x1="20" y1="195" x2="162" y2="195" stroke={clock === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={clock === 1 ? "3" : "2"} />
               <line x1="162" y1="195" x2="162" y2="135" stroke={clock === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={clock === 1 ? "3" : "2"} />
               <circle cx="20" cy="195" r="5" fill={clock === 1 ? "#2d5a27" : "#8c827a"} />
-              <text x="20" y="180" font-family="monospace" font-size="13" font-weight="bold" fill={clock === 1 ? "#2d5a27" : "#2c2825"}>
+              <text x="20" y="180" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={clock === 1 ? "#2d5a27" : "#2c2825"}>
                 Clock = {clock}
               </text>
 
@@ -174,7 +174,7 @@ export default function MasterSlaveFlipFlopCard() {
               {/* Saida Invertida do Clock para o Escravo */}
               <line x1="273" y1="195" x2="417" y2="195" stroke={clock === 0 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" />
               <line x1="417" y1="195" x2="417" y2="135" stroke={clock === 0 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" />
-              <text x="350" y="218" textAnchor="middle" font-family="monospace" font-size="11" font-weight="bold" fill="#5c554e">
+              <text x="350" y="218" textAnchor="middle" fontFamily="monospace" fontSize="11" fontWeight="bold" fill="#5c554e">
                 Clock Invertido = {clock === 1 ? 0 : 1}
               </text>
             </svg>

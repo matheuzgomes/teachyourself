@@ -60,10 +60,10 @@ export default function ClockChronogramCard() {
 
               {/* Linha de Tempo Horizontal */}
               <line x1="50" y1="225" x2="570" y2="225" stroke="#3c3836" strokeWidth="1.5" strokeDasharray="4 4" markerEnd="url(#timeArrow)" />
-              <text x="510" y="245" font-family="monospace" font-size="12" font-weight="bold" fill="#5c554e">Tempo (ps)</text>
+              <text x="510" y="245" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#5c554e">Tempo (ps)</text>
 
               {/* Onda 1: Clock */}
-              <text x="15" y="55" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">CLK</text>
+              <text x="15" y="55" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">CLK</text>
               <polyline
                 points="50,75 130,75 130,35 250,35 250,75 370,75 370,35 490,35 490,75 570,75"
                 fill="none"
@@ -73,12 +73,12 @@ export default function ClockChronogramCard() {
 
               {/* Marcacao da Borda de Subida no ciclo (x = 370) */}
               <line x1="370" y1="20" x2="370" y2="220" stroke="#3c3836" strokeWidth="1.5" strokeDasharray="3 3" />
-              <text x="376" y="28" font-family="monospace" font-size="11" font-weight="bold" fill="#2c2825">
+              <text x="376" y="28" fontFamily="monospace" fontSize="11" fontWeight="bold" fill="#2c2825">
                 Borda de Subida (Amostragem)
               </text>
 
               {/* Onda 2: Dado de Entrada (D) */}
-              <text x="15" y="150" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">DADO</text>
+              <text x="15" y="150" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">DADO</text>
               {(() => {
                 const arrivalX = Math.min(540, 130 + (tRequired / tPeriod) * 240);
                 const setupStartX = 370 - (tSetup / tPeriod) * 240;
@@ -98,7 +98,7 @@ export default function ClockChronogramCard() {
                     />
                     {/* Rotulo de Setup POSICIONADO ACIMA (y=94) - Sem colisao */}
                     <line x1={setupStartX} y1="98" x2="370" y2="98" stroke={isViolation ? "#b44322" : "#2d5a27"} strokeWidth="1.5" />
-                    <text x={setupStartX} y="92" font-family="monospace" font-size="11" fill={isViolation ? "#b44322" : "#2d5a27"} font-weight="bold">
+                    <text x={setupStartX} y="92" fontFamily="monospace" fontSize="11" fill={isViolation ? "#b44322" : "#2d5a27"} fontWeight="bold">
                       Janela Setup ({tSetup}ps)
                     </text>
 
@@ -114,7 +114,7 @@ export default function ClockChronogramCard() {
                     />
                     {/* Rotulo de Hold POSICIONADO ABAIXO (y=188) - Sem colisao */}
                     <line x1="370" y1="176" x2={holdEndX} y2="176" stroke="#8c827a" strokeWidth="1.5" />
-                    <text x="375" y="190" font-family="monospace" font-size="11" fill="#5c554e" font-weight="bold">
+                    <text x="375" y="190" fontFamily="monospace" fontSize="11" fill="#5c554e" fontWeight="bold">
                       Hold ({tHold}ps)
                     </text>
 
@@ -128,7 +128,7 @@ export default function ClockChronogramCard() {
 
                     {/* Ponto de Estabilizacao */}
                     <circle cx={arrivalX} cy="130" r="5" fill={isViolation ? "#b44322" : "#2d5a27"} />
-                    <text x={Math.max(45, arrivalX - 70)} y="120" font-family="monospace" font-size="11" font-weight="bold" fill={isViolation ? "#b44322" : "#2d5a27"}>
+                    <text x={Math.max(45, arrivalX - 70)} y="120" fontFamily="monospace" fontSize="11" fontWeight="bold" fill={isViolation ? "#b44322" : "#2d5a27"}>
                       Dado Estavel ({tRequired} ps)
                     </text>
                   </g>

@@ -1,0 +1,44 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="clone()"
+  title="Um Bit Decide: Processo ou Thread"
+  subtitle="CLONE_VM desligado duplica o mapa. Ligado compartilha o mapa. Todo o resto é igual."
+  steps={[
+    '<strong>Passo 1:</strong> parta da tarefa pai com sua ficha completa: mapa, arquivos e grupo próprios.',
+    '<strong>Passo 2:</strong> siga o ramo com CLONE_VM desligado: novo mapa com páginas duplicadas por cópia sob escrita, novo grupo, processo filho.',
+    '<strong>Passo 3:</strong> siga o ramo com CLONE_VM ligado: mesmo mapa físico, mesmo grupo, nova thread. Compare os dois ramos campo a campo.',
+  ]}
+  conclusion="Processo e thread nascem da mesma chamada: a diferença é quais ponteiros da ficha são duplicados e quais são compartilhados. Compartilhar o mapa é compartilhar a memória."
+>
+  <div class="font-mono text-xs md:text-sm">
+    <div class="rounded-2xl border-2 border-lake-blue bg-[#2b59d1]/5 p-4 text-center">
+      <span class="font-bold text-off-black text-sm">Tarefa Pai (task_struct A)</span>
+      <span class="block text-graphite mt-1">chamada clone()</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+      <div class="rounded-2xl border border-ash bg-parchment p-4">
+        <div class="font-bold text-off-black text-sm">Processo Filho (task_struct B)</div>
+        <p class="text-graphite mt-1 mb-3">CLONE_VM desligado</p>
+        <ul class="space-y-2 text-graphite">
+          <li class="rounded-xl bg-white border border-ash p-2.5">Novo mapa alocado</li>
+          <li class="rounded-xl bg-white border border-ash p-2.5">Páginas duplicadas por cópia sob escrita</li>
+          <li class="rounded-xl bg-white border border-ash p-2.5">Tabela de arquivos duplicada</li>
+          <li class="rounded-xl bg-white border border-ash p-2.5">Novo grupo independente</li>
+        </ul>
+      </div>
+      <div class="rounded-2xl border border-ash bg-parchment p-4">
+        <div class="font-bold text-off-black text-sm">Nova Thread (task_struct C)</div>
+        <p class="text-graphite mt-1 mb-3">CLONE_VM ligado</p>
+        <ul class="space-y-2 text-graphite">
+          <li class="rounded-xl bg-white border border-ash p-2.5">Compartilha o mapa de A</li>
+          <li class="rounded-xl bg-white border border-ash p-2.5">Mesmo registrador de paginação físico</li>
+          <li class="rounded-xl bg-white border border-ash p-2.5">Mesma tabela de arquivos</li>
+          <li class="rounded-xl bg-white border border-ash p-2.5">Mesmo grupo da tarefa A</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</DiagramFrame>

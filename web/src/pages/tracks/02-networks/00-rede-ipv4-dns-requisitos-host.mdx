@@ -1,0 +1,570 @@
+---
+layout: ../../../layouts/TrackLayout.astro
+title: "00. Camada de Rede e Nomeação: Datagramas IPv4, Fragmentação e Resolução DNS"
+description: "O envelope comum da internetwork: cabeçalho IPv4 de 20 bytes, TTL e checksum, fragmentação com offset em unidades de 8 octetos, mensagem DNS, requisitos de host e o incidente Kaminsky de 2008."
+trackId: "02-networks"
+trackTitle: "02. Redes e Comunicação de Dados"
+---
+
+import Ipv4HeaderInspector from "../../../components/Ipv4HeaderInspector";
+import TtlTracerouteSimulator from "../../../components/TtlTracerouteSimulator";
+import BitFieldLayout from "../../../components/diagrams/BitFieldLayout.astro";
+import PredictionChallenge from "../../../components/PredictionChallenge";
+import HistoricalIncident from "../../../components/HistoricalIncident.astro";
+import ObservationMission from "../../../components/ObservationMission.astro";
+import DeepDive from "../../../components/DeepDive.astro";
+import Term from "../../../components/Term.astro";
+import { withBase } from "../../../utils/paths";
+
+{/* Curriculum Ledger 00: KNOWN=[byte, hexadecimal, network byte order big endian] CURRENT=[ping traceroute dig, datagrama IPv4, TTL, checksum de cabecalho, fragmentacao DF MF offset, descoberta de MTU, mensagem DNS, compressao de nomes, UDP primeiro TCP retorno, requisitos de host, Kaminsky 2008] DEFERRED=[TCP e janela deslizante, controle de congestionamento, HTTP, TLS, DNSSEC] */}
+
+# Módulo 00: Camada de Rede e Nomeação: Datagramas IPv4, Fragmentação e Resolução DNS
+
+> **O que você precisa aqui:** 1. Ter visto que memória é fita de bytes e que a rede usa big endian. 2. Aceitar que hardwares diferentes falam por envelopes padronizados. 3. Nada de programar sockets, nada de configurar roteador.
+
+Abra um terminal e rode dois comandos. Primeiro, `ping -c1 8.8.8.8`. Depois, `dig +short example.com`. O primeiro devolve pacotes de uma máquina que você nunca viu. O segundo transforma um nome digitado por um humano em um endereço numérico como `93.184.216.34`. Nada disso exige que você administre a rede no meio do caminho. Nenhum operador central autorizou a sua conexão.
+
+No início da década de 1970, redes de pacotes eram ilhas incompatíveis. A ARPANET, as redes de rádio e as redes de satélite usavam tamanhos de pacote, endereçamentos e hardwares distintos. A resposta de engenharia teve três partes que estudaremos nesta ordem. Um formato comum de envelope que atravessa qualquer hardware (o datagrama IPv4 da RFC 791). Um sistema distribuído de nomes que resolve nomes em endereços (o <Term id="DNS">DNS</Term> das RFCs 1034 e 1035). E um caderno de requisitos que todo computador conectado precisa obedecer para não quebrar a rede alheia (as RFCs 1122 e 1123).
+
+---
+
+## O Mapa da Aula: Três Partes e Seis Desafios da Pilha
+
+Este módulo se divide em três partes, cada uma respondendo uma pergunta em linguagem direta:
+
+* **Parte A, o envelope:** como um pacote encontra o destino atravessando hardwares que nunca foram projetados para conversar entre si?
+* **Parte B, o fatiamento:** o que acontece quando o pacote é grande demais para o fio, e quem tem o dever de remontar os pedaços?
+* **Parte C, os nomes:** como um nome digitado vira endereço numérico, e o que acontece quando alguém envenena essa tradução?
+
+> [!NOTE]
+> **Contrato de Aprendizagem do Módulo 00**
+>
+> * **Pré-requisitos:** Trilha 01, Módulo 01 (bytes, ordem de bytes na rede, hexadecimal). Nada de programar sockets, nada de configurar roteador.
+> * **Pergunta de Entrada:** Como um pacote encontra o destino atravessando hardwares incompatíveis, e como um nome digitado vira endereço numérico?
+> * **O Que Você Vai Construir e Dominar:**
+>   1. Leitura de traces reais de `ping`, `traceroute` e `dig` como observação do mecanismo em operação.
+>   2. O cabeçalho IPv4 de 20 bytes como contrato de entrega: campos, <Term id="TTL">TTL</Term> e checksum só do cabeçalho.
+>   3. A fragmentação com DF, MF e offset em unidades de 8 octetos, com dois exemplos numéricos conferidos.
+>   4. A mensagem <Term id="DNS">DNS</Term> de 12 bytes de cabeçalho, a compressão de nomes com ponteiros e a regra de <Term id="UDP">UDP</Term> primeiro com retorno em <Term id="TCP">TCP</Term>.
+>   5. Os requisitos de host das RFCs 1122 e 1123 que tornam a interoperabilidade obrigatória e não opcional.
+>   6. O incidente Kaminsky de 2008 como prova viva de que mensagem, cache e transporte sem conexão formam uma superfície de ataque única.
+> * **Critérios de Domínio:** Você saberá que domina este módulo quando for capaz de decodificar um hex dump de cabeçalho IPv4, calcular offset real de qualquer fragmento, narrar uma resolução <Term id="DNS">DNS</Term> com `dig +trace` e explicar por que a aleatorização da porta de origem conteve o Kaminsky sem eliminar a falha.
+
+---
+
+## Parte A: O Envelope Comum
+
+### A.1 Missão de Observação: Três Comandos, Três Mecanismos
+
+Antes de qualquer definição, observe os mecanismos operando na sua máquina. Rode cada comando e confira a anotação:
+
+<ObservationMission
+  title="Ping, Traceroute e Dig: A Pilha se Apresentando"
+  action="Rode ping -c1 8.8.8.8, traceroute -n -m 5 8.8.8.8 e dig +short example.com A. Para cada linha de saída, localize qual campo de protocolo ela expõe: TTL restante, tempo de ida e volta, roteador que se identificou, endereço resolvido."
+  takeaway="Cada ferramenta expõe um mecanismo deste módulo sem configurar nada: o ping mostra TTL e tempo, o traceroute abusa do TTL para mapear a rota, e o dig mostra a tradução de nome em endereço com prazo de cache."
+>
+```text
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=117 time=12.3 ms
+```
+
+Cada número conta uma história do módulo. `56(84)` significa 56 bytes de carga <Term id="ICMP">ICMP</Term> mais 28 de cabeçalhos (20 de <Term id="IP">IP</Term> e 8 de <Term id="ICMP">ICMP</Term>), totalizando 84 bytes no fio. `ttl=117` é o <Term id="TTL">TTL</Term> restante na chegada: o emissor definiu um valor redondo e cada roteador do caminho decrementou um. `time=12.3 ms` é o tempo de ida e volta medido pelo seu relógio, não pela rede.
+
+```text
+ 1  192.168.0.1  1.2 ms
+ 2  10.20.30.1   4.8 ms
+ 3  * * *
+ 4  142.250.10.1  11.5 ms
+```
+
+O `traceroute` não descobre a rota perguntando. Ele envia sondas com <Term id="TTL">TTL</Term> 1, 2, 3 e força cada roteador a se identificar ao destruir a sonda com <Term id="ICMP">ICMP</Term> Time Exceeded. A linha 3 com asteriscos é um roteador que optou por não responder: silêncio também é resposta válida, e a sondagem continua.
+
+```text
+93.184.216.34
+```
+
+Um nome virou quatro bytes. O resto do módulo explica cada etapa dessa tradução, que não é mágica: é hierarquia, mensagem padronizada e cache com prazo.
+</ObservationMission>
+
+### A.2 Leitura Guiada: Um Cabeçalho Real em Hexadecimal
+
+Uma rede entrega bytes entre vizinhos físicos. Uma internetwork entrega datagramas entre máquinas distantes que não compartilham hardware, nem administração, nem tamanho de pacote. O truque é padronizar somente o envelope e deixar cada rede física transportar esse envelope do jeito que souber. Esse envelope é o datagrama IPv4: um cabeçalho de controle de no mínimo 20 bytes seguido da carga útil.
+
+Imagine, de forma simplificada, que você capturou estes 20 bytes no fio (cabeçalho típico de um `ping`, valores ilustrativos):
+
+```text
+45 00 00 54 a3 22 40 00 40 01 5c 96 c0 a8 00 02 08 08 08 08
+```
+
+Decodifique byte a byte com a tabela de contrato da seção 3.1 da RFC 791:
+
+| Bytes | Valor | Campo e leitura |
+| :--- | :--- | :--- |
+| 0 | `0x45` | Version 4 (nibble alto), IHL 5 (nibble baixo), ou seja, 20 bytes de cabeçalho |
+| 1 | `0x00` | Type of Service padrão, sem precedência especial |
+| 2 a 3 | `0x0054` | Total Length de 84 octetos, exatamente os 84 do `ping` observado |
+| 4 a 5 | `0xa322` | Identification fixado pelo emissor para este datagrama |
+| 6 a 7 | `0x4000` | Flags com DF igual a 1 (não fragmentar) e offset zero |
+| 8 | `0x40` | <Term id="TTL">TTL</Term> inicial de 64 saltos de orçamento |
+| 9 | `0x01` | Protocol 1, que indica <Term id="ICMP">ICMP</Term> como consumidor da carga |
+| 10 a 11 | `0x5c96` | Header Checksum cobrindo só estes 20 bytes |
+| 12 a 15 | `c0 a8 00 02` | Origem `192.168.0.2` em 4 octetos fixos |
+| 16 a 19 | `08 08 08 08` | Destino `8.8.8.8` em 4 octetos fixos |
+
+<PredictionChallenge
+  client:load
+  question="No hex dump acima, o byte 6 vale 0x40. Se ele valesse 0x20 em vez de 0x40, o que mudaria no destino deste pacote?"
+  correctOptionId="B"
+  technicalTakeaway="0x40 tem o bit DF ativo (não fragmentar) e 0x20 tem o bit MF ativo (primeiro fragmento de uma sequência). Um bit de diferença transforma um pacote indivisível no início de uma remontagem."
+  options={[
+    {
+      id: "A",
+      label: "Nada mudaria, porque os bytes 6 e 7 guardam o checksum e qualquer valor é recalculado no próximo salto.",
+      explanation: "Incorreto. Os bytes 6 e 7 guardam Flags e Fragment Offset, não checksum. O checksum ocupa os bytes 10 e 11. Flags decidem fragmentação, nunca são recalculadas como soma."
+    },
+    {
+      id: "B",
+      label: "O pacote passaria de não fragmentável (DF ativo) a primeiro fragmento de uma sequência (MF ativo), exigindo remontagem no destino.",
+      explanation: "Exato! 0x40 é 01000000 (bit DF) e 0x20 é 00100000 (bit MF) nos 3 bits de Flags. Com MF ativo e offset zero, o destino aguarda os fragmentos seguintes pela mesma quádrupla."
+    },
+    {
+      id: "C",
+      label: "O TTL cairia de 64 para 32 e o pacote morreria um salto antes, sem alcançar o destino.",
+      explanation: "Incorreto. O TTL ocupa o byte 8 (0x40 ali é coincidência de valor). O byte 6 pertence ao grupo de fragmentação e não altera o orçamento de saltos."
+    }
+  ]}
+/>
+
+O par mínimo abaixo extrai versão e tamanho no ponto exato onde o conceito aparece:
+
+```c
+uint8_t first = buf[0];
+uint8_t version = first >> 4;    /* nibble alto: 4 */
+uint8_t ihl = first & 0x0F;      /* nibble baixo: palavras de 32 bits */
+size_t hdr_len = (size_t)ihl * 4; /* 5 -> 20 bytes */
+```
+
+O mapa completo do contrato, palavra de 32 bits por palavra, para consulta:
+
+<BitFieldLayout
+  fields={[
+    { name: "Version", detail: "4 bits", span: 4 },
+    { name: "IHL", detail: "4 bits", span: 4 },
+    { name: "Type of Service", detail: "8 bits", span: 8 },
+    { name: "Total Length", detail: "16 bits", span: 16 },
+  ]}
+/>
+
+<BitFieldLayout
+  fields={[
+    { name: "Identification", detail: "16 bits", span: 16 },
+    { name: "Flags", detail: "3 bits", span: 3 },
+    { name: "Fragment Offset", detail: "13 bits", span: 13 },
+  ]}
+/>
+
+<BitFieldLayout
+  fields={[
+    { name: "Time to Live", detail: "8 bits", span: 8 },
+    { name: "Protocol", detail: "8 bits", span: 8 },
+    { name: "Header Checksum", detail: "16 bits", span: 16 },
+  ]}
+/>
+
+<BitFieldLayout
+  fields={[{ name: "Source Address", detail: "32 bits", span: 32 }]}
+/>
+
+<BitFieldLayout
+  fields={[{ name: "Destination Address", detail: "32 bits", span: 32 }]}
+  caption="Opções e padding completam o cabeçalho em múltiplos de 32 bits quando presentes."
+/>
+
+Leia o cabeçalho em três grupos. O primeiro grupo identifica e mede. `Version` tem 4 bits e vale 4 neste documento. `IHL` tem 4 bits e mede o comprimento do cabeçalho em palavras de 32 bits, com valor mínimo 5, o que equivale a 20 bytes, e aponta onde começam os dados. `Total Length` tem 16 bits e mede o datagrama inteiro em octetos (cabeçalho mais dados), com limite máximo de 65535 octetos. Todo host precisa aceitar datagramas de até 576 octetos, completos ou em fragmentos.
+
+O segundo grupo governa o tempo de vida e o destino da carga. <Term id="TTL">Time to Live</Term> tem 8 bits e funciona como orçamento de permanência: o emissor define um valor, cada ponto da rota decrementa ao menos um, e <Term id="TTL">TTL</Term> zero exige destruição imediata do datagrama. Na prática o <Term id="TTL">TTL</Term> opera como contagem de saltos e existe para pacotes sem entrega morrerem em vez de circularem para sempre. `Protocol` tem 8 bits e indica qual protocolo de nível seguinte consome a carga (por exemplo, <Term id="TCP">TCP</Term> ou <Term id="UDP">UDP</Term>). Os endereços de origem e destino têm 32 bits cada, comprimento fixo de 4 octetos.
+
+O terceiro grupo protege somente o envelope. `Header Checksum` tem 16 bits e cobre exclusivamente o cabeçalho, nunca os dados. Como o <Term id="TTL">TTL</Term> muda a cada salto, o checksum precisa ser recalculado e verificado em cada ponto que processa o cabeçalho. Datagrama com checksum inválido é descartado de imediato por quem detecta. A carga pode conter erros sem que o <Term id="IP">IP</Term> perceba: detectar corrupção de dados é trabalho das pontas, como veremos no Módulo 01.
+
+Repare na ligação com a Trilha 01: os campos multibyte viajam em ordem big endian, a ordem de bytes da rede que o Módulo 01 apresentou com `htons`. O primeiro byte `0x45` só faz sentido porque emissor e receptor concordam sobre qual ponta do número chega primeiro.
+
+<PredictionChallenge
+  client:load
+  question="O primeiro byte de um cabeçalho IPv4 típico sem opções vale 0x45. Sem consultar a tabela, o que cada metade desse byte informa sobre o pacote?"
+  correctOptionId="B"
+  technicalTakeaway="O nibble alto é o Version (4) e o nibble baixo é o IHL em palavras de 32 bits (5, ou seja, 20 bytes de cabeçalho). Ler o primeiro byte entrega versão e tamanho do envelope de uma vez."
+  options={[
+    {
+      id: "A",
+      label: "O byte inteiro é o TTL inicial (69 saltos) e o protocolo é inferido pelo tamanho total do datagrama.",
+      explanation: "Incorreto. O TTL ocupa o nono byte do cabeçalho, não o primeiro. O primeiro byte divide Version (nibble alto) e IHL (nibble baixo), e o protocolo tem campo próprio de 8 bits."
+    },
+    {
+      id: "B",
+      label: "O nibble alto (4) é a versão do protocolo e o nibble baixo (5) é o IHL, indicando 5 palavras de 32 bits, ou seja, 20 bytes de cabeçalho.",
+      explanation: "Exato! 0x45 se divide em Version 4 e IHL 5. Multiplicar o IHL por 4 entrega o comprimento do cabeçalho em bytes e aponta onde começam os dados."
+    },
+    {
+      id: "C",
+      label: "Os 8 bits formam o checksum parcial do cabeçalho, recalculado pelo roteador antes de qualquer outra leitura.",
+      explanation: "Incorreto. O checksum tem 16 bits dedicados no meio do cabeçalho e cobre o cabeçalho inteiro. Nenhum roteador confere checksum antes de saber versão e tamanho."
+    }
+  ]}
+/>
+
+<DeepDive title="O algoritmo do checksum em complemento de um">
+O cálculo é o complemento de um de 16 bits da soma em complemento de um de todas as palavras de 16 bits do cabeçalho, com o campo de checksum zerado durante o cálculo. A seção 3.1 da RFC 791 define o algoritmo e a seção 1.4 exige a verificação a cada processamento. O detalhe que importa para o modelo mental: o checksum protege o roteamento (endereços, <Term id="TTL">TTL</Term>, tamanho), não a mensagem do usuário.
+</DeepDive>
+
+### A.3 O Relógio da Morte: TTL Salto a Salto
+
+O <Term id="TTL">TTL</Term> merece um simulador próprio porque ele é dois mecanismos em um: orçamento de existência e ferramenta de mapeamento. Cada roteador decrementa ao menos um mesmo com processamento inferior a um segundo, então na prática o campo conta saltos. Quando zera, o roteador destrói a sonda e devolve <Term id="ICMP">ICMP</Term> Time Exceeded ao emissor, identificando-se no processo.
+
+<TtlTracerouteSimulator client:load />
+
+Repare no que o simulador prova sem uma linha de configuração de rede: com <Term id="TTL">TTL</Term> 1 você descobre o primeiro roteador, com 2 o segundo, e só com orçamento suficiente a sonda alcança o destino. O `traceroute` da missão de abertura é exatamente essa sequência automatizada. E o ping com `ttl=117` na chegada revela o caminho inverso: o valor inicial menos os saltos percorridos.
+
+### A.4 O Vocabulário do <Term id="ICMP">ICMP</Term>: Quatro Mensagens que Você Já Usou
+
+Todo aviso citado até aqui (Time Exceeded no `traceroute`, Echo no `ping`, Fragmentation Needed na descoberta de <Term id="MTU">MTU</Term>) fala o mesmo idioma: o <Term id="ICMP">ICMP</Term>, com cabeçalho próprio de 8 bytes (tipo, código, checksum e resto dependente da mensagem) dentro da carga <Term id="IP">IP</Term>. Quatro mensagens cobrem tudo que este módulo exige:
+
+| Tipo | Código típico | Quem envia | Para que serve neste módulo |
+| :--- | :--- | :--- | :--- |
+| Echo Request (8) / Echo Reply (0) | 0 | Destino | O `ping`: pede eco e mede ida e volta com o relógio local |
+| Time Exceeded (11) | 0 (TTL zerado) | Roteador no caminho | O `traceroute`: cada roteador se identifica ao destruir a sonda |
+| Destination Unreachable (3) | 4 (fragmentação necessária com DF) | Roteador no caminho | A descoberta de <Term id="MTU">MTU</Term>: avisa o tamanho aceito para o emissor reduzir |
+| Destination Unreachable (3) | 3 (porta inalcançável) | Destino | O `traceroute` <Term id="UDP">UDP</Term> clássico: destino sem serviço na porta confirma a chegada |
+
+Pause e preveja. Um firewall no meio do caminho filtra todo <Term id="ICMP">ICMP</Term> de saída. O que quebra: o `ping`, o `traceroute`, a descoberta de <Term id="MTU">MTU</Term>, ou os três? Os três, por motivos distintos: o `ping` perde o eco de volta, o `traceroute` só recebe asteriscos, e a sondagem com DF nunca recebe o aviso de tamanho, travando a conexão em pacotes grandes que morrem em silêncio. Essa é a dependência explícita da heurística de descoberta de <Term id="MTU">MTU</Term> que a síntese registra no fim do módulo.
+
+O par mínimo abaixo lê o tipo de uma mensagem <Term id="ICMP">ICMP</Term> no ponto onde o conceito aparece:
+
+```c
+uint8_t icmp_type = ip_payload[0]; /* 8 pedido, 0 resposta, 11 tempo, 3 destino */
+uint8_t icmp_code = ip_payload[1]; /* detalha o motivo dentro do tipo */
+```
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+>
+> 1. **Envelope fixo:** datagrama com cabeçalho mínimo de 20 bytes mais carga;
+> 2. **Orçamento de saltos:** <Term id="TTL">TTL</Term> só diminui, zero destrói com aviso <Term id="ICMP">ICMP</Term>, e a sequência de TTLs mapeia a rota;
+> 3. **Proteção parcial:** o checksum cobre só o cabeçalho e é refeito a cada salto.
+
+---
+
+## Parte B: O Fatiamento e o Dever de Remontar
+
+### B.1 Quando o Envelope Não Cabe
+
+Cada hardware impõe um tamanho máximo de pacote (<Term id="MTU">MTU</Term>). A Ethernet clássica aceita 1500 bytes por quadro. Se um datagrama de 1500 bytes precisa atravessar um enlace que só aceita 576, alguém precisa fatiar. Esse alguém é a camada <Term id="IP">IP</Term> do emissor ou de um roteador no caminho, e a remontagem acontece somente no destino final. Roteadores intermediários nunca remontam.
+
+Três campos coordenam o fatiamento. `Identification` tem 16 bits e é fixado pelo emissor para marcar todos os fragmentos do mesmo datagrama original. `Flags` tem 3 bits: o bit 1 é DF (0 permite fragmentar, 1 proíbe) e o bit 2 é MF (1 indica mais fragmentos a caminho, 0 marca o último). `Fragment Offset` tem 13 bits e indica a posição do fragmento dentro do datagrama original em unidades de 8 octetos, com o primeiro fragmento em offset zero. Datagrama marcado com DF que exigisse fragmentação é descartado em vez de fatiado.
+
+Acompanhe o primeiro exemplo conferido, com datagrama total de 1500 bytes e <Term id="MTU">MTU</Term> de 576 no enlace restrito, ambos incluindo o cabeçalho <Term id="IP">IP</Term> de 20 bytes. Os dados originais somam 1480 bytes. Cada fragmento carrega no máximo 556 bytes de dados, mas fragmentos não finais precisam de carga múltipla de 8, então cada um leva 552 bytes. O resultado são três fragmentos com o mesmo `Identification` e DF igual a 0:
+
+| Fragmento | Dados (bytes) | Offset (unidades de 8) | Offset real (bytes) | Total Length | MF |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | 552 | 0 | 0 | 572 | 1 |
+| 2 | 552 | 69 | 552 | 572 | 1 |
+| 3 | 376 | 138 | 1104 | 396 | 0 |
+
+Confira a aritmética: 69 vezes 8 é 552. 138 vezes 8 é 1104. Os dados somam 552 mais 552 mais 376, que é 1480, e mais 20 de cabeçalho remontam os 1500 originais. Cada `Total Length` respeita o <Term id="MTU">MTU</Term> de 576. O destino reagrupa pelos quatro valores `Identification`, origem, destino e protocolo, posiciona cada carga pelo offset e reconhece o início pelo offset zero e o fim pelo MF zero.
+
+<Ipv4HeaderInspector client:load />
+
+### B.2 Segundo Exemplo: Caminho Misto e a Descoberta do MTU
+
+Agora o mesmo datagrama de 1500 bytes atravessa um enlace com <Term id="MTU">MTU</Term> de 1000. Os dados seguem 1480. Cada fragmento leva no máximo 980, arredondado para o múltiplo de 8 anterior: 976. O resultado são dois fragmentos:
+
+| Fragmento | Dados (bytes) | Offset (unidades de 8) | Offset real (bytes) | Total Length | MF |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | 976 | 0 | 0 | 996 | 1 |
+| 2 | 504 | 122 | 976 | 524 | 0 |
+
+Confira: 122 vezes 8 é 976. Os dados somam 976 mais 504, que é 1480. Se o segundo fragmento encontrar adiante outro enlace de 576, ele será refatiado com o mesmo `Identification` e offsets recalculados: fragmentação pode aninhar, e a remontagem final desfaz todas as camadas de uma vez pela mesma quádrupla.
+
+<PredictionChallenge
+  client:load
+  question="Um datagrama de 1500 bytes com DF igual a 0 chega a um enlace de MTU 1000. O segundo fragmento gerado carrega offset 122 e MF igual a 0. O que esses dois valores afirmam, e o que aconteceria se DF fosse 1?"
+  correctOptionId="C"
+  technicalTakeaway="Offset 122 significa byte 976 (122 vezes 8) e MF 0 marca o último fragmento. Com DF igual a 1 não há fatiamento em nenhuma hipótese: o datagrama seria descartado com aviso ICMP."
+  options={[
+    {
+      id: "A",
+      label: "Offset 122 significa o fragmento de número 122, e MF igual a 0 pede ao próximo roteador que remonte antes de repassar.",
+      explanation: "Incorreto. Offset conta unidades de 8 octetos a partir do início, não número de fragmento. E roteadores intermediários nunca remontam: a remontagem acontece somente no destino final."
+    },
+    {
+      id: "B",
+      label: "Offset 122 marca o byte 122 da carga e MF igual a 0 indica que há mais fragmentos a caminho.",
+      explanation: "Incorreto nas duas leituras. A unidade do offset é 8 octetos, então 122 equivale ao byte 976. E MF igual a 0 marca o último fragmento; continuação usa MF igual a 1."
+    },
+    {
+      id: "C",
+      label: "Offset 122 posiciona a carga no byte 976 e MF igual a 0 encerra a sequência; com DF igual a 1 o datagrama seria descartado em vez de fatiado.",
+      explanation: "Exato! 122 vezes 8 é 976, MF 0 fecha a remontagem, e DF igual a 1 proíbe fragmentação em qualquer hipótese, forçando o descarte com aviso ICMP quando o pacote não cabe."
+    }
+  ]}
+/>
+
+Pause e preveja além da tabela. Um emissor marca DF igual a 1 e o pacote não cabe no enlace. O que o roteador faz, e como o emissor descobre o tamanho certo? O roteador descarta e devolve <Term id="ICMP">ICMP</Term> informando que a fragmentação seria necessária. O emissor reduz o tamanho e tenta de novo: essa sondagem com DF ligado é a descoberta do <Term id="MTU">MTU</Term> do caminho, uma heurística operacional com dependência no <Term id="ICMP">ICMP</Term> não filtrado, não uma invariante do protocolo.
+
+O par mínimo abaixo converte o campo de offset em posição real de bytes, no ponto onde o mecanismo é deduzido:
+
+```c
+uint16_t frag_field = ntohs(*(uint16_t *)&buf[6]);
+uint16_t offset_units = frag_field & 0x1FFF; /* 13 bits baixos */
+uint32_t offset_bytes = (uint32_t)offset_units * 8; /* 69 -> 552 */
+int more_fragments = (frag_field & 0x2000) != 0;    /* bit MF */
+```
+
+### B.3 Os Deveres do Host: Temporizador e Descarte Silencioso
+
+As RFCs 1122 e 1123 transformam esses mecanismos em obrigação. Todo host precisa implementar remontagem, com tamanho mínimo aceito de 576 e temporizador de remontagem obrigatório, com faixa recomendada de 60 a 120 segundos. Se o temporizador expirar com o fragmento inicial já recebido, o host descarta o parcial e avisa a origem com <Term id="ICMP">ICMP</Term> Time Exceeded. Sem temporizador, fragmentos órfãos ocupariam memória para sempre: o requisito protege o host dele mesmo.
+
+No envio, o host deve aprender o tamanho máximo por destino e, sem conhecimento do menor <Term id="MTU">MTU</Term> do caminho, limitar-se a 576 para destinos fora da rede local, evitando fragmentação desnecessária. O par de contraste abaixo resume a disciplina:
+
+```c
+/* HOST CORRETO: conhece o destino, respeita o limite */
+if (dst_is_remote && path_mtu_unknown)
+  max_send = 576; /* evita fragmentacao forcada no caminho */
+```
+
+```c
+/* HOST DEFEITUOSO: dispara 1500 às cegas com DF ligado */
+max_send = 1500; /* cada pacote morre no primeiro enlace estreito */
+```
+
+Recepção robusta completa o quadro: datagrama com versão diferente de 4 ou checksum inválido é descartado em silêncio, sem processamento adicional e sem mensagem <Term id="ICMP">ICMP</Term>, com verificação obrigatória em todo recebimento. O princípio geral da RFC 1122 é ser liberal no que recebe e conservador no que envia. Cada dever existe para proteger a rede alheia de um host defeituoso: descarte silencioso evita tempestades de erro, o limite de 576 evita fragmentação forçada, e o temporizador evita vazamento de memória.
+
+<DeepDive title="Por que 576: 512 de dados mais 64 de cabeçalho">
+O mínimo de 576 não é arbitrário. A seção 3.1 da RFC 791 recomenda que todo host aceite datagramas de até 576 octetos porque esse valor comporta 512 octetos de dados mais até 64 octetos de cabeçalho (o máximo teórico é 60, com IHL até 15). Os 512 bytes garantem uma carga útil redonda e útil por datagrama mesmo no pior caso de cabeçalho cheio de opções. Todo número aqui é parâmetro do mecanismo, não curiosidade.
+</DeepDive>
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+>
+> 1. **Fatiamento regulado:** carga em múltiplos de 8 octetos, offset marca posição e MF marca continuação;
+> 2. **Remontagem no destino:** quádrupla identificação, origem, destino e protocolo, com temporizador obrigatório;
+> 3. **Veto absoluto:** DF igual a 1 proíbe o fatiamento, força o descarte e viabiliza a descoberta do <Term id="MTU">MTU</Term> por sondagem.
+
+---
+
+## Parte C: De Nomes a Números
+
+### C.1 Caminhada Completa: `dig +trace` Anotado
+
+Endereços numéricos roteiam, mas humanos lembram de nomes. O <Term id="DNS">DNS</Term> é o banco de dados hierárquico e distribuído que traduz um nome em endereço e metadados de serviço. O espaço de nomes é uma árvore lida do rótulo mais específico para a raiz: em `www.example.com`, `com` delega para `example`, que delega para `www`. Cada rótulo tem de 0 a 63 octetos, o nome completo é limitado a 255 octetos e a comparação ignora diferença entre maiúsculas e minúsculas.
+
+Rode `dig +trace example.com A` e leia a delegação acontecendo. Saída típica, anotada por estágio:
+
+```text
+.                   518400  IN  NS  a.root-servers.net.
+```
+
+O resolvedor começa na raiz, que responde com referência, não com a resposta: estes são os guardiões da delegação máxima. O número 518400 é o <Term id="TTL">TTL</Term> em segundos, cerca de 6 dias de cache permitido.
+
+```text
+com.                172800  IN  NS  a.gtld-servers.net.
+```
+
+A raiz delegou `com`. O resolvedor desce um nível e pergunta de novo, agora ao servidor de `com`.
+
+```text
+example.com.        172800  IN  NS  a.iana-servers.net.
+```
+
+O servidor de `com` delegou `example.com`. Mais uma descida, mais uma pergunta.
+
+```text
+example.com.        86400   IN  A   93.184.216.34
+```
+
+O servidor com autoridade sobre a zona responde o endereço. Quatro conversas para um nome, cada uma guardada em cache pelo seu <Term id="TTL">TTL</Term> para que a próxima consulta igual não precise repetir a caminhada.
+
+### C.2 A Mensagem por Dentro: Cabeçalho, Seções e Ponteiros
+
+Uma mensagem <Term id="DNS">DNS</Term> tem cabeçalho fixo de 12 bytes seguido de quatro seções: Question, Answer, Authority e Additional. O cabeçalho carrega um identificador de 16 bits (<Term id="TXID">TXID</Term>) que casa pergunta e resposta, flags de um bit cada (QR distingue pergunta de resposta, AA marca resposta autoritativa, TC avisa truncamento, RD pede recursão, RA informa recursão disponível) e quatro contadores de 16 bits informando quantos registros seguem em cada seção. Cada registro de resposta carrega nome, tipo, classe, <Term id="TTL">TTL</Term> de cache em segundos e os dados do tipo.
+
+Os nomes viajam codificados por comprimento. Imagine, de forma simplificada, os bytes de `www.example.com` na seção Question (codificação real do formato):
+
+```text
+03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+```
+
+Leia em grupos: `03` anuncia 3 letras, `77 77 77` é `www`. `07` anuncia 7 letras, `65 78 61 6d 70 6c 65` é `example`. `03` anuncia 3 letras, `63 6f 6d` é `com`. `00` é o rótulo nulo da raiz. Nenhum ponto viaja no fio: os comprimentos delimitam cada rótulo.
+
+A compressão evita repetir sufixos longos. Quando um sufixo de domínio já apareceu antes na mensagem, o emissor pode trocar a ocorrência seguinte por um ponteiro de 2 bytes cujos dois primeiros bits valem 1 e cujo restante indica o deslocamento a partir do início da mensagem. Entender ponteiros recebidos é obrigatório para todo resolvedor, ainda que gerar mensagens sem ponteiros seja permitido.
+
+<PredictionChallenge
+  client:load
+  question="Uma resposta DNS chega em UDP com 600 bytes e o bit TC ajustado. O solicitante suporta TCP. O que a norma manda fazer, e o que é proibido fazer com essa resposta?"
+  correctOptionId="B"
+  technicalTakeaway="TC significa truncamento: a resposta não coube nos 512 bytes do UDP. O solicitante deve repetir a consulta em TCP na porta 53, e é proibido guardar a resposta truncada em cache como se estivesse completa."
+  options={[
+    {
+      id: "A",
+      label: "Guardar os 600 bytes em cache até o TTL expirar e completar os registros faltantes na próxima consulta UDP.",
+      explanation: "Incorreto e proibido pela norma. Resposta truncada nunca pode ser guardada como se estivesse completa: o cache passaria a servir uma zona mutilada até o TTL expirar."
+    },
+    {
+      id: "B",
+      label: "Repetir a consulta em TCP na porta 53 para obter a resposta íntegra, sem guardar a versão truncada em cache.",
+      explanation: "Exato! O limite de 512 bytes do UDP com TC ajustado é o sinal mecânico de insuficiência. O TCP com prefixo de 2 bytes entrega a mensagem completa, e só ela pode alimentar o cache."
+    },
+    {
+      id: "C",
+      label: "Descartar em silêncio e devolver erro ao usuário, porque truncamento indica pacote corrompido no caminho.",
+      explanation: "Incorreto. Truncamento não é corrupção: é o servidor avisando honestamente que a resposta não coube. O caminho correto é o retorno em TCP, não o erro."
+    }
+  ]}
+/>
+
+<DeepDive title="Por que o ponteiro é inconfundível">
+Rótulos normais começam com os bits 00 porque o primeiro byte de um rótulo é seu comprimento, limitado a 63 (bits 00 mais 6 bits de tamanho). O ponteiro começa com os bits 11. As combinações 10 e 01 ficam reservadas. Essa codificação disjunta permite ao analisador decidir o tipo do campo inspecionando só os dois primeiros bits. A seção 4.1.4 da RFC 1035 define o formato.
+</DeepDive>
+
+### C.3 Transporte e Vocabulário de Registros
+
+O transporte segue uma regra simples com motivo mecânico. A consulta sai primeiro em <Term id="UDP">UDP</Term> na porta 53, que é barato e sem conexão, mas limitado a 512 bytes sem contar os cabeçalhos <Term id="IP">IP</Term> e <Term id="UDP">UDP</Term>. Se a resposta não coube, o servidor trunca, ajusta o bit TC e o solicitante tenta de novo em <Term id="TCP">TCP</Term> na mesma porta 53, que usa um prefixo de 2 bytes com o comprimento antes da mensagem. Transferência de zona entre servidores usa sempre <Term id="TCP">TCP</Term> pela necessidade de entrega confiável. Resposta truncada nunca pode ser guardada em cache como se estivesse completa.
+
+Os tipos de registro essenciais formam um vocabulário pequeno:
+
+| Tipo | Guarda | Uso |
+| :--- | :--- | :--- |
+| A | Endereço IPv4 de 32 bits | Resolução direta de nome para endereço |
+| NS | Nome do servidor com autoridade | Delegação de zona e busca de referência |
+| CNAME | Apelido para outro nome | Um nome que aponta para o nome de referência, sem outros dados no mesmo nó |
+| MX | Preferência mais host de correio | Roteamento de e-mail, com menor valor preferido |
+| PTR | Nome apontado no espaço reverso | Tradução de endereço para nome sob `IN-ADDR.ARPA` |
+| SOA | Parâmetros da zona e temporizadores | Início de autoridade, serial e pisos de <Term id="TTL">TTL</Term> |
+
+Observe um resolvedor real com `dig +short example.com A` e depois `dig +noall +answer example.com MX`. A primeira resposta devolve endereços. A segunda devolve preferência e host. Cada resposta carrega um <Term id="TTL">TTL</Term> que diz por quantos segundos o resolvedor pode guardar o registro antes de descartar. <Term id="TTL">TTL</Term> zero permite uso só na transação e proíbe o cache.
+
+<ObservationMission
+  title="UDP Primeiro, TCP Como Retorno: Force o Truncamento"
+  action="Rode dig +noall +answer +comments example.com DNSKEY e procure pelo flag tc na linha de status. Depois repita com +tcp e compare tamanho e completude. Anote qual transporte serviu cada resposta e por quê."
+  takeaway="Respostas grandes estouram os 512 bytes do UDP e voltam com TC. O retorno em TCP não é fallback de erro: é o segundo degrau projetado do transporte DNS, e só a resposta íntegra alimenta o cache."
+>
+```text
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
+;; OPT PSEUDOSECTION: EDNS version 0, UDP size 1232
+```
+
+A seção OPT anuncia o tamanho <Term id="UDP">UDP</Term> que o solicitante aceita. Sem essa extensão, o teto clássico de 512 bytes decide entre resposta direta e truncamento com retorno em <Term id="TCP">TCP</Term>.
+</ObservationMission>
+
+### C.4 Quando a Tradução é Envenenada: Kaminsky 2008
+
+No início de 2008, o pesquisador Dan Kaminsky descobriu que a tradução de nomes podia ser sequestrada em escala. A falha não estava em um programa específico, e sim na combinação dos três mecanismos deste módulo: mensagem com seções de funções distintas, cache com prazo e transporte sem conexão. O conserto exigiu um embargo coordenado de março a julho de 2008 entre 16 empresas e um patch sincronizado em 8 de julho de 2008, com detalhes públicos só em 7 de agosto na conferência Black Hat.
+
+<HistoricalIncident
+  title="Kaminsky 2008: O Sequestro da Tradução de Nomes"
+  location="Embargo coordenado em Redmond, revelação na Black Hat em Las Vegas"
+  date="Março a agosto de 2008"
+  impact="Todas as implementações recursivas com cache vulneráveis; patch sincronizado multifornecedor em 8 de julho de 2008 sem número público de vítimas"
+>
+Em março de 2008, pesquisadores de 16 empresas reuniram-se na sede da Microsoft para tratar de uma falha que Dan Kaminsky havia descoberto no <Term id="DNS">DNS</Term>: respostas forjadas podiam envenenar o cache de resolvedores recursivos e redirecionar tráfego web e de e-mail para máquinas do atacante. O conserto ficou sob embargo até 8 de julho de 2008, quando todos os fornecedores publicaram patches no mesmo dia. Kaminsky revelou a mecânica completa em 7 de agosto na Black Hat. Não há contagem pública de servidores explorados: o registro primário (CERT VU#800113) descreve o escopo de forma qualitativa, como múltiplas implementações vulneráveis.
+
+A cadeia causal em cinco passos:
+
+1. **Adivinhação curta.** A consulta carrega um identificador (<Term id="TXID">TXID</Term>) de 16 bits como única aleatoriedade efetiva: em média 32768 tentativas acertam. Muitos resolvedores ainda reutilizavam a mesma porta <Term id="UDP">UDP</Term> de origem para todas as consultas, então o atacante nem precisava adivinhar esse parâmetro (CERT VU#800113, RFC 5452 seções 4.3 e 4.5).
+2. **A janela repetível.** O atacante provoca uma consulta recursiva por um nome inexistente com prefixo aleatório e o resolvedor pergunta ao servidor autoritativo, abrindo uma janela de cerca de 100 milissegundos. Como o nome nunca existiu, cada tentativa reabre a janela do zero (RFC 5452 seções 4.1 e 4.6).
+3. **A corrida.** O atacante inunda o resolvedor com respostas falsificadas. A primeira que casa com pergunta, identificador e endereços é aceita e as seguintes são ignoradas (RFC 5452 seção 3).
+4. **A cola falsa.** A resposta vencedora inclui na seção Additional um registro NS falso para o domínio com um endereço de cola sob controle do atacante. Aceita uma vez, a delegação inteira troca de dono (RFC 5452 seção 6, CVE-2008-1447).
+5. **A persistência.** O registro falso é servido do cache a todos os clientes até o <Term id="TTL">TTL</Term> expirar. O veneno tem prazo de validade, e é o <Term id="TTL">TTL</Term> que o define (RFC 1035 seção 3.2.1, RFC 5452 seções 4.1 e 7.2).
+
+A correção conteve sem eliminar: aleatorizar a porta <Term id="UDP">UDP</Term> de origem por consulta soma cerca de 16 bits de aleatoriedade ao identificador, movendo o ataque da faixa de 2 elevado a 16 para a faixa de 2 elevado a 26 a 32 (RFC 5452 seção 9.2). A eliminação definitiva exige autenticação criptográfica das respostas, que é o DNSSEC, fora do escopo deste módulo. Repare no padrão: cada parte do protocolo que este módulo apresentou como otimização (Additional como atalho, <Term id="TTL">TTL</Term> como economia, <Term id="UDP">UDP</Term> como barateza) era exatamente um degrau do ataque.
+</HistoricalIncident>
+
+<PredictionChallenge
+  client:load
+  question="Diante do Kaminsky 2008, qual combinação de propriedades tornava o envenenamento de cache factível, e qual contramedida a RFC 5452 prescreve?"
+  correctOptionId="A"
+  technicalTakeaway="TXID de 16 bits com porta de origem fixa dava ao atacante um espaço de busca pequeno e repetível, e a cola fora da zona sem crítica convertia uma resposta aceita em delegação sequestrada. A RFC 5452 manda aleatorizar porta e TXID e tratar dado fora da zona com desconfiança."
+  options={[
+    {
+      id: "A",
+      label: "Identificador curto e previsível com porta de origem reutilizada, mais aceite sem crítica de cola fora da zona; a resposta é aleatorizar porta e TXID e desconfiar de dado fora da zona.",
+      explanation: "Exato! 16 bits com porta fixa cabem em dezenas de milhares de tentativas dentro da janela de 100 milissegundos. A cola falsa na Additional trocava a delegação, e a RFC 5452 responde com aleatoriedade por consulta e crítica a dado fora da zona."
+    },
+    {
+      id: "B",
+      label: "Criptografia fraca do cabeçalho DNS com chave de 16 bits; a resposta é cifrar todas as consultas com TLS obrigatório.",
+      explanation: "Incorreto. Não há criptografia nem chave no DNS clássico: o TXID é um número de correlação público, não um segredo. A correção de 2008 foi aleatoriedade de parâmetros, e a autenticação criptográfica viria com o DNSSEC."
+    },
+    {
+      id: "C",
+      label: "Cache sem prazo que guardava registros para sempre; a resposta é zerar todos os TTLs e desabilitar o cache recursivo.",
+      explanation: "Incorreto. O cache tem prazo pelo TTL e funciona corretamente; o problema era aceitar dado falso, não guardar dado verdadeiro. Desabilitar cache destruiria a escalabilidade do sistema sem fechar a corrida."
+    }
+  ]}
+/>
+
+<DeepDive title="A matemática da contenção: de 2 elevado a 16 até 2 elevado a 32">
+Com porta fixa, o espaço de busca é o TXID: no máximo 65536 valores, média de 32768 tentativas por janela. Aleatorizando a porta de origem por consulta com cerca de 64512 opções teóricas (excluídas as abaixo de 1024), o espaço multiplica para a faixa de 2 elevado a 26 a 32 conforme as portas realmente disponíveis. A RFC 5452 registra que, com porta desconhecida, seria necessária vazão acima de 285 gigabits por segundo para taxa de sucesso comparável. Contenção, não eliminação: sem DNSSEC o ataque continua possível, apenas economicamente inviável. Todos os números aqui são parâmetros do mecanismo documentados nas seções 4.5, 7 e 8 da RFC 5452.
+</DeepDive>
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+>
+> 1. **Delegação com prazo:** nomes resolvem em árvore, cada nível guardado em cache pelo seu <Term id="TTL">TTL</Term>;
+> 2. **Mensagem com funções:** 12 bytes de cabeçalho e quatro seções, com a Additional como vetor quando aceita sem crítica;
+> 3. **Transporte em degraus:** <Term id="UDP">UDP</Term> primeiro com retorno em <Term id="TCP">TCP</Term>, e forja factível quando identidade da transação é curta e fixa.
+
+---
+
+## Parte D: O Caderno de Requisitos
+
+Os mecanismos acima só interoperam porque um par de documentos transforma boas práticas em deveres. A RFC 1122 cobre as camadas de comunicação do host e a RFC 1123 cobre aplicação e suporte. Juntas, elas registram a decisão de camadas: enlace, <Term id="IP">IP</Term> com <Term id="ICMP">ICMP</Term>, transporte com <Term id="UDP">UDP</Term> e <Term id="TCP">TCP</Term>, e aplicações com <Term id="DNS">DNS</Term> e serviços de inicialização e gerenciamento.
+
+Os deveres que mais importam para este módulo, cada um com sua seção de origem:
+
+* Todo host precisa implementar <Term id="IP">IP</Term> e <Term id="ICMP">ICMP</Term>, com <Term id="ICMP">ICMP</Term> tratado como parte da camada <Term id="IP">IP</Term> (RFC 1122, seção 3.1).
+* Recepção robusta com descarte silencioso: datagrama com versão diferente de 4 ou checksum inválido é descartado sem processamento adicional e sem mensagem <Term id="ICMP">ICMP</Term>, com verificação obrigatória em todo datagrama recebido (RFC 1122, seções 3.2.1.1 e 3.2.1.2). O princípio geral é ser liberal no que recebe e conservador no que envia (RFC 1122, seções 1.2.2 e 3.1).
+* Remontagem obrigatória em todo host, com temporizador obrigatório na faixa de 60 a 120 segundos (RFC 1122, seção 3.3.2).
+* <Term id="TTL">TTL</Term> sob controle: o host nunca envia com <Term id="TTL">TTL</Term> zero, nunca descarta só porque recebeu com <Term id="TTL">TTL</Term> baixo, e a pilha precisa permitir ao transporte ajustar o <Term id="TTL">TTL</Term> por datagrama (RFC 1122, seção 3.2.1.7).
+* Envio com tamanho controlado: sem conhecimento do menor <Term id="MTU">MTU</Term> do caminho, o host limita-se a 576 para destinos fora da rede local (RFC 1122, seções 3.3.3 e 2.3.3).
+* <Term id="DNS">DNS</Term> com <Term id="UDP">UDP</Term> primeiro e <Term id="TCP">TCP</Term> como retorno: consulta comum sai em <Term id="UDP">UDP</Term>, resposta truncada com suporte a <Term id="TCP">TCP</Term> exige nova tentativa em <Term id="TCP">TCP</Term>, e o servidor precisa atender <Term id="UDP">UDP</Term> e <Term id="TCP">TCP</Term> sem recusar <Term id="TCP">TCP</Term> só porque a resposta caberia em <Term id="UDP">UDP</Term> (RFC 1123, seções 6.1.3.2 e 6.1.2.4).
+
+Repare no padrão. Cada dever existe para proteger a rede alheia de um host defeituoso: descarte silencioso evita tempestades de erro, o limite de 576 evita fragmentação forçada no caminho, e o temporizador de remontagem evita que fragmentos órfãos ocupem memória para sempre. Interoperabilidade aqui não é gentileza, é requisito testável.
+
+---
+
+## Síntese de Engenharia: Invariantes Normativas e Heurísticas
+
+Feche o módulo separando o que é garantido por especificação do que é escolha operacional com dependências explícitas:
+
+| Afirmação | Natureza | Fonte |
+| :--- | :--- | :--- |
+| Cabeçalho IPv4 mínimo de 20 bytes, IHL em palavras de 32 bits | Invariante normativa | RFC 791, seção 3.1 |
+| Offset de fragmento em unidades de 8 octetos, primeiro em zero, último com MF zero | Invariante normativa | RFC 791, seções 2.3 e 3.1 |
+| <Term id="TTL">TTL</Term> zero exige destruição, cada ponto decrementa ao menos um | Invariante normativa | RFC 791, seções 1.4 e 3.1 |
+| Checksum cobre só o cabeçalho e é verificado em todo recebimento | Invariante normativa | RFC 791, seções 1.4 e 3.1 |
+| Cabeçalho <Term id="DNS">DNS</Term> de 12 bytes, ponteiros com prefixo 11, <Term id="UDP">UDP</Term> limitado a 512 bytes | Invariante normativa | RFC 1035, seções 4.1, 4.1.4 e 4.2.1 |
+| Descarte silencioso de versão inválida e checksum ruim | Invariante normativa | RFC 1122, seções 3.2.1.1 e 3.2.1.2 |
+| Remontagem obrigatória com temporizador de 60 a 120 segundos | Invariante normativa | RFC 1122, seção 3.3.2 |
+| Resposta forjada precisa casar pergunta, <Term id="TXID">TXID</Term> e portas; cola fora da zona exige crítica | Invariante normativa | RFC 5452, seções 3 e 6 |
+| Limite de 576 para destino remoto desconhecido | Heurística normativa com dependência no <Term id="MTU">MTU</Term> do caminho | RFC 1122, seções 3.3.3 e 2.3.3 |
+| <Term id="UDP">UDP</Term> primeiro com retorno em <Term id="TCP">TCP</Term> | Heurística normativa com dependência no tamanho da resposta | RFC 1123, seções 6.1.3.2 e 6.1.2.4 |
+| Porta de origem aleatória por consulta | Heurística normativa com dependência nas portas disponíveis, contém sem eliminar | RFC 5452, seção 9.2 |
+| Descoberta do <Term id="MTU">MTU</Term> por sondagem com DF | Heurística operacional com dependência em <Term id="ICMP">ICMP</Term> não filtrado | Prática documentada em Peterson e Davie |
+
+O custo de violar cada linha é concreto: checksum ignorado propaga erro de roteamento, remontagem sem temporizador vaza memória, <Term id="MTU">MTU</Term> agressivo sem conhecimento do caminho gera fragmentação forçada e descarte sob DF, e cola aceita sem crítica entrega a zona ao atacante.
+
+## Conclusão e Próximos Passos: Das Regras do Envelope às Garantias das Pontas
+
+Este módulo estabeleceu a base da pilha: envelopes padronizados que atravessam hardwares incompatíveis, nomes que resolvem para endereços e requisitos que todo host obedece. Repare no que o <Term id="IP">IP</Term> deliberadamente não promete: entrega garantida, ordem, ausência de duplicatas e confidencialidade. O checksum cobre o envelope, não a mensagem. A rede ajuda, mas não garante. E o Kaminsky provou o corolário: otimização sem verificação vira superfície de ataque.
+
+No Módulo 01, investigaremos onde essas garantias realmente moram: o princípio fim a fim de Saltzer, Reed e Clark e o protocolo original de Cerf e Kahn que dividiu o problema entre <Term id="IP">IP</Term> não confiável e transporte confiável nas pontas.
+
+<div class="mt-10 pt-6 border-t border-ash flex justify-end">
+  <a
+    href={withBase("/tracks/02-networks/01-principio-fim-a-fim-internetworking")}
+    class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-6 py-3 min-h-[44px] inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm"
+  >
+    Avançar para o Módulo 01: Princípio Fim a Fim &rarr;
+  </a>
+</div>
+

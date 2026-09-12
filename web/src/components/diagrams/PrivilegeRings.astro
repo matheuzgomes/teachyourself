@@ -1,0 +1,31 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Privilégio"
+  title="Ring 3 em Cima, Ring 0 Embaixo, Syscall no Meio"
+  subtitle="A fronteira do kernel é uma instrução: syscall desce, sysret sobe."
+  steps={[
+    '<strong>Passo 1:</strong> leia o andar de cima: aplicações com instruções restritas, memória privada e sem I/O direto.',
+    '<strong>Passo 2:</strong> pare na fronteira: a única porta entre os andares é o par syscall e sysret.',
+    '<strong>Passo 3:</strong> leia o andar de baixo: kernel com instruções privilegiadas liberadas e controle do registrador de paginação.',
+  ]}
+  conclusion="Privilégio é separação física de poderes: o modo usuário não alcança hardware nem memória alheia por construção, e todo pedido ao kernel atravessa a porta estreita e auditável da syscall."
+>
+  <div class="space-y-2 font-mono text-xs md:text-sm" role="img" aria-label="Ring 3 modo usuário acima, fronteira syscall sysret no meio, Ring 0 supervisor abaixo">
+    <div class="rounded-2xl border-2 border-lake-blue bg-[#2b59d1]/5 p-4">
+      <div class="font-bold text-lake-blue text-sm">RING 3: MODO USUÁRIO</div>
+      <p class="text-graphite mt-1">Navegador, banco de dados, aplicações, shell, libc</p>
+      <p class="text-graphite">Instruções restritas, memória privada, sem I/O direto</p>
+    </div>
+    <div class="rounded-2xl border border-ash bg-off-black text-white p-3 text-center font-bold">
+      [ syscall / sysret ] (Fronteira do Kernel)
+    </div>
+    <div class="rounded-2xl border-2 border-[#b93815] bg-[#ff9473]/10 p-4">
+      <div class="font-bold text-[#b93815] text-sm">RING 0: MODO SUPERVISOR</div>
+      <p class="text-graphite mt-1">Kernel Linux, escalonador, drivers, VFS, memória</p>
+      <p class="text-graphite">Instruções privilegiadas liberadas, controle do registrador de paginação</p>
+    </div>
+  </div>
+</DiagramFrame>

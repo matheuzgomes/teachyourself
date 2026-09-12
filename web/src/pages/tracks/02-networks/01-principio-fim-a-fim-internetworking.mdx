@@ -1,0 +1,306 @@
+---
+layout: ../../../layouts/TrackLayout.astro
+title: "01. O Princípio Fim a Fim e a Arquitetura de Internetworking"
+description: "O dilema de Saltzer, Reed e Clark (1984), a crítica de Padlipsky ao modelo OSI de sete camadas, e o desacoplamento de Cerf e Kahn: como construir uma rede global sem estado com confiabilidade garantida exclusivamente nas pontas."
+trackId: "02-networks"
+trackTitle: "02. Redes e Comunicação de Dados"
+---
+
+import EndToEndTransferSimulator from "../../../components/EndToEndTransferSimulator";
+import PredictionChallenge from "../../../components/PredictionChallenge";
+import HistoricalIncident from "../../../components/HistoricalIncident.astro";
+import ObservationMission from "../../../components/ObservationMission.astro";
+import DeepDive from "../../../components/DeepDive.astro";
+import Term from "../../../components/Term.astro";
+import { withBase } from "../../../utils/paths";
+
+{/* Curriculum Ledger 01: KNOWN=[datagrama IPv4, TTL, checksum de cabecalho, DNS, requisitos de host] CURRENT=[principio fim a fim, localizacao de funcao, Saltzer 1984, Padlipsky 1982, ARM 4 camadas vs OSI 7 camadas, Common Intermediate Representation, Least Mechanism, Cerf Kahn 1974, gateways sem estado, fate-sharing] DEFERRED=[TCP maquina de estados e janela deslizante, controle de congestionamento, HTTP, TLS] */}
+
+# Módulo 01: O Princípio Fim a Fim e a Arquitetura de Internetworking
+
+> **O que você precisa aqui:** 1. Conhecer o formato básico de datagramas IPv4 do Módulo 00. 2. Compreender que enlaces físicos calculam verificações locais de integridade (como o FCS da Ethernet). 3. Compreender a diferença conceitual entre hardware de comutação no caminho e computadores nas extremidades.
+
+Imagine que você precisa enviar um arquivo executável de 10 megabytes de um computador em São Paulo para um servidor em Tóquio. Os pacotes atravessarão cabos submarinos de fibra óptica, placas de rede Ethernet e roteadores de trânsito em três continentes. Cada cabo de rede física possui circuitos eletrônicos que calculam somas de verificação locais e descartam sinais com ruído. Ainda assim, quando o arquivo termina de ser gravado no disco em Tóquio, você roda o utilitário `sha256sum` e descobre que o hash não bate. O arquivo está corrompido.
+
+Como isso é possível se nenhuma placa de rede acusou erro de transmissão no fio? Onde a garantia real de integridade reside: nos cabos e roteadores do caminho ou nos computadores das pontas?
+
+Essa pergunta resume o dilema central da história da computação distribuída. A resposta de engenharia dada pelos pioneiros da Internet estabeleceu dois princípios que governam todas as redes modernas: o **Princípio Fim a Fim** de Saltzer, Reed e Clark (1984) e o **Modelo de Referência em Quatro Camadas** de Michael Padlipsky (1982).
+
+---
+
+## O Mapa da Aula: Três Decisões que Criaram a Internet
+
+Este módulo se divide em três partes, cada uma respondendo uma pergunta em linguagem direta:
+
+* **Parte A, onde colocar a inteligência:** por que tentar construir uma rede perfeita e infalível no meio é um desperdício de dinheiro e uma ilusão de segurança?
+* **Parte B, por que quatro camadas e não sete:** como a Internet real derrotou a burocracia do modelo OSI de sete camadas adotando o princípio do menor mecanismo?
+* **Parte C, a costura das redes:** como interligar redes completamente incompatíveis sem que os computadores intermediários precisem guardar histórico das suas conversas?
+
+> [!NOTE]
+> **Contrato de Aprendizagem do Módulo 01**
+>
+> * **Pré-requisitos:** Módulo 00 (datagramas IPv4, cabeçalho de 20 bytes, checksum de cabeçalho, nomes DNS).
+> * **Pergunta de Entrada:** Se cada fio da rede confere se os dados chegaram sem ruído elétrico, por que os arquivos ainda chegam corrompidos no destino?
+> * **O Que Você Vai Construir e Dominar:**
+>   1. O experimento clássico da transferência de arquivo de Saltzer, Reed e Clark (1984).
+>   2. As quatro falhas silenciosas que passam despercebidas pelas checagens locais de enlace.
+>   3. A distinção formal entre corretude (responsabilidade exclusiva das pontas) e otimização de desempenho (apoio opcional da rede intermediária).
+>   4. A crítica técnica de Michael Padlipsky (RFC 871 e RFC 872) à burocracia das camadas de Sessão e Apresentação do modelo OSI.
+>   5. O conceito de Common Intermediate Representation (CIR) e a virtualização de terminais.
+>   6. A separação fundamental entre repasse de datagramas sem estado (IP) e transporte orientado a fluxo com janela deslizante (TCP) formulada por Cerf e Kahn (1974).
+> * **Critérios de Domínio:** Você saberá que domina este módulo quando for capaz de explicar por que um bitflip na memória de um roteador engana o checksum da Ethernet, por que a Internet opera em 4 camadas e como o princípio fim a fim orienta o projeto de sistemas modernos como TLS 1.3 e QUIC.
+
+---
+
+## Parte A: Onde Colocar a Função? O Dilema de Saltzer
+
+### A.1 O Experimento da Transferência Cuidadosa de Arquivos
+
+Em 1984, Jerome Saltzer, David Reed e David Clark publicaram o artigo *End-To-End Arguments in System Design*. O problema analisado pelos autores era enganosamente simples: um programa no Host A deseja transferir um arquivo do seu disco local para o disco do Host B através de uma rede de pacotes.
+
+Considere a cadeia de eventos físicos necessária para essa operação:
+
+1. O Host A lê blocos de dados do seu disco rígido para a memória RAM.
+2. O sistema operacional do Host A copia os bytes da RAM para o buffer da placa de rede.
+3. A placa de rede calcula uma soma de verificação (FCS de 32 bits da Ethernet) e transmite o sinal elétrico pelo cabo.
+4. Um roteador intermediário recebe o sinal, valida o FCS da Ethernet, armazena os bytes em sua memória RAM e decide a rota de saída.
+5. A placa de saída do roteador calcula um novo FCS para o próximo trecho de cabo e repassa o pacote.
+6. A placa de rede do Host B recebe o sinal, valida o FCS e copia os dados para a RAM do kernel.
+7. O sistema operacional do Host B grava os bytes da RAM no disco local de destino.
+
+Agora, examine a proposta de um engenheiro ingênuo: *"Vamos colocar detecção e recuperação perfeita de erros em todos os enlaces físicos da rede. Se cada cabo garantir 100% de entrega sem perdas, a aplicação não precisará se preocupar com verificação de arquivos."*
+
+Saltzer e seus colegas demonstraram que essa proposta é matematicamente falha. Mesmo que cada trecho de cabo tenha confiabilidade perfeita de 100%, o arquivo ainda pode ser corrompido em pelo menos quatro pontos cegos:
+
+* **Ponto Cego 1 (Memória RAM do Roteador):** Quando o roteador intermediário recebe o quadro Ethernet, o hardware da placa de rede valida o FCS e descarta o código de verificação. O pacote repousa desprotegido na memória RAM comum do roteador enquanto aguarda na fila de comutação. Um raio cósmico ou uma falha de transistor na RAM altera um bit do pacote. Quando o pacote é despachado para o próximo cabo, o chip Ethernet gera um **novo FCS perfeitamente compatível sobre o dado já corrompido**! Todos os cabos seguintes acharão que o pacote está intacto.
+* **Ponto Cego 2 (Barramentos e Drivers):** O trajeto dos dados entre o chip de rede e a CPU passa por barramentos internos (como PCIe) e anéis de memória do kernel. Erros de temporização ou bugs de driver podem trocar posições de bytes dentro do próprio sistema operacional.
+* **Ponto Cego 3 (Controlador de Disco):** A placa de rede entregou os bytes intactos ao sistema operacional, mas o controlador do disco rígido ou SSD cometeu uma falha de gravação no bloco físico da mídia.
+* **Ponto Cego 4 (Quedas do Comutador Intermediário):** Se um roteador intermediário mantiver estado de entrega e reiniciar abruptamente por falta de energia, todos os pacotes retidos na sua fila desaparecem.
+
+A conclusão de Saltzer, Reed e Clark é definitiva:
+
+> *"A função em questão só pode ser implementada completa e corretamente com o conhecimento e a ajuda da aplicação localizada nos pontos terminais do sistema de comunicação. Portanto, prover essa função questionável como um recurso básico do próprio subsistema de comunicação não é possível."*
+
+### A.2 Laboratório Interativo: O Simulador Fim a Fim
+
+Experimente as quatro classes de falhas no simulador abaixo. Observe com atenção em que ponto cada mecanismo de checagem atua e por que as validações locais de enlace (hop-by-hop) falham em detectar corrupções ocorridas fora do fio condutor:
+
+<EndToEndTransferSimulator client:visible />
+
+<PredictionChallenge
+  client:load
+  question="No simulador, ative a falha 'Inversão de Bit na RAM do Roteador' e execute a transferência passo a passo. Por que a placa de saída do roteador transmite o dado corrompido sem emitir nenhum alerta de erro?"
+  correctOptionId="B"
+  technicalTakeaway="O checksum de enlace (FCS Ethernet) é recalculado do zero na porta de saída para cada quadro. A placa de rede calcula o FCS com base no dado corrompido que acabou de ler da memória, gerando um código matematicamente compatível com o erro."
+  options={[
+    {
+      id: "A",
+      label: "Porque a Ethernet desativa checagens de integridade quando detecta pacotes TCP na carga útil.",
+      explanation: "Incorreto. A placa de rede Ethernet sempre calcula o FCS de 32 bits sobre todos os quadros transmitidos, independentemente do protocolo de transporte contido na carga."
+    },
+    {
+      id: "B",
+      label: "Porque o FCS é descartado na recepção e um novo código é gerado sobre o conteúdo corrompido na porta de saída.",
+      explanation: "Exato! O enlace protege apenas o meio físico entre dois nós. Ao sair, a placa recalcula o FCS sobre o conteúdo presente na RAM, selando a corrupção com um código aparentemente legítimo."
+    },
+    {
+      id: "C",
+      label: "Porque o protocolo IP força o roteador a ignorar o FCS para reduzir a latência de encaminhamento.",
+      explanation: "Incorreto. Roteadores validam o FCS em hardware na chegada. O problema é que a inversão de bits ocorre na memória interna após essa validação e antes da nova transmissão."
+    }
+  ]}
+/>
+
+### A.3 Corretude versus Otimização de Desempenho
+
+O princípio fim a fim não proíbe a rede de implementar checagens de erro. Ele apenas estabelece uma hierarquia de prioridades cristalina:
+
+1. **A Corretude Absoluta pertence às Pontas:** A única forma de garantir que o arquivo gravado no Host B é idêntico ao arquivo do Host A é fazer a aplicação no Host B ler o arquivo gravado no disco, calcular um hash criptográfico (como SHA-256) e comparar com o hash emitido pelo Host A. Nenhuma tecnologia de cabo pode substituir essa checagem.
+2. **O Papel da Rede Intermediária é Apenas Desempenho:** Se você transmite dados através de uma rede sem fio Wi-Fi ou satélite com alta taxa de ruído eletromagnético, faz sentido a placa Wi-Fi tentar retransmitir quadros corrompidos localmente algumas vezes. Isso evita que uma simples rajada de vento force a aplicação a reenviar o arquivo inteiro desde o outro lado do planeta. Essa ajuda local é válida, desde que tratada como **mera otimização de velocidade**, e nunca como substituta da verificação fim a fim.
+
+<HistoricalIncident
+  title="Quando o Checksum da Ethernet e do TCP Falham Juntos: O Estudo de Stone e Partridge (2000)"
+  date="2000"
+  impact="Demonstração prática de que pacotes com dados corrompidos trafegam rotineiramente pela Internet global apesar de todas as checagens em nível de enlace."
+>
+Durante anos, engenheiros acreditaram que o FCS de 32 bits da Ethernet tornava virtualmente impossível receber pacotes estragados. Em 2000, Jonathan Stone e Craig Partridge publicaram uma pesquisa seminal na ACM SIGCOMM (*When the CRC and TCP Checksum Disagree*).
+
+Ao monitorarem milhões de pacotes reais em dorsais de trânsito, descobriram que **1 em cada 1.100 a 32.000 pacotes** chegava ao destino com erro no checksum do TCP, mesmo tendo passado com louvor pelo FCS da Ethernet em cada salto!
+
+A origem das corrupções incluía memórias com defeito em roteadores intermediários, bugs em drivers de barramento DMA e placas de rede defeituosas que copiavam bytes trocados para a memória. Sem a verificação fim a fim da camada de transporte e da aplicação, gigabytes de dados corrompidos teriam sido salvos em bancos de dados e discos por todo o planeta.
+</HistoricalIncident>
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. Checagens em cabos de rede (hop-by-hop) cobrem apenas o trecho físico entre duas placas adjacentes.
+> 2. Roteadores intermediários recalculam o checksum local ao encaminhar pacotes, mascarando corrupções que ocorram dentro de sua própria memória RAM.
+> 3. Apenas a aplicação nas extremidades tem visão completa do dado desde a origem até a gravação final no destino.
+
+---
+
+## Parte B: Por que a Internet Tem Quatro Camadas e Não Sete?
+
+### B.1 A Burocracia da OSI contra a Realidade da ARPANET
+
+Durante as décadas de 1970 e 1980, comitês internacionais de padronização (liderados pela ISO) reuniram-se para conceber o modelo que supostamente deveria governar todas as redes do planeta: o modelo OSI (*Open Systems Interconnection*), com suas célebres sete camadas: Física, Enlace, Rede, Transporte, Sessão, Apresentação e Aplicação.
+
+Enquanto a ISO debatia em conferências teóricas, os engenheiros da ARPANET estavam construindo software real que conectava universidades, laboratórios de pesquisa e departamentos de defesa. Em 1982, Michael A. Padlipsky publicou o RFC 871 (*A Perspective on the ARPANET Reference Model*) e o RFC 872 (*TCP-on-a-LAN*), consolidados mais tarde no livro *The Elements of Networking Style* (1985).
+
+Padlipsky apontou que o modelo OSI cometeu o erro capital de ser uma **especificação prescritiva** concebida por comitês antes de qualquer implementação em código, enquanto o modelo da ARPANET (ARM) era uma **especificação descritiva** baseada no que funcionava em sistemas reais heterogêneos (Multics, Unix, TENEX).
+
+```text
+MODELO ISO / OSI (7 Camadas Teóricas)      MODELO ARPANET / INTERNET (4 Camadas Reais)
++------------------------------------+    +------------------------------------------+
+| 7. Camada de Aplicação             |    | 4. Camada de Processos / Aplicações      |
++------------------------------------+    |    (HTTP, DNS, SSH, Telnet, FTP)         |
+| 6. Camada de Apresentação (Inútil) |    +------------------------------------------+
++------------------------------------+    | 3. Camada Host-Host / Transporte         |
+| 5. Camada de Sessão (Redundante)   |    |    (TCP, UDP)                            |
++------------------------------------+    +------------------------------------------+
+| 4. Camada de Transporte            |    | 2. Camada de Internetworking / Rede      |
++------------------------------------+    |    (IP, ICMP)                            |
+| 3. Camada de Rede                  |    +------------------------------------------+
++------------------------------------+    | 1. Camada de Interface de Rede / Enlace  |
+| 2. Camada de Enlace                |    |    (Ethernet, Wi-Fi, Ponto a Ponto)      |
++------------------------------------+    +------------------------------------------+
+| 1. Camada Física                   |
++------------------------------------+
+```
+
+### B.2 A Falácia da Camada de Apresentação e o Poder do CIR
+
+A OSI imaginou que computadores de fabricantes diferentes precisavam de uma camada dedicada inteira (a Camada 6) para traduzir formatos de dados: converter números de ponto flutuante, traduzir EBCDIC da IBM para ASCII, ou reordenar bytes big-endian e little-endian.
+
+Padlipsky demonstrou que essa visão gerava um arranha-céus burocrático. Na prática da ARPANET, essa necessidade foi solucionada de forma incomparavelmente mais simples por meio de uma **Representação Intermediária Comum** (*Common Intermediate Representation - CIR*).
+
+O exemplo clássico é o protocolo Telnet e seu Terminal Virtual de Rede (*Network Virtual Terminal - NVT*):
+* Em vez de exigir que um computador PDP-10 compreenda a linguagem interna de um computador Multics ou de um mainframe IBM, a rede define um terminal virtual neutro com convenções simples (linhas terminadas em CR-LF, conjunto de caracteres ASCII de 7 bits).
+* O computador local traduz suas peculiaridades para o formato comum neutro e transmite. O computador remoto recebe a representação comum e traduz para seus controles locais.
+* Essa tradução é realizada diretamente pelas bibliotecas da aplicação final, sem necessidade de enfiar uma camada intermediária fixa na pilha do sistema operacional que atrasa todos os pacotes.
+
+<ObservationMission
+  title="CIR no Século 21: JSON, Protobuf e o Princípio de Padlipsky"
+  action="Examine como sua aplicação web comunica dados entre um servidor Linux em Rust e um navegador Android em JavaScript. Alguma camada intermediária do sistema operacional participa da tradução dos tipos?"
+  takeaway="Nenhuma camada do kernel traduz seus dados. O transmissor serializa objetos para JSON ou Protocol Buffers (a Representação Intermediária Comum) e o receptor desserializa na outra ponta. O modelo de 4 camadas da Internet venceu porque manteve a pilha do sistema operacional livre de conversões de formato."
+/>
+
+### B.3 A Falácia da Camada de Sessão e o Princípio do Menor Mecanismo
+
+A Camada 5 da OSI foi criada para controlar diálogos, gerenciar quem fala em que momento e estabelecer pontos de sincronização de transação.
+
+Na arquitetura da Internet, os projetistas perceberam que uma conexão de transporte orientada a fluxo de bytes (como o TCP) já fornece aos processos tudo o que é necessário: comunicação bidirecional simultânea (*full-duplex*), entrega ordenada e confiável. Qualquer controle de diálogo superior (como saber se uma requisição HTTP terminou ou se uma sessão de banco de dados foi autenticada) depende estritamente da lógica do protocolo de aplicação. Criar uma camada separada no sistema operacional apenas para duplicar números de sequência e estados de diálogo adicionava atraso e consumo de memória sem ganho real.
+
+Padlipsky formalizou então o princípio do **Menor Mecanismo** (*Least Mechanism*):
+
+> *"Os protocolos de rede devem fornecer apenas o conjunto mínimo de mecanismos indispensáveis para permitir que as aplicações funcionem, concedendo máxima autonomia e flexibilidade aos implementadores dos sistemas terminais."*
+
+Em vez de forçar cada mensagem a subir e descer escadas de sete andares com verificações burocráticas obrigatórias, o modelo da Internet permite que uma aplicação fale diretamente com a camada de transporte, ou até envie datagramas brutos diretamente para a camada de rede se assim desejar.
+
+---
+
+## Parte C: Internetworking e o Desacoplamento de Cerf & Kahn
+
+### C.1 O Roteador como Dispositivo Simples sem Estado
+
+Em 1974, Vinton Cerf e Robert Kahn publicaram o artigo que deu origem formal à Internet: *A Protocol for Packet Network Intercommunication*. O desafio deles era interconectar redes radicalmente diferentes: a ARPANET com fios terrestres, a rede de rádio por pacotes PRNET e a rede via satélite SATNET.
+
+A decisão mestra de Cerf e Kahn decorre diretamente do princípio fim a fim:
+
+* Os nós que unem duas redes diferentes (chamados originalmente de *gateways* e hoje conhecidos como roteadores) devem ser **completamente sem estado** (*stateless*).
+* O roteador não sabe quem é você, não sabe qual arquivo você está baixando, não guarda cópia de pacotes para retransmissão e não sabe se sua conexão está abrindo ou fechando.
+* A única tarefa do roteador é receber um datagrama IP, ler o endereço de destino no envelope externo, consultar sua tabela de repasse, decrementar o campo TTL em um e despachar o pacote para o cabo seguinte.
+
+```text
+[Host Emissor A] ─── (Datagrama IP) ───> [Roteador 1] ─── (Datagrama IP) ───> [Host Receptor B]
+   Estado: TCP                              Sem Estado                             Estado: TCP
+ (Sequência, Janela,                       (Apenas FIB,                         (Reordenamento,
+ Retransmissão, Hash)                      Decremento TTL)                         Confirmações)
+```
+
+### C.2 O Princípio do Compartilhamento de Destino (Fate-Sharing)
+
+David Clark formalizou posteriormente essa propriedade com o conceito de **Fate-Sharing** (Compartilhamento de Destino):
+
+> *"O estado da comunicação (números de sequência de bytes recebidos, temporizadores de confirmação, janelas de fluxo) reside exclusivamente nas máquinas terminais que estão conversando. Se a rede intermediária falhar, cair ou mudar de rota, o estado da conexão não é perdido. O estado só morre se uma das pontas morrer."*
+
+Se um comutador intermediário no oceano pacífico queimar neste exato segundo, os roteadores vizinhos recalculam as rotas e os datagramas seguintes contornam o problema pelo atlântico. As máquinas em São Paulo e Tóquio continuam conversando sem interrupção perceptível, porque nenhuma memória vital da conexão estava gravada no roteador que queimou.
+
+<DeepDive title="Por que a Telefonia Tradicional Não Tinha Fate-Sharing?">
+Na rede telefônica clássica comutada por circuitos, a inteligência residia nos comutadores centrais da concessionária. Quando você discava para alguém, os comutadores reservavam canais de tempo em cada central intermediária e mantinham o estado da chamada em memória.
+
+Se um comutador intermediário sofresse uma pane, a sua chamada caía imediatamente, mesmo que existissem dezenas de outros circuitos elétricos perfeitos ligando as duas cidades. A Internet inverteu essa lógica: a rede tornou-se burra e sem estado (*dumb network*), empurrando toda a inteligência e o estado para as bordas inteligentes (*smart edges*).
+</DeepDive>
+
+> [!NOTE]
+> **Aprofundamento de Engenharia: A Aplicação Moderna do Princípio ao TLS 1.3**
+>
+> Quando um aplicativo móvel estabelece uma sessão HTTPS com um servidor usando TLS 1.3, chaves de criptografia simétrica (como ChaCha20 ou AES-GCM) são negociadas diretamente entre as CPUs dos dois dispositivos através do algoritmo Diffie-Hellman em curvas elípticas.
+>
+> Todo o tráfego que trafega pelos roteadores e cabos de fibra óptica é composto por dados cifrados indecifráveis para qualquer intermediário. Essa arquitetura é a realização perfeita do princípio fim a fim aplicado à segurança: os nós do caminho realizam apenas o repasse cego de pacotes, enquanto confidencialidade, integridade e autenticidade são asseguradas exclusivamente nas extremidades.
+
+---
+
+## Desafios de Reconstrução Ativa
+
+Teste seu modelo mental contra os mecanismos causais estudados:
+
+<PredictionChallenge
+  client:load
+  question="Considere um projeto corporativo onde a gerência propõe acelerar o sistema removendo a verificação de hash SHA-256 no destino, argumentando que a empresa agora utiliza roteadores de fibra óptica de última geração com detecção de erro em 100% dos cabos. Como você avalia essa proposta com base em Saltzer (1984)?"
+  correctOptionId="C"
+  technicalTakeaway="Corretude requer verificação fim a fim. Checagens de enlace cobrem apenas os cabos físicos, deixando desprotegidas as memórias dos roteadores, os barramentos de computador e os controladores de disco."
+  options={[
+    {
+      id: "A",
+      label: "A proposta é tecnicamente sólida, pois cabos de fibra modernos não sofrem interferência eletromagnética e tornam corrupções impossíveis.",
+      explanation: "Incorreto. Mesmo em meios físicos perfeitos, pacotes sofrem corrupção em memórias RAM de roteadores, controladores de barramento e drivers de sistema operacional."
+    },
+    {
+      id: "B",
+      label: "A proposta é válida, desde que o protocolo de transporte seja alterado de TCP para UDP para compensar o atraso.",
+      explanation: "Incorreto. UDP não adiciona confiabilidade nem verificação de arquivo; pelo contrário, desativa até as garantias mínimas de entrega ordenada do TCP."
+    },
+    {
+      id: "C",
+      label: "A proposta é matematicamente falha, pois a verificação de enlace protege apenas o cabo físico e não detecta corrupções na RAM dos comutadores ou discos.",
+      explanation: "Exato! Saltzer demonstrou que a confiabilidade perfeita nos enlaces intermediários não elimina as falhas silenciosas nos nós comutadores e no armazenamento das pontas."
+    }
+  ]}
+/>
+
+---
+
+## Síntese de Engenharia e Invariantes Arquiteturais
+
+Feche o módulo contrastando as duas filosofias que disputaram a criação das redes globais:
+
+| Dimensão de Projeto | Abordagem Burocrática (OSI / Hop-by-Hop) | Abordagem Real da Internet (End-to-End / ARM) |
+| :--- | :--- | :--- |
+| **Garantia de Corretude** | Tenta garantir entrega perfeita e sem erros no meio do caminho | Deixada exclusivamente a cargo dos processos nas extremidades |
+| **Estado nos Roteadores** | Nós intermediários mantêm conexões, sessões e buffers fixos | Roteadores são estritamente sem estado (*stateless best-effort*) |
+| **Sobrevivência a Falhas** | Se um comutador reinicia, a conexão cai por perda de estado | Se um comutador queima, os pacotes contornam pela rota alternativa |
+| **Estrutura de Camadas** | 7 camadas obrigatórias com funções fixas e sobrecarga de dados | 4 camadas modulares com autonomia para as pontas invocarem atalhos |
+| **Tradução de Formatos** | Camada de apresentação dedicada no sistema operacional | Representação Intermediária Comum (CIR) operando no espaço de usuário |
+| **Escalabilidade Global** | Gargalo de memória e CPU em comutadores de núcleo | Roteamento em velocidade de linha em circuitos integrados de aplicação específica |
+
+---
+
+## Próximos Passos na Pilha
+
+No **Módulo 02**, subiremos exatamente para a camada onde a confiabilidade fim a fim é implementada para a maioria das aplicações da Internet: o protocolo **TCP (RFC 9293)**. Investigaremos o cabeçalho de 20 bytes, a máquina de estados finitos do handshake triplo, os números de sequência de 32 bits e o mecanismo de janela deslizante.
+
+<div class="mt-12 pt-6 border-t border-ash flex flex-wrap items-center justify-between gap-4">
+  <a
+    href={withBase("/tracks/02-networks/00-rede-ipv4-dns-requisitos-host")}
+    class="rounded-full border border-ash bg-white hover:border-off-black active:scale-[0.98] text-off-black px-6 py-3 min-h-[44px] inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm"
+  >
+    &larr; Módulo Anterior: IPv4 & DNS
+  </a>
+  <a
+    href={withBase("/tracks/02-networks")}
+    class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-6 py-3 min-h-[44px] inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm"
+  >
+    Ver Catálogo da Trilha 02 &rarr;
+  </a>
+</div>
+

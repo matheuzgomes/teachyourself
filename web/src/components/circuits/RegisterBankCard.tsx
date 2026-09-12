@@ -74,14 +74,14 @@ export default function RegisterBankCard() {
 
             <svg viewBox="0 0 620 260" className="w-full h-auto select-none" style={{ maxHeight: "260px" }}>
               {/* Barramento de Controle: Linha de Clock Compartilhada */}
-              <text x="40" y="22" font-family="monospace" font-size="12" font-weight="bold" fill="#2c2825">
+              <text x="40" y="22" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#2c2825">
                 Arvore de Clock Compartilhada (CLK Tree)
               </text>
               <line x1="40" y1="35" x2="560" y2="35" stroke="#3c3836" strokeWidth="2.5" />
               <circle cx="40" cy="35" r="4" fill="#3c3836" />
 
               {/* Linha de Write Enable */}
-              <text x="40" y="62" font-family="monospace" font-size="12" font-weight="bold" fill={writeEnable === 1 ? "#2d5a27" : "#5c554e"}>
+              <text x="40" y="62" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={writeEnable === 1 ? "#2d5a27" : "#5c554e"}>
                 Habilitacao de Escrita (Write Enable - WE = {writeEnable})
               </text>
               <line x1="40" y1="75" x2="560" y2="75" stroke={writeEnable === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="2" />
@@ -105,13 +105,13 @@ export default function RegisterBankCard() {
                     stroke="#3c3836"
                     strokeWidth="1.5"
                   />
-                  <text x={cell.x + 50} y="115" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">
+                  <text x={cell.x + 50} y="115" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">
                     {cell.label}
                   </text>
-                  <text x={cell.x + 50} y="132" textAnchor="middle" font-family="monospace" font-size="11" fill="#5c554e">
+                  <text x={cell.x + 50} y="132" textAnchor="middle" fontFamily="monospace" fontSize="11" fill="#5c554e">
                     Flip-Flop D
                   </text>
-                  <text x={cell.x + 50} y="165" textAnchor="middle" font-family="monospace" font-size="18" font-weight="bold" fill="#2d5a27">
+                  <text x={cell.x + 50} y="165" textAnchor="middle" fontFamily="monospace" fontSize="18" fontWeight="bold" fill="#2d5a27">
                     {cell.val}
                   </text>
 
@@ -130,7 +130,7 @@ export default function RegisterBankCard() {
 
               {/* Barramento de Saida Q */}
               <line x1="40" y1="218" x2="560" y2="218" stroke="#2d5a27" strokeWidth="3.5" />
-              <text x="40" y="244" font-family="monospace" font-size="13" font-weight="bold" fill="#2d5a27">
+              <text x="40" y="244" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2d5a27">
                 Barramento de Saida Q[63:0] (64 bits estaveis em paralelo)
               </text>
             </svg>

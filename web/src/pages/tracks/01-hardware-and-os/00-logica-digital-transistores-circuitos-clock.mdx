@@ -6,6 +6,7 @@ trackId: "01-hardware-and-os"
 trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 ---
 
+import XorFromNandDiagram from '../../../components/diagrams/XorFromNandDiagram.astro';
 import LogicCircuitsSandbox from '../../../components/LogicCircuitsSandbox';
 import SrLatchInteractive from '../../../components/circuits/SrLatchInteractive';
 import MosfetTransistorCard from '../../../components/circuits/MosfetTransistorCard';
@@ -16,501 +17,413 @@ import MasterSlaveFlipFlopCard from '../../../components/circuits/MasterSlaveFli
 import ClockChronogramCard from '../../../components/circuits/ClockChronogramCard';
 import RegisterBankCard from '../../../components/circuits/RegisterBankCard';
 import PredictionChallenge from '../../../components/PredictionChallenge';
+import Term from '../../../components/Term.astro';
+
+{/* Curriculum Ledger 00: KNOWN=[operacoes basicas, ideia de programa e variavel] CURRENT=[chave, transistor, inversor, NAND, soma, latch, flip-flop, clock, registrador] DEFERRED=[bit, byte, overflow, complemento de dois, assembly, ISA, ABI, cache, memoria virtual, C, GDB] */}
 
 # Da Chave ao Clock: Lógica Digital, Circuitos Combinacionais e Registradores
 
-Quando olhamos para a tela de um computador ou para um trecho de código em C, é tentador enxergar a máquina como um ambiente puramente matemático e abstrato. Imaginamos que variáveis, funções e números residem em algum espaço imaterial onde as regras lógicas operam sem atrito.
+> **O que você precisa aqui:** 1. Saber somar no papel. 2. Ter ligado um interruptor de luz alguma vez. 3. Aceitar que programa é uma lista de ordens que a máquina segue. Nada de código, nada de eletrônica prévia.
+>
+> Neste módulo, variável significa apenas um valor guardado que o programa pode ler depois, como anotar um número em um papel para usar na próxima conta.
 
-Mas o que realmente acontece debaixo de cada instrução que você escreve?
+Um computador não manipula símbolos matemáticos no vácuo nem armazena números em formato abstrato. Em sua estrutura física, o processador é composto por circuitos integrados de interruptores eletrônicos microscópicos: os transistores. Esses dispositivos abrem e fecham a passagem de corrente elétrica em resposta a tensões de controle aplicadas aos seus terminais.
 
-O computador físico não possui prateleiras mágicas nem circuitos que entendem números no papel. No nível mais elementar da matéria, todo processador moderno é uma rede colossal de interruptores eletrônicos microscópicos. Esses interruptores não raciocinam: eles apenas abrem ou fecham a passagem de corrente elétrica em resposta a tensões elétricas.
+Por convenção de engenharia, atribuímos significados lógicos a patamares elétricos estáveis:
+* A ausência de tensão representa o nível lógico `0` (0V, correspondente ao terra elétrico <Term id="GND">GND</Term>).
+* A presença de tensão representa o nível lógico `1` (1.2V a 3.3V, correspondente à linha de alimentação <Term id="VDD">VDD</Term>).
 
-A cada um desses estados elétricos estáveis atribuímos um símbolo convencional: chamamos a ausência de tensão de nível lógico `0` (tipicamente 0 volts, ou o terra elétrico GND), e a presença de tensão de nível lógico `1` (tipicamente 1.2V a 3.3V, a linha de alimentação VDD).
-
-Neste módulo fundamental, investigamos como bilhões desses interruptores minúsculos são organizados para calcular somas aritméticas, como decisões lógicas simples constroem qualquer programa de computador, como fios elétricos conseguem reter o passado para criar a memória, e como um relógio de quartzo dita o ritmo síncrono que move todo o sistema.
-
----
-
-## O Mapa da Aula: Quatro Fases da Construção Física da Máquina
-
-Para construir um modelo mental sólido e intuitivo, sem saltos conceituais, este módulo percorre a construção da máquina em quatro passos graduais:
-
-### Parte 0A: A Chave que se Aciona Sozinha (O Transistor e o Inversor)
-1. **Como controlar eletricidade usando eletricidade?** Da chave de parede ao transistor, como criar uma chave que abre e fecha bilhões de vezes por segundo, e como combinar duas chaves opostas para inverter um sinal com consumo de energia quase nulo em repouso.
-
-### Parte 0B: Tomando Decisões Lógicas (A Porta NAND e o Lego da Computação)
-2. **Como interruptores tomam decisões?** Como ligar duas chaves para responder perguntas condicionais, o funcionamento da porta NAND e como provar que uma única peça básica consegue construir qualquer circuito lógico do universo.
-
-### Parte 0C: Somando Números com Fios (Circuitos Combinacionais e Aritmética)
-3. **Como fazer contas de matemática usando interruptores?** A soma de bits isolados, o transporte do "vai-um" (*carry*), o desafio da velocidade em cascatas de somadores e como a Unidade Lógica e Aritmética (ALU) calcula resultados.
-
-### Parte 0D: Guardando o Passado (Memória, Clock e Registradores)
-4. **Como fazer um circuito elétrico lembrar de algo?** O truque da realimentação para reter estados, o Flip-Flop disparado por borda para capturar dados no instante exato, o relógio (*clock*) como metrônomo do processador e como montar um banco de registradores de 64 bits.
+Este módulo examina como esses interruptores são organizados para calcular somas aritméticas, tomar decisões lógicas, reter valores em memória e operar sob a cadência periódica de um oscilador a quartzo.
 
 ---
 
-## Parte 0A: A Chave que se Aciona Sozinha (O Transistor e a Tecnologia CMOS)
+## O Mapa da Construção: Quatro Degraus da Máquina Física
 
-### 0.1 Do Interruptor Comum ao Transistor
+Para construir um modelo mental sólido e intuitivo, este módulo percorre a construção física em quatro degraus graduais:
 
-Pense no interruptor de luz da sua sala. Quando você aperta a tecla plástica para a posição ligada, uma haste metálica encosta em outra dentro da parede. O circuito se fecha, a corrente flui e a lâmpada acende. Quando você aperta para a posição desligada, os contatos se afastam. O circuito se abre, a corrente é interrompida e a lâmpada apaga.
+* **Parte 0A: A Chave Eletrônica e o Inversor CMOS (NOT)**
+  Como substituir o contato mecânico por uma chave acionada por eletricidade e por que o par complementar NMOS/PMOS opera com consumo de corrente estática nulo em repouso.
+* **Parte 0B: Decisões Lógicas e a Universalidade da Porta NAND**
+  A topologia física de chaves em série e paralelo, a tomada de decisões condicionais e a prova construtiva de que uma única porta lógica constrói qualquer circuito lógico do universo.
+* **Parte 0C: Aritmética Binária e a Unidade Lógica e Aritmética (ALU)**
+  A física do transporte elétrico (vai-um), o cálculo de somas com portas XOR e AND, o atraso do caminho crítico em cascatas de 64 bits e a multiplexação de operações na ALU.
+* **Parte 0D: Memória, Realimentação, Flip-Flop Mestre-Escravo e o Clock**
+  Como criar memória a partir de laços de realimentação biestáveis, a superação da armadilha da transparência através de eclusas disparadas por borda de subida e a sincronização periódica do sistema.
 
-O interruptor é o dispositivo mais simples do mundo: ele só tem dois estados possíveis (aberto ou fechado).
+---
 
-Agora imagine o desafio dos pioneiros da computação:
-* Um ser humano com o dedo no interruptor consegue ligar e desligar uma lâmpada talvez três ou quatro vezes por segundo.
-* Para somar milhões de números por segundo, não podemos depender de dedos humanos apertando botões mecânicos.
-* Precisamos de uma chave mecânica? Não: peças mecânicas que se movem fisicamente se desgastam, travam e são lentas demais.
+## Parte 0A: A Chave Eletrônica e o Inversor CMOS
 
-A solução da humanidade foi criar uma **chave acionada por eletricidade**.
+### 0.1 Do Interruptor Mecânico ao Transistor MOSFET
 
-Em vez de empurrar uma alavanca com o dedo, nós aplicamos uma tensão elétrica em um terminal de controle. Essa chave em estado sólido chama-se **Transistor**.
+Pense no interruptor de luz da sua sala. Quando você aperta a tecla plástica para a posição ligada, uma haste metálica encosta em outra dentro da parede. O circuito se fecha, a corrente flui e a lâmpada acende. Ao comutar a tecla para a posição desligada, os contatos se afastam fisicamente. O circuito abre, a corrente é interrompida e a lâmpada apaga.
 
-O transistor dominante na computação é o **MOSFET**. Ele não tem peças móveis. Ele possui três conexões fundamentais:
+O interruptor comum só tem dois estados possíveis (aberto ou fechado). Um ser humano com o dedo no interruptor consegue ligar e desligar a lâmpada poucas vezes por segundo. Para somar milhões de números por segundo, não podemos depender de botões mecânicos. Peças mecânicas que se movem fisicamente sofrem atrito, desgaste e são lentas demais.
+
+A solução da engenharia foi criar uma chave acionada por eletricidade sem peças móveis: o **Transistor**.
+
+Na computação moderna, o tipo de transistor onipresente é o <Term id="MOSFET">MOSFET</Term> (*Metal-Oxide-Semiconductor Field-Effect Transistor*). Ele é construído sobre uma lâmina semicondutora e possui três terminais fundamentais:
+
 * **Fonte (Source):** O terminal de entrada por onde as cargas elétricas chegam.
 * **Dreno (Drain):** O terminal de saída por onde as cargas elétricas saem.
-* **Porta (Gate):** O terminal de controle que decide se o caminho entre a fonte e o dreno está aberto ou fechado.
+* **Porta (Gate):** O eletrodo de controle, separado do canal condutor por uma camada fina de óxido de silício isolante.
 
-A regra fundamental que você precisa guardar é direta:
-> **Um transistor permite usar uma tensão elétrica na Porta para abrir ou fechar o caminho entre a Fonte e o Dreno.**
+O princípio físico de operação é direto:
+> **Um transistor permite usar uma tensão elétrica na Porta para abrir ou fechar o caminho elétrico entre a Fonte e o Dreno.**
 
-No tipo mais comum de transistor (chamado **NMOS**):
-* Se aplicamos tensão alta no Gate (nível `1`, 3.3V): a chave fecha. O caminho elétrico se completa e a corrente passa da Fonte para o Dreno.
-* Se colocamos tensão zero no Gate (nível `0`, 0V): a chave abre. O caminho elétrico é interrompido e nenhuma corrente passa.
+No transistor <Term id="NMOS">NMOS</Term>:
+* Quando aplicamos tensão alta no Gate (nível `1`, como 3.3V): o campo eletrostático atrai elétrons através do óxido isolante, formando um canal condutor induzido entre Fonte e Dreno. A chave fecha e conduz corrente elétrica.
+* Quando colocamos tensão zero no Gate (nível `0`, 0V): o canal condutor desaparece. A chave abre e nenhuma corrente passa.
+
+Como o eletrodo de Gate está isolado eletricamente do canal pelo óxido, nenhuma corrente flui para dentro da porta em regime permanente. O chaveamento consome carga apenas no breve instante necessário para carregar ou descarregar a capacitância do Gate.
 
 <MosfetTransistorCard client:load />
 
-Experimente clicar no botão do simulador acima:
-* Com a chave em nível 1 (3.3V), você observa o canal condutor se formando e permitindo a passagem de corrente elétrica.
-* Com a chave em nível 0 (0V), o canal desaparece e o circuito se comporta como uma chave aberta comum.
-* Observe também o indicador de corrente no Gate: a corrente é rigorosamente zero. O transistor consome praticamente zero corrente para manter-se ligado ou desligado, porque a Porta está isolada eletricamente do caminho por onde a corrente principal passa.
-
-> [!NOTE]
-> **Aprofundamento de Engenharia: Como o Silício Consegue Fazer Isso Fisicamente?**
-> Se você tem curiosidade de saber como essa chave funciona por dentro do cristal:
-> 1. O silício puro é um semicondutor: em temperatura ambiente, seus elétrons estão presos e ele conduz muito pouca corrente.
-> 2. Os engenheiros introduzem impurezas no silício (processo chamado dopagem). A dopagem com fósforo cria o silício tipo N (com elétrons livres adicionais). A dopagem com boro cria o silício tipo P (com lacunas, ou falta de elétrons, que agem como cargas positivas).
-> 3. No transistor NMOS, a Fonte e o Dreno são poços tipo N, enquanto a base entre eles é tipo P. Normalmente, elétrons não conseguem passar de um poço N para o outro através da barreira P.
-> 4. Logo acima dessa base tipo P, coloca-se uma camada ultrafina de óxido de silício (SiO2, um vidro isolante perfeito) e, sobre ela, a placa metálica do Gate.
-> 5. Quando você aplica tensão positiva no Gate, o campo eletrostático atrai elétrons através do vidro isolante (sem que eles atravessem o isolante), acumulando-os na superfície do silício P até formar uma ponte contínua de elétrons (um "canal N induzido").
-> 6. Assim que a ponte se forma, a barreira desaparece e os elétrons correm livremente entre Fonte e Dreno.
-
 ---
 
-### 0.2 O Par Complementar e o Inversor (Porta NOT)
+### 0.2 O Par Complementar e o Inversor CMOS (Porta NOT)
 
-Com o transistor NMOS em mãos, temos uma chave que liga quando recebe sinal alto (`1`) e desliga quando recebe sinal baixo (`0`).
+O transistor NMOS conduz quando recebe sinal alto (`1`) e desliga quando recebe sinal baixo (`0`). Para criar circuitos digitais robustos, a engenharia desenvolveu seu irmão complementar simétrico: o transistor <Term id="PMOS">PMOS</Term>.
 
-Mas e se precisarmos do oposto exato? E se precisarmos de uma chave que ligue quando a entrada for zero, e desligue quando a entrada for um?
+* O transistor <Term id="NMOS">NMOS</Term> conduz quando a entrada é `1` (3.3V) e desliga quando é `0` (0V). Ele forma a rede de puxar para baixo (*Pull-Down*), conectando a saída ao terra elétrico (<Term id="GND">GND</Term>).
+* O transistor <Term id="PMOS">PMOS</Term> conduz quando a entrada é `0` (0V) e desliga quando é `1` (3.3V). Ele forma a rede de puxar para cima (*Pull-Up*), conectando a saída à linha de alimentação (<Term id="VDD">VDD</Term>).
 
-A engenharia resolve isso criando o irmão gêmeo simétrico do NMOS: o transistor **PMOS**.
-* O **NMOS** liga quando a entrada é `1` (3.3V) e desliga quando é `0` (0V).
-* O **PMOS** liga quando a entrada é `0` (0V) e desliga quando é `1` (3.3V).
+Juntando esses dois transistores simétricos, nasce a tecnologia <Term id="CMOS">CMOS</Term> (*Complementary Metal-Oxide-Semiconductor*). 
 
-Juntando esses dois transistores simétricos, nasce a tecnologia **CMOS** (*Complementary Metal-Oxide-Semiconductor*, ou Semicondutor Metal-Óxido Complementar).
+O circuito elementar da tecnologia CMOS é o **Inversor CMOS** (a porta lógica **NOT**):
 
-Vamos construir o primeiro circuito inteligente da computação: o **Inversor CMOS** (também conhecido como porta lógica **NOT**).
+A montagem do inversor CMOS liga os Gates de ambos os transistores no mesmo fio de entrada ($V_{in}$) e extrai a saída ($V_{out}$) no ponto central entre eles:
 
-A montagem é surpreendentemente simples:
-1. Conectamos um transistor PMOS na parte superior, ligado diretamente na fonte de alimentação de energia (+VDD, 3.3V). Chamamos essa metade de rede de puxar para cima (*Pull-Up*).
-2. Conectamos um transistor NMOS na parte inferior, ligado diretamente ao terra elétrico (-GND, 0V). Chamamos essa metade de rede de puxar para baixo (*Pull-Down*).
-3. Conectamos os gates dos dois transistores no mesmo fio de entrada ($V_{in}$).
-4. Retiramos o fio de saída ($V_{out}$) bem no meio, entre os dois transistores.
+1. **Entrada $V_{in} = 0$ (0V / Terra):**
+   O transistor PMOS superior conduz, ligando a saída diretamente à fonte de alimentação (+3.3V). O transistor NMOS inferior abre e bloqueia qualquer ligação com o terra. A saída atinge 3.3V (nível lógico `1`).
+2. **Entrada $V_{in} = 1$ (3.3V / VDD):**
+   O transistor PMOS superior abre e corta o contato com a alimentação. O transistor NMOS inferior fecha e conduz, drenando toda a carga da saída direto para o terra (0V). A saída cai para 0V (nível lógico `0`).
 
 <CmosInverterCard client:load />
 
-Observe o que acontece nas duas situações possíveis:
-
-* **Situação 1: A entrada $V_{in}$ recebe 0 (0V / Terra):**
-  * O transistor de cima (PMOS) fecha e conduz eletricidade, ligando a saída diretamente na fonte de energia (+3.3V).
-  * O transistor de baixo (NMOS) abre e bloqueia qualquer ligação com o terra.
-  * **Resultado na saída:** A saída atinge 3.3V (nível lógico `1`).
-
-* **Situação 2: A entrada $V_{in}$ recebe 1 (3.3V / Alimentação):**
-  * O transistor de cima (PMOS) abre e corta o contato com a fonte de energia.
-  * O transistor de baixo (NMOS) fecha e conduz, drenando toda a carga da saída direto para o terra (0V).
-  * **Resultado na saída:** A saída cai para 0V (nível lógico `0`).
-
-A lógica do circuito é infalível: ele sempre entrega na saída o inverso do que recebeu na entrada. Se entra 0, sai 1. Se entra 1, sai 0.
-
-E há um detalhe que transformou o CMOS na espinha dorsal de todo computador moderno:
-> **O Inversor CMOS tem consumo de energia estática rigorosamente nulo.**
-
-Repare bem: ou a chave de cima está fechada e a de baixo aberta, ou a de cima está aberta e a de baixo fechada. Nunca existe um caminho aberto contínuo ligando a alimentação (+VDD) direto ao terra (-GND). A eletricidade nunca escorre à toa para o chão. O computador só gasta energia de verdade durante a fração de microssegundo em que as chaves estão trocando de posição.
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> Antes de avançarmos, certifique-se de que estas três ideias estão claras:
-> 1. **Transistor:** é um interruptor eletrônico que abre ou fecha sem peças mecânicas móveis;
-> 2. **Transistor NMOS:** é a chave que ajuda o circuito a encostar no terra (produzindo o nível lógico `0`);
-> 3. **Transistor PMOS:** é a chave que ajuda o circuito a encostar na alimentação (produzindo o nível lógico `1`).
+A consequência de engenharia mais relevante da topologia CMOS é o **consumo de energia estática nulo**:
+> O inversor CMOS entrega na saída o inverso do que recebeu na entrada. Em regime permanente estável (`0` ou `1`), ou a chave de cima está fechada e a de baixo aberta, ou a de cima está aberta e a de baixo fechada. Nunca existe um caminho aberto contínuo ligando VDD diretamente ao terra GND. A corrente elétrica só flui durante o chaveamento dinâmico para carregar e descarregar as capacitâncias dos fios e dos Gates subsequentes.
 
 <PredictionChallenge
   client:load
-  question="Antes de prosseguir: se aplicarmos uma tensão alta de 3.3V (nível lógico 1) na entrada de um Inversor CMOS, qual o estado dos transistores e qual o nível elétrico resultante no fio de saída?"
-  correctOptionId="B"
-  technicalTakeaway="O par complementar garante que a saída esteja sempre conectada firmemente ao terra (0V) ou à alimentação (3.3V), com consumo estático nulo porque nunca há caminho contínuo direto entre VDD e GND em regime permanente."
+  question="Antes de acionar a chave no simulador: se aplicarmos uma tensão alta de 3.3V (nível lógico 1) na entrada de um Inversor CMOS, qual o estado físico dos transistores e qual a tensão final no fio de saída?"
   options={[
     {
-      id: "A",
-      label: "O transistor PMOS superior fecha conduzindo corrente de VDD, enquanto o NMOS inferior abre, elevando a saída para 3.3V (nível 1).",
-      explanation: "Incorreto. O transistor PMOS fecha apenas quando a tensão no Gate é baixa (0V). Com 3.3V no Gate, o PMOS atua como chave aberta e corta a ligação com VDD."
+      id: "a",
+      text: "O transistor PMOS superior conduz corrente de VDD e o NMOS inferior abre, elevando a saída para 3.3V.",
+      isCorrect: false,
+      explanation: "Tensão alta no gate de um PMOS desativa seu canal condutor, cortando a conexão com VDD."
     },
     {
-      id: "B",
-      label: "O transistor NMOS inferior fecha conduzindo corrente para o terra GND (0V), enquanto o PMOS superior abre, drenando a saída para 0V (nível 0).",
-      explanation: "Exato! Tensão positiva no Gate do NMOS atrai elétrons criando o canal condutor para o terra GND. Simultaneamente, a tensão positiva no Gate do PMOS desativa seu canal. O fio de saída encosta no terra elétrico sem conexão com a alimentação."
+      id: "b",
+      text: "O transistor NMOS inferior conduz drenando a saída para o terra GND (0V) e o PMOS superior abre cortando VDD.",
+      isCorrect: true,
+      explanation: "Correto! Tensão positiva atrai elétrons criando o canal condutor no NMOS para o terra GND. Simultaneamente, a tensão positiva no PMOS desativa seu canal. A saída estabiliza em 0V com consumo estático nulo."
     },
     {
-      id: "C",
-      label: "Ambos os transistores conduzem simultaneamente, gerando uma tensão intermediária de 1.65V que a CPU interpreta como erro.",
-      explanation: "Incorreto. A dopagem e o projeto CMOS garantem que os transistores sejam estritamente complementares: quando um conduz, o outro bloqueia. Condução simultânea em repouso configuraria curto-circuito destrutivo."
+      id: "c",
+      text: "Ambos os transistores conduzem simultaneamente gerando 1.65V.",
+      isCorrect: false,
+      explanation: "A condução simultânea só ocorre durante a fração infinitesimal da transição, nunca em regime estacionário."
     }
   ]}
 />
 
 ---
 
-## Parte 0B: Tomando Decisões Lógicas e a Universalidade da NAND
+## Parte 0B: Decisões Lógicas e a Universalidade da Porta NAND
 
-### 0.3 A Porta NAND: Combinando Chaves para Decidir
+### 0.3 A Porta NAND: Topologia em Série e Paralelo
 
-O inversor que acabamos de conhecer só olha para uma única entrada. Mas para um computador tomar decisões do tipo *"se a senha estiver certa E o usuário for administrador"*, ele precisa de circuitos que combinem dois ou mais sinais simultaneamente.
+O inversor CMOS atua sobre uma única entrada. Para construir lógica condicional, o processador precisa confrontar duas ou mais condições simultâneas.
 
-Como combinamos transistores para avaliar duas entradas (que chamaremos de entrada A e entrada B)?
+Na tecnologia CMOS, a porta lógica de duas entradas mais compacta e rápida de fabricar é a **porta <Term id="NAND">NAND</Term>** (Não-E). Sua estrutura interna utiliza quatro transistores:
+* Dois transistores PMOS conectados **em paralelo** no topo (ligados na linha de alimentação <Term id="VDD">VDD</Term>).
+* Dois transistores NMOS conectados **em série** na base (ligados no terra <Term id="GND">GND</Term>).
 
-Na tecnologia CMOS, o circuito de duas entradas mais simples, rápido e econômico de fabricar é a **porta NAND** (que significa *NOT-AND*, ou "Não-E").
-
-Ela utiliza apenas quatro transistores:
-* Dois transistores PMOS colocados **em paralelo** no topo (ligados na energia VDD).
-* Dois transistores NMOS colocados **em série** (em fila) na base (ligados no terra GND).
+A análise física das redes revela o comportamento booleano:
+* **Caminho para o terra (Rede Pull-Down):** Como os transistores NMOS estão em série, a condução de corrente para GND exige que a entrada A **E** a entrada B sejam ambas iguais a `1`. Se a chave A estiver fechada mas a chave B aberta, a fila para o terra se rompe.
+* **Caminho para a alimentação (Rede Pull-Up):** Como os transistores PMOS estão em paralelo, basta que uma única entrada seja `0` para que seu respectivo PMOS conduza e puxe a saída direto para o nível alto de alimentação (nível `1`).
 
 <CmosNandCard client:load />
 
-Pense na água passando por canos com válvulas:
-* Para a saída conseguir escorrer para o terra GND (gerando o nível `0`), a corrente precisa passar pelos dois transistores NMOS de baixo, um depois do outro. Se a chave A estiver fechada, mas a chave B estiver aberta, a corrente não passa. A saída só consegue encostar no terra se a entrada A **E** a entrada B forem ambas iguais a `1`.
-* E o que acontece se qualquer uma das entradas for `0`? A fila para o terra se rompe. Ao mesmo tempo, como os PMOS do topo estão em paralelo (lado a lado), basta que **uma única** entrada seja `0` para que seu respectivo PMOS conduza e puxe a saída direto para a alimentação de energia (nível `1`).
+A tabela-verdade decorre diretamente dessa mecânica:
 
-A tabela que resume o comportamento dessa chave é chamada de **tabela-verdade**:
-
-| Entrada A | Entrada B | Caminho para a Energia (PMOS) | Caminho para o Terra (NMOS) | Saída Final |
+| Entrada A | Entrada B | Rede Pull-Up (PMOS em paralelo) | Rede Pull-Down (NMOS em série) | Saída Final NAND |
 | :---: | :---: | :--- | :--- | :---: |
-| 0 | 0 | Ambas as chaves superiores conduzem | Fila inferior bloqueada | **1** |
-| 0 | 1 | Chave PMOS A conduz | Fila inferior bloqueada (A=0) | **1** |
-| 1 | 0 | Chave PMOS B conduz | Fila inferior bloqueada (B=0) | **1** |
-| 1 | 1 | Ambas as chaves superiores bloqueadas | Ambas as chaves inferiores conduzem | **0** |
+| 0 | 0 | Ambos os PMOS conduzem | Fila inferior de NMOS bloqueada | **1** |
+| 0 | 1 | PMOS A conduz | Fila inferior bloqueada (A=0) | **1** |
+| 1 | 0 | PMOS B conduz | Fila inferior bloqueada (B=0) | **1** |
+| 1 | 1 | Ambos os PMOS cortados | Ambos os NMOS conduzem (caminho para GND aberto) | **0** |
 
-Em resumo: a saída só vai para zero se as duas entradas forem simultaneamente um. Em todos os outros casos, a saída é um.
+A saída só vai para zero se as duas entradas forem simultaneamente um. Em todos os outros casos, a saída é um.
 
 ---
 
-### 0.4 A Universalidade da NAND: O Lego da Computação
+### 0.4 Universalidade Funcional da Porta NAND
 
-Se você já brincou com blocos de Lego quando criança, deve se lembrar de que existem blocos especiais tão versáteis que, se você tiver baldes cheios apenas daquele formato específico, consegue construir casas, pontes, carros e castelos inteiros.
+Existe um princípio extraordinário comprovado na ciência da computação:
+> **Se você tiver portas <Term id="NAND">NAND</Term> suficientes, você consegue construir qualquer operação matemática, qualquer circuito lógico e qualquer processador do mundo.**
 
-Na eletrônica digital, a porta NAND é esse bloco de Lego supremo.
+A matemática formal denomina essa propriedade **universalidade funcional** (ou completude booleana). Podemos provar a universalidade da NAND montando blocos lógicos na prática:
 
-Existe um princípio extraordinário na ciência da computação:
-> **Se você tiver portas NAND suficientes, você consegue construir qualquer operação matemática, qualquer circuito lógico e qualquer processador do mundo.**
+1. **Inversor NOT com uma NAND:**
+   Para fazer um inversor NOT com uma NAND, unimos ambas as entradas da NAND no mesmo fio: se a entrada for 0, ambas as entradas da NAND recebem 0 e a saída é 1. Se a entrada for 1, ambas as entradas da NAND recebem 1 e a saída vai para 0.
+   $$\text{NOT}(A) = \text{NAND}(A, A)$$
 
-A matemática formal chama essa propriedade de **universalidade funcional** (ou completude funcional).
+2. **Porta AND com duas NANDs:**
+   Uma porta AND é o oposto da NAND. Passamos os sinais A e B por uma primeira porta NAND, e em seguida passamos o sinal por uma segunda NAND configurada como inversor NOT.
+   $$\text{AND}(A, B) = \text{NOT}(\text{NAND}(A, B))$$
 
-Vamos provar isso na prática, sem fórmulas difíceis, apenas montando blocos:
+3. **Porta OR com três NANDs:**
+   Aplicando o Teorema de De Morgan ($\overline{A \cdot B} = \overline{A} + \overline{B}$), invertemos a entrada A com uma NAND, invertemos a entrada B com outra NAND, e conectamos as saídas em uma terceira porta NAND:
+   $$\text{NAND}(\overline{A}, \overline{B}) = \overline{\overline{A} \cdot \overline{B}} = A + B = \text{OR}(A, B)$$
 
-#### 1. Como fazer uma porta NOT usando apenas uma NAND?
-Lembre-se de que a porta NOT precisa apenas inverter um sinal (0 vira 1, 1 vira 0). Se pegarmos uma porta NAND e juntarmos suas duas entradas no mesmo fio:
-* Se colocamos 0 na entrada, ambas as entradas da NAND recebem 0. Pela tabela-verdade, a saída é 1.
-* Se colocamos 1 na entrada, ambas as entradas da NAND recebem 1. Pela tabela-verdade, a saída é 0.
-Pronto: juntando as pernas de entrada de uma NAND, ela se transforma perfeitamente em um inversor NOT.
+4. **Porta XOR com quatro NANDs:**
+   A porta <Term id="XOR">XOR</Term> dá 1 se exatamente uma das entradas for 1, mas dá 0 se ambas forem iguais. Quatro portas NAND interligadas produzem a função XOR com perfeição mecânica.
 
-#### 2. Como fazer uma porta AND usando apenas portas NAND?
-Uma porta AND ("E") deve produzir 1 apenas se ambas as entradas forem 1, e 0 nos demais casos. Isso é exatamente o oposto da NAND.
-Então, como resolver?
-1. Passamos os sinais A e B por uma primeira porta NAND.
-2. Pegamos a saída dessa NAND e passamos pelo inversor NOT que acabamos de aprender a montar (uma segunda NAND).
-A saída é invertida de volta, gerando uma porta AND pura.
-
-#### 3. Como fazer uma porta OR ("OU") usando apenas portas NAND?
-Uma porta OR deve produzir 1 se a entrada A for 1 **OU** se a entrada B for 1 (ou ambas).
-Basta invertermos a entrada A com uma NAND, invertermos a entrada B com outra NAND, e conectarmos essas duas saídas nas entradas de uma terceira NAND.
-
-#### 4. Como fazer uma porta XOR ("Ou Exclusivo")?
-A porta XOR dá 1 se exatamente uma das entradas for 1, mas dá 0 se ambas forem iguais. Ela é o coração da adição de números que veremos na próxima seção. Quatro portas NAND interligadas produzem a função XOR com perfeição mecânica.
-
-> [!NOTE]
-> **Aprofundamento de Engenharia: A Formalização Matemática de De Morgan**
-> Para quem aprecia a álgebra booleana formal:
-> A prova matemática da equivalência da porta OR decorre diretamente do Teorema de De Morgan:
-> $$\overline{A \cdot B} = \overline{A} + \overline{B}$$
-> Se negarmos as variáveis antes de alimentá-las na porta NAND, temos:
-> $$\text{NAND}(\overline{A}, \overline{B}) = \overline{\overline{A} \cdot \overline{B}} = \overline{\overline{A}} + \overline{\overline{B}} = A + B = \text{OR}(A, B)$$
-> Isso demonstra algebricamente que o conjunto $\{ \text{NAND} \}$ (assim como o conjunto $\{ \text{NOR} \}$) é funcionalmente completo sobre o anel booleano $\{0, 1\}$.
-
-Com essas quatro portas elementares em mãos (NOT, AND, OR e XOR), dominamos os blocos construtivos fundamentais. Agora estamos prontos para subir o próximo degrau da abstração: usar essas portas para somar números de verdade.
+<XorFromNandDiagram />
 
 <PredictionChallenge
   client:load
   question="Desafio de Reconstrução: você possui apenas portas universais NAND. Como transformar uma única porta NAND de duas entradas em um inversor (porta NOT) perfeito?"
-  correctOptionId="B"
-  technicalTakeaway="Como a porta NAND produz 0 exclusivamente quando ambas as entradas forem 1, forçar ambas as entradas a receberem o mesmo sinal elimina as combinações assimétricas e cria uma função inversora pura com 4 transistores."
   options={[
     {
-      id: "A",
-      label: "Conectando uma das entradas ao terra GND (0V) e aplicando o sinal na outra entrada.",
-      explanation: "Incorreto. Se uma entrada de uma porta NAND for fixada em 0V, a saída permanecerá eternamente em nível 1, independente do valor aplicado na outra entrada."
+      id: "a",
+      text: "Conectar uma das entradas ao terra GND (0V) e aplicar o sinal na outra.",
+      isCorrect: false,
+      explanation: "Se uma entrada for mantida em 0V, a saída da NAND permanecerá travada em 1 independentemente da outra entrada."
     },
     {
-      id: "B",
-      label: "Unindo fisicamente os dois pinos de entrada da porta NAND no mesmo fio de sinal.",
-      explanation: "Exato! Ao unir as duas entradas, ambas recebem 0 juntas (gerando saída 1) ou recebem 1 juntas (gerando saída 0). Esse arranjo de duas chaves paralelas em cima e duas em série embaixo reproduz fielmente a função NOT."
+      id: "b",
+      text: "Unir fisicamente os dois pinos de entrada da porta NAND no mesmo fio de sinal.",
+      isCorrect: true,
+      explanation: "Correto! Ao unir os dois pinos, ambas as entradas recebem 0 juntas (gerando saída 1) ou 1 juntas (gerando saída 0). Isso implementa rigorosamente a tabela-verdade do inversor NOT."
     },
     {
-      id: "C",
-      label: "Invertendo a polaridade dos pinos de alimentação VDD e terra GND na placa de circuito.",
-      explanation: "Incorreto. Inverter a alimentação destrói as junções de silício ou polariza os diodos parasitas reversamente, danificando o circuito em vez de criar uma inversão lógica."
+      id: "c",
+      text: "Inverter a polaridade dos pinos de alimentação VDD e terra GND.",
+      isCorrect: false,
+      explanation: "Inverter a alimentação danifica o circuito integrado por queima das junções semicondutoras internas."
     }
   ]}
 />
 
 ---
 
-## Parte 0C: Somando Números com Fios (Circuitos Combinacionais e Aritmética)
+## Parte 0C: Aritmética Binária e a Unidade Lógica e Aritmética (ALU)
 
-### 0.5 O Meio Somador: A Soma de 1 Bit e o Desafio do "Vai-Um"
+### 0.5 O Meio Somador (Half Adder)
 
-Quando aprendemos a somar números no papel na escola, começamos alinhando os dígitos em colunas: somamos as unidades, anotamos o resultado e, se o valor passar de nove, mandamos uma dezena para a coluna vizinha à esquerda. É a conhecida regra do "vai-um".
+A aritmética binária em hardware é construída na base dois, onde os únicos bits possíveis são `0` e `1`.
 
-No computador digital, a lógica é exatamente a mesma, mas em base dois. Em binário, os únicos dígitos possíveis são 0 e 1.
+Ao somar dois bits individuais ($A$ e $B$), encontramos quatro desfechos possíveis:
+* $0 + 0 = 0$ (Soma $S = 0$, Transporte $C_{out} = 0$)
+* $0 + 1 = 1$ (Soma $S = 1$, Transporte $C_{out} = 0$)
+* $1 + 0 = 1$ (Soma $S = 1$, Transporte $C_{out} = 0$)
+* $1 + 1 = 10_2$ (Soma $S = 0$, e "vai-um" para a próxima coluna da esquerda: $C_{out} = 1$)
 
-Vejamos o que acontece quando somamos dois bits únicos, que chamaremos de entrada A e entrada B:
-* $0 + 0 = 0$ (soma 0, transporte 0)
-* $0 + 1 = 1$ (soma 1, transporte 0)
-* $1 + 0 = 1$ (soma 1, transporte 0)
-* $1 + 1 = 10_2$ (em binário: soma 0, e "vai-um" para a próxima coluna da esquerda)
+Examinando as funções booleanas geradas:
+1. **O bit da Soma ($S$):** Vale 1 quando as entradas são diferentes ($0+1$ ou $1+0$), e vale 0 quando são iguais. Isso é rigorosamente a porta lógica <Term id="XOR">XOR</Term> ($S = A \oplus B$).
+2. **O bit de Transporte ($C_{out}$):** Vale 1 exclusivamente se a entrada A e a entrada B forem simultaneamente 1 ($1+1$). Isso corresponde rigorosamente à porta lógica AND ($C_{out} = A \cdot B$).
 
-Repare com atenção nas duas colunas resultantes:
-1. **O bit da Soma ($S$):** Ele vale 0 quando as entradas são iguais ($0+0$ ou $1+1$), e vale 1 quando as entradas são diferentes ($0+1$ ou $1+0$). Você reconhece esse comportamento? É rigorosamente a porta lógica **XOR** ("ou exclusivo") que aprendemos a montar com blocos de portas lógicas!
-2. **O bit de Transporte ("vai-um", ou *Carry-out*, $C_{out}$):** Ele só vale 1 quando tanto a entrada A quanto a entrada B forem simultaneamente 1 ($1+1$). Esse comportamento é exatamente a porta lógica **AND** ("E")!
+A união de uma porta XOR e uma porta AND conectadas aos mesmos fios de entrada cria o **Meio Somador (Half Adder)**:
 
-Juntando uma única porta XOR e uma única porta AND conectadas aos mesmos fios de entrada A e B, criamos o circuito que a engenharia batizou de **Meio Somador (Half Adder)**:
+O circuito se chama meio somador porque só aceita duas entradas. Ele serve perfeitamente para a primeiríssima coluna da direita (as unidades), onde nunca existe transporte vindo de trás. Para somar colunas seguintes de palavras maiores, o circuito precisa de uma terceira entrada para receber o transporte da coluna anterior (*Carry-in*, $C_{in}$).
+
+---
+
+### 0.6 O Somador Completo (Full Adder) e a Cascata Ripple-Carry
+
+O **Somador Completo (Full Adder)** junta dois meios somadores e uma porta OR para aceitar o transporte vindo da coluna anterior ($C_{in}$):
+1. O primeiro meio somador soma os bits $A$ e $B$, gerando a soma preliminar ($S_{int}$) e o transporte parcial ($C_1$).
+2. O segundo meio somador soma $S_{int}$ com $C_{in}$, produzindo a Soma final ($S = A \oplus B \oplus C_{in}$) e o segundo transporte parcial ($C_2$).
+3. Uma porta OR recebe os dois transportes parciais: se o primeiro meio somador produziu transporte OU se o segundo meio somador produziu transporte, a saída final $C_{out}$ é ativada.
+
+#### Tabela de Rastreamento de Sinais do Somador Completo (Circuit Tracing)
+
+| $A$ | $B$ | $C_{in}$ | $S_{int} = A \oplus B$ | $C_1 = A \cdot B$ | $C_2 = S_{int} \cdot C_{in}$ | **Soma Final ($S$)** | **Carry Out ($C_{out}$)** |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 0 | 0 | 0 | 0 | 0 | 0 | **0** | **0** |
+| 0 | 0 | 1 | 0 | 0 | 0 | **1** | **0** |
+| 0 | 1 | 0 | 1 | 0 | 0 | **1** | **0** |
+| 0 | 1 | 1 | 1 | 0 | 1 | **0** | **1** |
+| 1 | 0 | 0 | 1 | 0 | 0 | **1** | **0** |
+| 1 | 0 | 1 | 1 | 0 | 1 | **0** | **1** |
+| 1 | 1 | 0 | 0 | 1 | 0 | **0** | **1** |
+| 1 | 1 | 1 | 0 | 1 | 0 | **1** | **1** |
+
+No somador completo, note que os transportes parciais $C_1$ e $C_2$ nunca podem ser simultaneamente 1. Quando o primeiro meio somador produz $C_1 = 1$, sua soma intermediária $S_{int}$ vale obrigatoriamente 0, forçando $C_2 = 0$.
+
+Para somar números de 64 bits em um processador contemporâneo, encadeamos 64 somadores completos em linha: a saída $C_{out}$ do estágio 0 entra no pino $C_{in}$ do estágio 1, e assim por diante. Essa montagem em série chama-se **Somador em Cascata (Ripple-Carry Adder)**.
 
 <AdderCircuitsCard client:load />
 
-Experimente alternar as entradas no cartão interativo acima:
-* Quando apenas uma entrada é 1, a lâmpada da Soma acende;
-* Quando ambas as entradas são 1, a Soma apaga e a lâmpada do Carry (transporte) acende.
+---
 
-Por que esse circuito se chama "Meio" Somador?
-Porque ele só resolve metade do problema da adição de números longos: ele só aceita duas entradas. Ele serve perfeitamente para somar a primeiríssima coluna da direita (as unidades), onde nunca existe nenhum transporte vindo de trás. Mas como faremos para somar a segunda, a terceira ou a sexagésima quarta coluna de um número? Cada coluna intermediária precisa ser capaz de receber três entradas: o bit A, o bit B e o "vai-um" que veio da coluna anterior (*Carry-in*, $C_{in}$).
+### 0.7 O Caminho Crítico e a Unidade Lógica e Aritmética (ALU)
+
+O cálculo consome tempo real no espaço: os elétrons não viajam instantaneamente. No somador em cascata, o bit 63 não pode emitir sua resposta final até que o transporte elétrico tenha atravessado os 63 estágios precedentes em fila.
+
+A trilha de portas lógicas mais longa e lenta que um sinal precisa percorrer antes que o resultado se estabilize é chamada de **Caminho Crítico (Critical Path)**.
+
+Em circuitos de alta velocidade, o somador em cascata simples limitaria a frequência de clock a valores muito reduzidos. Para contornar o caminho crítico, engenheiros substituem o ripple-carry por somadores de cálculo antecipado de transporte (**Carry-Lookahead Adders**) ou árvores de prefixo paralelo. Esses circuitos usam álgebra booleana paralela para deduzir se uma coluna gera transporte ou apenas propaga o transporte existente, reduzindo a latência temporal de $O(N)$ para $O(\log N)$.
+
+Com somadores, portas booleanas e deslocadores de bits em mãos, a <Term id="CPU">CPU</Term> reúne esses circuitos combinacionais na **Unidade Lógica e Aritmética (<Term id="ALU">ALU</Term>)**. A ALU calcula todas as operações ao mesmo tempo nos fios condutores. Na saída, uma chave seletora chamada **Multiplexador (<Term id="MUX">MUX</Term>)** recebe o código da instrução e conecta a saída correspondente ao fio de resposta final.
 
 ---
 
-### 0.6 O Somador Completo e a Cascata de 64 bits
+## Parte 0D: Memória, Realimentação, Flip-Flop Mestre-Escravo e o Clock
 
-Para resolver a soma de três bits ao mesmo tempo, a engenharia junta dois Meios Somadores e uma porta OR, criando o **Somador Completo (Full Adder)**:
-1. O primeiro Meio Somador soma os bits $A$ e $B$, gerando uma soma intermediária e um primeiro sinal de transporte;
-2. O segundo Meio Somador soma o resultado intermediário com o transporte recebido da coluna anterior ($C_{in}$), gerando o bit definitivo da Soma final ($S$);
-3. Uma porta OR recebe os dois transportes gerados: se a primeira soma produziu vai-um OU se a segunda soma produziu vai-um, a saída final de transporte ($C_{out}$) é ativada.
+### 0.8 Circuitos Combinacionais versus Memória Biestável
 
-Agora temos um bloco perfeito e autocontido de 1 bit. Como usamos esse bloco para somar números de 64 bits em um processador contemporâneo?
+Em circuitos combinacionais, a saída depende unicamente das entradas atuais, sem memória de estado anterior. Se você desligar as duas entradas de um somador combinacional, o resultado desaparece no ar. Um somador combinacional não se lembra de contas passadas.
 
-A solução mais direta é colocá-los em fila:
-* Conectamos a saída de transporte $C_{out}$ do estágio 0 diretamente na entrada $C_{in}$ do estágio 1;
-* Conectamos a saída $C_{out}$ do estágio 1 na entrada $C_{in}$ do estágio 2;
-* Repetimos esse encadeamento sucessivamente até o estágio 63.
+Para fazer um circuito elétrico lembrar de algo, a eletrônica digital recorre à **realimentação (feedback loop)**: conectar a saída de uma porta lógica de volta a uma de suas próprias entradas.
 
-Esse arranjo em linha chama-se **Somador em Cascata (Ripple-Carry Adder)**: o sinal de transporte se propaga de estágio em estágio, como uma onda ondulando ao longo de uma superfície de água.
-
----
-
-### 0.7 O Dilema da Velocidade e a Unidade Lógica e Aritmética (ALU)
-
-O somador em cascata revela uma verdade física profunda da computação: **o cálculo consome tempo real no espaço**.
-
-Os elétrons não viajam instantaneamente. Quando você coloca novos números nos fios de entrada, o primeiro somador (bit 0) calcula seu resultado quase de imediato. Porém, o sexagésimo quarto somador (bit 63) não pode entregar sua resposta final até que o sinal de transporte tenha atravessado todas as 63 caixas anteriores em fila indiana. É o efeito dominó: uma peça só cai depois que a anterior a empurrou.
-
-A trilha de portas lógicas mais longa e lenta que um sinal elétrico precisa percorrer antes que o resultado se estabilize é chamada de **Caminho Crítico (Critical Path)**.
-
-> [!NOTE]
-> **Aprofundamento de Engenharia: Como Processadores Reais Eliminam o Atraso da Cascata?**
-> Em circuitos de alta velocidade, esperar o transporte atravessar 64 somadores em série limitaria a frequência do processador a valores muito baixos. Para resolver isso, processadores reais utilizam circuitos combinacionais com cálculo antecipado de transporte (**Carry-Lookahead Adders** ou árvores de Kogge-Stone e Brent-Kung).
-> Em vez de esperar cada estágio somar, esses circuitos usam álgebra booleana paralela para deduzir se uma coluna vai gerar um transporte ou apenas propagar um transporte existente. Dessa forma, todos os 64 transportes são resolvidos simultaneamente em tempo logarítmico $O(\log N)$ em vez de linear $O(N)$.
-
-Com somadores, inversores e deslocadores de bits em mãos, a CPU reúne todos esses circuitos combinacionais em um único bloco central: a **Unidade Lógica e Aritmética (ALU)**.
-
-Como a ALU sabe qual conta entregar? Ela calcula todas as operações ao mesmo tempo nos fios. Na saída, uma chave seletora múltipla chamada **Multiplexador (MUX)** recebe o código da instrução que o programador escreveu (por exemplo, código para somar ou código para subtrair) e simplesmente conecta a saída correspondente ao fio de resposta final.
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Meio Somador:** soma dois bits únicos usando uma porta XOR (para a soma) e uma porta AND (para o vai-um);
-> 2. **Somador Completo:** junta dois meios somadores e uma porta OR para aceitar o transporte vindo da coluna anterior;
-> 3. **ALU:** é uma coleção de circuitos aritméticos conectados a uma chave seletora (Multiplexador) que entrega o resultado da operação escolhida.
-
----
-
-## Parte 0D: Guardando o Passado (Memória, Clock e Registradores)
-
-### 0.8 O Dilema dos Circuitos Combinacionais e o Truque da Memória
-
-Todos os circuitos que estudamos até este ponto pertencem a uma mesma família: os **circuitos combinacionais**. Em um circuito combinacional, a saída depende única e exclusivamente do sinal presente nas entradas naquele instante.
-
-Se você alterar a tensão na entrada, a saída muda de imediato. Se você desligar os fios, o resultado desaparece no ar. Um somador combinacional não se lembra de qual conta acabou de fazer há um nanossegundo. Ele não tem passado, não tem histórico e não tem memória.
-
-Mas como um computador pode executar um programa com variáveis se a eletricidade pura não consegue guardar nada?
-
-A resposta histórica que permitiu a criação dos computadores foi o princípio da **realimentação de sinal (feedback loop)**: conectar o fio de saída de uma porta lógica de volta a uma de suas próprias entradas.
-
-Pense em duas pessoas que se apoiam pelas mãos: cada uma sustenta o peso da outra. Enquanto a força mútua existir, ambas continuam em pé sem precisar de apoio externo.
-
-O primeiro circuito clássico de memória construído com esse princípio é o **Latch SR (Set-Reset)**, montado com duas portas NOR cruzadas:
+O circuito clássico elementar de memória com realimentação é o **Latch SR (Set-Reset)**, montado com duas portas <Term id="NOR">NOR</Term> cruzadas:
 
 <SrLatchInteractive client:load data-visual-model="VIS-01-SR-LATCH-NOR" />
 
-Acompanhe os estados desse circuito no simulador interativo acima:
-1. **Gravação (Set = 1, Reset = 0):** A porta NOR inferior é forçada para zero, o que faz a porta NOR superior produzir `Q = 1`. O circuito guardou o bit 1.
-2. **Repouso / Lembrança (Set = 0, Reset = 0):** Quando você solta o botão Set para zero, nada muda. A saída `Q = 1` continua alimentando a porta de baixo, e a porta de baixo continua alimentando a de cima. O bit 1 fica preso girando no circuito indefinidamente enquanto a máquina estiver ligada na energia elétrica!
-3. **Limpeza (Set = 0, Reset = 1):** O sinal Reset força a saída `Q` para 0. Quando você solta Reset para 0, o valor `Q = 0` fica retido. O circuito agora lembra do bit 0.
-4. **Estado Proibido (Set = 1, Reset = 1):** Se você apertar Set e Reset ao mesmo tempo, as duas saídas tentam ir para zero simultaneamente. Se ambos forem soltos juntos, o circuito entra em uma oscilação imprevisível (metaestabilidade).
-
-Para eliminar de vez o perigo do estado proibido, os engenheiros criaram o **Latch D (Data Latch)**: colocamos um único fio de dados ($D$) na entrada e uma chave de permissão (*Enable*). O circuito nunca mais recebe ordens contraditórias de Set e Reset.
+O circuito opera em quatro regimes:
+* **Gravação (Set = 1, Reset = 0):** O comando Set força a saída $Q = 1$. O circuito guarda o bit 1.
+* **Retenção (Set = 0, Reset = 0):** Com ambas as entradas soltas em zero, a saída $Q$ alimenta a porta inferior e sustenta a saída contrária. A realimentação mantém o bit 1 retido indefinidamente.
+* **Limpeza (Set = 0, Reset = 1):** O sinal Reset força a saída $Q = 0$. O circuito retém 0 no latch SR.
+* **Estado Proibido (Set = 1, Reset = 1):** Se Set e Reset forem ativados juntos, ambas as saídas são forçadas a zero. Ao soltar ambos os comandos simultaneamente, o circuito entra em oscilação imprevisível (metaestabilidade).
 
 <PredictionChallenge
   client:load
   question="Explique o Mecanismo: você colocou a entrada Set em 1, gravando o bit 1 na saída Q. Em seguida, você desativa Set retornando-o para 0. Por que a saída Q permanece em nível 1 em vez de apagar?"
-  correctOptionId="A"
-  technicalTakeaway="Memória não requer materiais magnéticos ou químicos: a realimentação de sinal cria um estado biestável auto-sustentado onde a saída de uma porta garante a entrada da porta parceira em ciclo contínuo."
   options={[
     {
-      id: "A",
-      label: "Porque a saída Q_negada foi para 0 e esse fio alimenta a porta NOR superior, mantendo sua saída em 1 mesmo com Set desligado.",
-      explanation: "Exato! A realimentação cruzada sustenta o estado: a saída Q (1) mantém a porta inferior com saída 0 (Q_negada), e esse sinal 0 é injetado de volta na porta superior. Como ambas as entradas da porta superior agora valem 0 (Reset=0 e Q_negada=0), a saída Q é mantida em 1 pela própria física da porta NOR."
+      id: "a",
+      text: "Porque a saída Q_negada foi para 0 e esse sinal alimenta a porta NOR superior, mantendo Q em 1 mesmo com Set desligado.",
+      isCorrect: true,
+      explanation: "Exato! A realimentação cruzada sustenta o estado: a saída Q (1) mantém a porta inferior com saída 0 (Q_negada), e esse 0 é injetado de volta na porta superior. Como Reset=0 e Q_negada=0, a saída Q é mantida em 1 pela física da porta NOR."
     },
     {
-      id: "B",
-      label: "Porque a porta lógica retém eletricidade estática residual em sua carcaça de plástico como uma bateria química.",
-      explanation: "Incorreto. Portas lógicas não possuem baterias químicas internas. Sem a malha de realimentação ativa entre condutores, qualquer carga dissiparia para o terra em frações de microssegundo."
+      id: "b",
+      text: "Porque a porta lógica retém eletricidade estática residual como uma bateria química.",
+      isCorrect: false,
+      explanation: "Portas lógicas não possuem baterias químicas internas; o sinal é sustentado ativamente pela alimentação contínua e realimentação de corrente."
     },
     {
-      id: "C",
-      label: "Porque o sinal Reset precisa receber um pulso negativo (-3.3V) para desarmar o circuito.",
-      explanation: "Incorreto. A lógica digital opera estritamente entre 0V (terra) e 3.3V (alimentação). Tensões negativas não são utilizadas para transição normal de estados no Latch SR."
+      id: "c",
+      text: "Porque o sinal Reset precisa receber um pulso negativo (-3.3V) para desligar.",
+      isCorrect: false,
+      explanation: "Circuitos CMOS digitais operam na faixa de 0V a 3.3V; não há pulsos negativos na operação lógica padrão."
     }
   ]}
 />
 
+Para afastar o estado proibido, os engenheiros criaram o **Latch D (Data Latch)**: usamos um único fio de dados ($D$) com um inversor e uma chave de permissão (*Enable*), impedindo que o circuito receba ordens contraditórias de Set e Reset.
+
 ---
 
-### 0.9 A Armadilha da Transparência e o Flip-Flop D Disparado por Borda
+### 0.9 A Armadilha da Transparência e o Flip-Flop D Mestre-Escravo
 
-O Latch D resolveu o estado proibido, mas trouxe outro perigo: a **transparência**.
+O Latch D resolve o estado proibido, mas traz a **transparência**: enquanto a permissão (*Enable*) estiver ligada, qualquer ruído ou variação na entrada $D$ passa direto para a saída $Q$. Se a saída do registrador alimentar uma ALU cujo resultado retroalimenta a mesma memória, o sinal correria em círculos descontrolados durante todo o pulso ativo.
 
-Enquanto a chave de permissão (*Enable*) estiver ligada, qualquer ruído ou alteração no fio de entrada $D$ passa direto para a saída $Q$. Imagine se a saída desse circuito estiver ligada na entrada de uma ALU que faz contas e devolve o resultado para a mesma memória: o sinal correria em círculos em uma velocidade frenética durante todo o tempo em que a permissão estivesse aberta, gerando caos elétrico.
+O processador síncrono exige que a memória capture o dado em um único instante fugaz e imediatamente tranque a porta: o **Flip-Flop D Disparado por Borda (Edge-Triggered)**.
 
-Para que um processador opere com controle exato, os registradores não podem aceitar dados o tempo todo. Eles precisam agir como uma câmera fotográfica de altíssima velocidade: precisam capturar o valor que está no fio em um único instante fugaz e imediatamente trancar a porta.
-
-Esse circuito chama-se **Flip-Flop D Disparado por Borda (Edge-Triggered)**.
-
-A forma mais elegante de construí-lo é a arquitetura **Mestre-Escravo (Master-Slave)**, colocando dois compartimentos em série:
-* O primeiro compartimento (Mestre) escuta a entrada;
-* O segundo compartimento (Escravo) entrega a saída final.
+A topologia padrão é o circuito **Mestre-Escravo (Master-Slave)**:
 
 <MasterSlaveFlipFlopCard client:load />
 
-Observe a coreografia da eclusa:
-* Quando o sinal de controle está em nível baixo (`0`), o Mestre escuta a entrada, mas o Escravo está firmemente trancado. Nada passa para a saída.
-* No instante exato em que o sinal de controle sobe de `0` para `1` (a chamada **borda de subida**), as portas invertem de papel em frações de picossegundo: o Mestre tranca a sua entrada (congelando o dado que acabou de ver) e o Escravo abre a sua porta para disponibilizar o dado na saída final.
-* Enquanto o sinal permanecer alto (`1`), o Mestre continua trancado. Nenhuma mudança na entrada consegue perturbar o dado congelado.
+Dois compartimentos são colocados em série sob sinais de clock opostos:
+1. Quando o sinal de Clock está em nível baixo (`0`), o Mestre está transparente escutando a entrada $D$, mas o Escravo está firmemente travado. Nada passa para a saída final $Q$.
+2. Na **borda de subida** (transição de `0` para `1`), os papéis se invertem: o Mestre fecha sua porta trancando o dado que acabou de ver ($Q_{mestre}$ congelado), e o Escravo abre sua porta liberando o dado congelado na saída $Q$.
+3. Enquanto o Clock permanecer alto (`1`), o Mestre continua trancado e imune a ruídos na entrada.
 
-O valor da saída $Q$ só muda no instante preciso da borda de subida. Qualquer ruído elétrico antes ou depois desse instante é completamente ignorado.
+#### Rastreamento da Máquina Nocional do Flip-Flop nas Fases do Clock
+
+| Fase do Clock | Sinal CLK | Estado do Mestre | Estado do Escravo | Nó Interno $Q_{mestre}$ | Saída Final $Q$ | Descrição Mecânica |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **Clock Baixo** | `0` | **Transparente** | **Travado** | Amostra $D$ | Estável (valor anterior) | Mestre acompanha a entrada; Escravo isola a saída. |
+| **Borda de Subida** | $0 \rightarrow 1$ | **Trava** | **Abre** | Congela $D$ | Assume $Q_{mestre}$ | Mestre congela no instante da borda; Escravo libera o dado congelado. |
+| **Clock Alto** | `1` | **Travado** | **Transparente** | Isolado de $D$ | Estável em $Q_{mestre}$ | Variações na entrada são ignoradas; saída permanece fixa. |
+| **Borda de Descida** | $1 \rightarrow 0$ | **Abre** | **Trava** | Libera nova amostra | Retém $Q$ | Escravo tranca a saída antes que o Mestre comece a capturar novo valor. |
+
+O flip-flop disparado por borda captura o dado na transição, isolando o estado presente durante o restante do ciclo.
 
 <PredictionChallenge
   client:load
-  question="Antes de prosseguir: o sinal de Clock de um processador acabou de subir de 0V para 3.3V (borda de subida). Dois nanossegundos depois, com o Clock ainda estabilizado em 3.3V (nível alto contínuo), o valor no fio de entrada D se altera. O que acontece com a saída Q do Flip-Flop D?"
-  correctOptionId="B"
-  technicalTakeaway="O isolamento em dois estágios complementares transforma uma chave transparente contínua em um obturador instantâneo: o registrador fotografa o valor na borda e fica imune a qualquer variação combinacional durante o restante do ciclo."
+  question="O sinal de Clock de um processador acabou de subir de 0V para 3.3V (borda de subida). Dois nanossegundos depois, com o Clock ainda estabilizado em 3.3V (nível alto contínuo), o valor no fio de entrada D se altera. O que acontece com a saída Q do Flip-Flop D?"
   options={[
     {
-      id: "A",
-      label: "A saída Q se altera de imediato, acompanhando a nova entrada D enquanto o nível de Clock permanecer alto.",
-      explanation: "Incorreto. Esse seria o comportamento de um Latch transparente defeituoso. O Flip-Flop mestre-escravo bloqueia a entrada exatamente para evitar que mudanças durante o nível alto afetem a saída."
+      id: "a",
+      text: "A saída Q se altera de imediato acompanhando D durante todo o nível alto.",
+      isCorrect: false,
+      explanation: "Isso seria o comportamento de um latch transparente, e não de um flip-flop disparado por borda."
     },
     {
-      id: "B",
-      label: "A saída Q permanece inalterada, porque o estágio Mestre trancou sua entrada no exato momento da borda de subida e ignora o ruído subsequente.",
-      explanation: "Exato! Na transição de subida, o estágio Mestre é imediatamente desconectado da entrada externa, enquanto o estágio Escravo assume o dado congelado. Enquanto o Clock estiver alto, a entrada externa está fisicamente isolada do circuito interno."
+      id: "b",
+      text: "A saída Q permanece inalterada, porque o estágio Mestre trancou sua entrada no momento da borda de subida.",
+      isCorrect: true,
+      explanation: "Correto! Na transição de subida, o estágio Mestre é desconectado da entrada externa. Enquanto o Clock estiver alto, a entrada externa está fisicamente isolada. O flip-flop memoriza o valor visto na borda."
     },
     {
-      id: "C",
-      label: "O circuito entra em curto-circuito porque a entrada D só pode mudar quando o sinal de Clock estiver em zero absoluto.",
-      explanation: "Incorreto. A entrada D pode oscilar livremente durante o ciclo de clock. A função primária do Flip-Flop é justamente blindar o processador contra essas oscilações intermediárias."
+      id: "c",
+      text: "O circuito entra em curto-circuito gerando metaestabilidade.",
+      isCorrect: false,
+      explanation: "Não há curto-circuito: o isolamento do estágio Mestre protege a saída contra qualquer variação subsequente na entrada."
     }
   ]}
 />
 
 ---
 
-### 0.10 O Metrônomo do Processador: O Clock do Sistema
+### 0.10 Sincronização Periódica: O Clock e o Orçamento Temporal
 
-Em uma grande orquestra com dezenas de músicos, se cada um tocasse no seu próprio compasso particular, o resultado seria ruído incompreensível. A orquestra precisa do metrônomo e da batuta do maestro para que todos os instrumentos comecem e terminem cada nota no mesmo instante.
+Para evitar que dispersões em tempos de propagação gerem corridas elétricas, os circuitos utilizam um metrônomo síncrono: o sinal de **Clock**.
 
-No processador, esse maestro é o sinal de **Clock (Relógio)**.
-
-O clock é uma onda contínua gerada por um cristal piezoelétrico de quartzo na placa-mãe. Quando alimentado com eletricidade, o cristal de quartzo vibra mecanicamente em um ritmo extremamente estável e preciso. Circuitos de controle convertem essas vibrações em pulsos elétricos que alternam entre 0V e tensão de alimentação bilhões de vezes por segundo (a frequência em Gigahertz).
+O clock é uma onda quadrada contínua gerada por um oscilador a cristal piezoelétrico de quartzo. O intervalo entre duas bordas de subida consecutivas é o **Período de Clock ($T_{clock}$)**, e seu inverso é a **Frequência de Clock ($f = 1 / T_{clock}$)**.
 
 <ClockChronogramCard client:load />
 
-A cada pulso do clock, a máquina dá exatamente um passo:
-1. Os flip-flops liberam os dados estáveis do passo anterior;
-2. As portas lógicas e somadores da ALU realizam as operações matemáticas nos fios combinacionais;
-3. Antes que a próxima borda do clock chegue, a eletricidade precisa ter terminado de atravessar o caminho crítico dos somadores;
-4. Na borda de subida do ciclo seguinte, os próximos flip-flops fotografam e memorizam os novos resultados.
+O período de clock deve respeitar o tempo de propagação do caminho crítico e os limites do registrador:
 
-Se você tentar acelerar o relógio além da conta (aumentar demais a frequência de clock), a próxima batida chegará antes que os somadores terminem de calcular o vai-um. O registrador fotografará um sinal ainda em transição e o computador travará com cálculos corrompidos.
+$$T_{clock} \ge t_{prop\_ff} + t_{comb\_max} + t_{setup}$$
+
+Onde:
+* $t_{prop\_ff}$: Tempo que o flip-flop leva para emitir o dado estável após a borda do clock.
+* $t_{comb\_max}$: Atraso no caminho crítico dos circuitos combinacionais.
+* $t_{setup}$ (**Setup Time**): Intervalo mínimo em que o dado de entrada deve permanecer estável antes da chegada da próxima borda de subida do clock.
+
+Se a frequência de clock for acelerada além do limite, a próxima borda chegará antes que os somadores terminem de calcular o vai-um. O registrador fotografará um sinal ainda em transição e o computador travará com cálculos corrompidos.
 
 ---
 
-### 0.11 O Banco de Registradores: Como a CPU Guarda Valores de 64 bits
+### 0.11 O Banco de Registradores (Register File)
 
-Agora podemos conectar toda essa física de interruptores e flip-flops à linguagem assembly e ao código que você escreve: **o que é, fisicamente, o registrador `%rax` ou o registrador `x0` de um processador de 64 bits?**
-
-Um registrador de 64 bits não é uma entidade mágica de software. Ele é uma placa de hardware composta por:
-* **64 Flip-Flops D colocados lado a lado em paralelo;**
-* Todas as 64 entradas de relógio conectadas ao mesmo fio mestre de clock;
-* Uma linha de trava de segurança chamada **Habilitação de Escrita (Write Enable - WE)**.
+Fisicamente, um registrador de 64 bits da CPU (como `%rax` no x86-64 ou `x0` no RISC-V) é composto por:
+* **64 Flip-Flops D colocados em paralelo;**
+* Entradas de clock ligadas ao mesmo sinal mestre sincronizado por clock;
+* Uma linha de habilitação de escrita chamada **Write Enable (WE)**.
 
 <RegisterBankCard client:load />
 
-A operação do banco de registradores é direta:
-1. Quando a CPU executa uma instrução que grava um valor em `%rax` (como `movq %rbx, %rax`), o processador coloca os 64 bits calculados nas entradas de dados;
-2. O circuito decodificador da CPU ativa a linha `Write Enable` exclusivamente do registrador `%rax`, mantendo a linha dos outros registradores (`%rbx`, `%rcx`) desligada em zero;
-3. Na próxima borda de subida do clock, os 64 flip-flops de `%rax` fotografam e memorizam simultaneamente os 64 bits novos;
-4. Todos os demais registradores ignoram o pulso do clock e retêm seus dados intactos.
+Quando a CPU grava um valor em `%rax`:
+1. Os 64 bits calculados são roteados até as entradas de dados de `%rax`.
+2. A unidade de controle ativa a linha Write Enable exclusivamente do registrador `%rax`. Os demais registradores no banco de registradores permanecem com Write Enable desativado.
+3. Na borda de subida do clock, os 64 flip-flops de `%rax` fotografam simultaneamente os 64 bits novos.
+4. Os demais registradores ignoram o pulso de clock e conservam seu estado presente intacto.
 
-Colocando 16 ou 32 desses registradores agrupados com chaves multiplexadoras de leitura, temos o **Banco de Registradores (Register File)**, a memória mais veloz e preciosa de todo o computador.
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Memória Elétrica:** nasce do retorno da saída para a entrada (realimentação), travando um estado estável no circuito;
-> 2. **Flip-Flop D:** tira uma fotografia instantânea do dado na borda de subida do clock, impedindo loops descontrolados;
-> 3. **Registrador de 64 bits:** é um agrupamento paralelo de 64 flip-flops fotografando juntos sob o comando do sinal Write Enable.
+O conjunto de 16 ou 32 registradores governados por barramentos multiplexadores de leitura e escrita forma o **Banco de Registradores (Register File)**, a memória mais veloz do processador.
 
 ---
 
-## 5. Síntese do Módulo e Transição para o Módulo 01
+## 5. Síntese e Transição Conceitual
 
-Neste módulo fundamental, construímos a máquina inteira a partir do zero físico:
-1. **Transistor MOSFET:** um interruptor elétrico sem peças móveis acionado por tensão na Porta;
-2. **Tecnologia CMOS:** o par complementar onde a chave NMOS puxa a saída para o terra (0) e a chave PMOS puxa a saída para a energia (1), resultando em consumo de energia estática nulo em repouso;
-3. **Porta NAND e Universalidade:** combinando transistores em série e paralelo, provamos que uma única porta universal constrói qualquer decisão lógica (NOT, AND, OR, XOR);
-4. **Somadores e ALU:** com portas lógicas calculamos somas aritméticas e propagamos o vai-um, agrupando operações sob uma chave seletora Multiplexadora;
-5. **Memória e Registradores:** a realimentação cria a retenção de sinal, o Flip-Flop D sincroniza a captura no ritmo do clock de quartzo, e grupos de 64 flip-flops em paralelo formam os registradores que guardam as variáveis de baixo nível da CPU.
+Neste módulo, estabelecemos a cadeia física e lógica que sustenta a computação:
+1. **Transistor MOSFET:** Uma chave acionada por campo elétrico sem peças móveis, controlada pela tensão aplicada na Porta.
+2. **Tecnologia CMOS:** O par complementar onde o NMOS puxa para o terra (0) e o PMOS puxa para a alimentação (1), com consumo de corrente estática nulo em repouso.
+3. **Universalidade da NAND:** A prova construtiva de que chaves em série e paralelo sintetizam qualquer decisão booleana (NOT, AND, OR, XOR).
+4. **Circuitos Aritméticos:** A combinação de meios somadores e somadores completos em cascata Ripple-Carry para somar bits, culminando na ALU.
+5. **Memória e Sincronismo:** A emergência da retenção biestável por realimentação, a blindagem contra transparência pelo Flip-Flop D Mestre-Escravo e a cadência periódica dada pelo Clock de quartzo.
 
-Agora que você compreende como circuitos físicos geram e preservam níveis elétricos com determinismo mecânico, estamos prontos para a próxima grande pergunta da computação:
+Com os circuitos e registradores operando em harmonia estável, surge a questão central da representação:
 
-**Como o computador pega esses zeros e uns elétricos e representa números negativos, letras, textos e frações decimais sem cometer erros catastróficos de cálculo?**
+**Como mapear números negativos, caracteres, texto e frações decimais sobre palavras finitas de bits sem duplicar circuitos e sem cometer erros catastróficos de arredondamento?**
 
-Essa é a jornada da próxima lição: **Módulo 01: Representação da Informação (Inteiros, Ponto Flutuante e o Desastre do Ariane 5)**.
-
-<div className="my-8">
-  <LogicCircuitsSandbox client:load />
-</div>
+Essa mecânica é o objeto do **Módulo 01: Representação da Informação: Inteiros, Complemento de Dois e Ponto Flutuante IEEE 754**.

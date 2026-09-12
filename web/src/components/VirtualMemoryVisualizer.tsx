@@ -352,7 +352,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-xs font-bold text-graphite mt-1">
               {parsed.signExtHex}
             </span>
-            <span className="block text-[9px] text-smoke mt-0.5">
+            <span className="block text-[10px] text-smoke mt-0.5">
               {parsed.bit47 === 0 ? 'Cópias do bit 47 (=0)' : 'Cópias do bit 47 (=1)'}
             </span>
           </div>
@@ -365,7 +365,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-sm font-bold text-lake-blue mt-1">
               Índice {parsed.pml4Index}
             </span>
-            <span className="block text-[9px] text-smoke mt-0.5">9 bits (0 a 511)</span>
+            <span className="block text-[10px] text-smoke mt-0.5">9 bits (0 a 511)</span>
           </div>
 
           {/* PDPT Index [38:30] */}
@@ -376,7 +376,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-sm font-bold text-off-black mt-1">
               Índice {parsed.pdptIndex}
             </span>
-            <span className="block text-[9px] text-smoke mt-0.5">9 bits (0 a 511)</span>
+            <span className="block text-[10px] text-smoke mt-0.5">9 bits (0 a 511)</span>
           </div>
 
           {/* PD Index [29:21] */}
@@ -387,7 +387,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-sm font-bold text-off-black mt-1">
               Índice {parsed.pdIndex}
             </span>
-            <span className="block text-[9px] text-smoke mt-0.5">9 bits (0 a 511)</span>
+            <span className="block text-[10px] text-smoke mt-0.5">9 bits (0 a 511)</span>
           </div>
 
           {/* PT Index [20:12] */}
@@ -398,7 +398,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-sm font-bold text-coral mt-1">
               Índice {parsed.ptIndex}
             </span>
-            <span className="block text-[9px] text-smoke mt-0.5">9 bits (0 a 511)</span>
+            <span className="block text-[10px] text-smoke mt-0.5">9 bits (0 a 511)</span>
           </div>
 
           {/* Offset [11:0] */}
@@ -409,7 +409,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-sm font-bold text-off-black mt-1">
               Byte {parsed.offset}
             </span>
-            <span className="block text-[9px] text-smoke mt-0.5">12 bits (4096B)</span>
+            <span className="block text-[10px] text-smoke mt-0.5">12 bits (4096B)</span>
           </div>
         </div>
       </div>
@@ -432,7 +432,7 @@ export default function VirtualMemoryVisualizer() {
             <span className={`block text-base font-bold mt-0.5 ${pteFlags.p === 1 ? 'text-mint' : 'text-coral'}`}>
               {pteFlags.p}
             </span>
-            <span className="block text-[9px] text-smoke">{pteFlags.p === 1 ? 'Em RAM Física' : 'Desmapeada / Swap'}</span>
+            <span className="block text-[10px] text-smoke">{pteFlags.p === 1 ? 'Em RAM Física' : 'Desmapeada / Swap'}</span>
           </div>
 
           {/* Bit R/W (Read/Write) */}
@@ -441,7 +441,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-base font-bold text-off-black mt-0.5">
               {pteFlags.rw}
             </span>
-            <span className="block text-[9px] text-smoke">{pteFlags.rw === 1 ? 'Leitura e Escrita' : 'Somente Leitura'}</span>
+            <span className="block text-[10px] text-smoke">{pteFlags.rw === 1 ? 'Leitura e Escrita' : 'Somente Leitura'}</span>
           </div>
 
           {/* Bit U/S (User/Supervisor) */}
@@ -450,7 +450,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-base font-bold text-off-black mt-0.5">
               {pteFlags.us}
             </span>
-            <span className="block text-[9px] text-smoke">{pteFlags.us === 1 ? 'Ring 3 (Usuário)' : 'Ring 0 (Supervisor)'}</span>
+            <span className="block text-[10px] text-smoke">{pteFlags.us === 1 ? 'Ring 3 (Usuário)' : 'Ring 0 (Supervisor)'}</span>
           </div>
 
           {/* Bit A (Accessed) */}
@@ -459,7 +459,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-base font-bold text-off-black mt-0.5">
               {pteFlags.a}
             </span>
-            <span className="block text-[9px] text-smoke">Lida pela CPU</span>
+            <span className="block text-[10px] text-smoke">Lida pela CPU</span>
           </div>
 
           {/* Bit D (Dirty) */}
@@ -468,7 +468,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-base font-bold text-off-black mt-0.5">
               {pteFlags.d}
             </span>
-            <span className="block text-[9px] text-smoke">{pteFlags.d === 1 ? 'Modificada na RAM' : 'Não Alterada'}</span>
+            <span className="block text-[10px] text-smoke">{pteFlags.d === 1 ? 'Modificada na RAM' : 'Não Alterada'}</span>
           </div>
 
           {/* Bit NX (No-Execute) */}
@@ -477,7 +477,7 @@ export default function VirtualMemoryVisualizer() {
             <span className="block text-base font-bold text-off-black mt-0.5">
               {pteFlags.nx}
             </span>
-            <span className="block text-[9px] text-smoke">{pteFlags.nx === 1 ? 'Execução Bloqueada' : 'Código Executável'}</span>
+            <span className="block text-[10px] text-smoke">{pteFlags.nx === 1 ? 'Execução Bloqueada' : 'Código Executável'}</span>
           </div>
         </div>
       </div>

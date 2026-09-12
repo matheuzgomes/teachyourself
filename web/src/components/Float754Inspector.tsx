@@ -189,44 +189,52 @@ export default function Float754Inspector() {
       </div>
 
       {/* 32 Bits Interactive Strip */}
-      <div className="mt-8 space-y-2">
-        {/* Field Labels Header */}
-        <div className="flex items-center justify-between text-[11px] font-mono font-bold text-graphite pb-1">
-          <span className="text-[#b93815]">Sinal (Bit 31)</span>
-          <span className="text-lake-blue">Expoente (Bits 30..23)</span>
-          <span className="text-off-black">Mantissa / Fracao (Bits 22..0)</span>
-        </div>
+      <div className="mt-8 overflow-x-auto pb-2 pt-1">
+        <div className="min-w-[760px] space-y-2">
+          {/* Field Labels Header - aligned in exact 1:8:23 proportion */}
+          <div className="flex gap-1 text-[11px] font-mono font-bold">
+            <div className="flex-[1] min-w-[22px] text-center border-b-2 border-coral pb-1">
+              <span className="text-coral block truncate text-[10px]">S (1b)</span>
+            </div>
+            <div className="flex-[8] text-center border-b-2 border-lake-blue pb-1">
+              <span className="text-lake-blue block truncate">Expoente com Bias (Bits 30..23 &bull; 8 bits)</span>
+            </div>
+            <div className="flex-[23] text-center border-b-2 border-off-black pb-1">
+              <span className="text-off-black block truncate">Mantissa / Fração Normalizada (Bits 22..0 &bull; 23 bits)</span>
+            </div>
+          </div>
 
-        {/* 32 Bits Button Grid */}
-        <div className="flex gap-1 overflow-x-auto pb-2 pt-1">
-          {bits.map((bit, idx) => {
-            const isSign = idx === 0;
-            const isExp = idx >= 1 && idx <= 8;
+          {/* 32 Bits Button Grid */}
+          <div className="flex gap-1">
+            {bits.map((bit, idx) => {
+              const isSign = idx === 0;
+              const isExp = idx >= 1 && idx <= 8;
 
-            let colorClass = 'border-ash bg-white text-graphite hover:border-off-black';
-            if (bit === 1) {
-              if (isSign) {
-                colorClass = 'border-[#ff9473] bg-[#ff9473]/20 text-[#b93815] font-bold shadow-sm';
-              } else if (isExp) {
-                colorClass = 'border-lake-blue bg-lake-blue text-white font-bold shadow-sm';
-              } else {
-                colorClass = 'border-off-black bg-off-black text-white font-bold shadow-sm';
+              let colorClass = 'border-ash bg-white text-graphite hover:border-off-black';
+              if (bit === 1) {
+                if (isSign) {
+                  colorClass = 'border-[#ff9473] bg-[#ff9473]/20 text-[#b93815] font-bold shadow-sm';
+                } else if (isExp) {
+                  colorClass = 'border-lake-blue bg-lake-blue text-white font-bold shadow-sm';
+                } else {
+                  colorClass = 'border-off-black bg-off-black text-white font-bold shadow-sm';
+                }
               }
-            }
 
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => toggleBit(idx)}
-                title={`Bit ${31 - idx} (${isSign ? 'Sinal' : isExp ? 'Expoente' : 'Mantissa'})`}
-                className={`flex-1 min-w-[22px] min-h-[44px] rounded-lg flex flex-col items-center justify-center border text-xs font-mono transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${colorClass}`}
-              >
-                <span className="text-xs">{bit}</span>
-                <span className="text-[8px] opacity-60">{31 - idx}</span>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => toggleBit(idx)}
+                  title={`Bit ${31 - idx} (${isSign ? 'Sinal' : isExp ? 'Expoente' : 'Mantissa'})`}
+                  className={`flex-1 min-w-[22px] min-h-[44px] rounded-lg flex flex-col items-center justify-center border text-xs font-mono transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${colorClass}`}
+                >
+                  <span className="text-xs">{bit}</span>
+                  <span className="text-[10px] opacity-75">{31 - idx}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

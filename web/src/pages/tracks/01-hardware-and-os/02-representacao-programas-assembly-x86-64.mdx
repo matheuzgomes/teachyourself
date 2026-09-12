@@ -15,22 +15,28 @@ import StackFrameVisualizer from '../../../components/StackFrameVisualizer';
 import BufferOverflowPlayground from '../../../components/BufferOverflowPlayground';
 import BuildPipelineVisualizer from '../../../components/BuildPipelineVisualizer';
 import CpuFlagsVisualizer from '../../../components/CpuFlagsVisualizer';
+import IsaLayers from '../../../components/diagrams/IsaLayers.astro';
+import CallSequence from '../../../components/diagrams/CallSequence.astro';
 import Term from '../../../components/Term.astro';
 import PredictionChallenge from '../../../components/PredictionChallenge';
 
+{/* Curriculum Ledger 02: KNOWN=[caixinha, bit, byte, chave, soma, latch, registrador] CURRENT=[instrucao, registrador nomeado, pilha, chamada, flag, salto] DEFERRED=[pipeline, cache, MMU, TLB, perf, GDB, PGO] */}
+
 # Como o Computador Executa Instruções: Assembly x86-64, Registradores e a Pilha
 
-No Módulo 01, investigamos como números e frações ficam armazenados nas células de memória RAM. Vimos que cada byte possui um endereço sequencial e que a representação binária impõe limites estritos de largura para cada tipo de dado.
+> **O que você precisa aqui:** 1. Ter visto que número mora em caixinha de largura fixa. 2. Ter visto que registrador é um grupo de flip-flops com apelido. 3. Aceitar que função é um trecho com nome que recebe valores e devolve resposta. Nada de programar, nada de terminal, nada de compilar.
 
-Mas a memória é puramente passiva: ela guarda bits, mas não realiza cálculos por iniciativa própria. Quem comanda esses dados? Como o código que você escreve em linguagens como C, Rust, Go ou Python faz o processador somar variáveis, tomar decisões em desvios condicionais e saltar entre funções?
+No Módulo 01, investigamos como números e frações ficam armazenados nas células de memória <Term id="RAM">RAM</Term>. Vimos que cada byte possui um endereço sequencial e que a representação binária impõe limites estritos de largura para cada tipo de dado.
 
-Neste módulo, examinamos diretamente o processador em ação. Você vai entender como o compilador traduz as suas funções para o código de máquina da CPU, como os 16 registradores aceleram o processamento sem depender da lentidão da memória RAM, como a pilha de execução organiza chamadas de funções e por que uma única string sem limites de tamanho provocou o colapso de milhares de computadores no ataque histórico do Morris Worm.
+Mas a memória é puramente passiva: ela guarda bits, mas não realiza cálculos por iniciativa própria. Quem comanda esses dados? Como uma ordem escrita em um programa faz o processador somar valores, tomar decisões e saltar entre funções?
+
+Neste módulo, examinamos diretamente o processador em ação. Você vai entender como as funções viram ordens de máquina, como os 16 registradores aceleram o processamento sem depender da lentidão da memória, como a pilha organiza chamadas e por que uma única entrada de texto sem limite de tamanho derrubou milhares de computadores no ataque do Morris Worm. Trechos de código aparecem só como ilustração curta. Você não precisa compilar nem executar nada.
 
 > [!NOTE] Contrato de Aprendizagem do Módulo:
-> * **Pré-requisitos:** [Módulo 01: Representação da Informação: Inteiros e Ponto Flutuante](/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante) (compreensão de bytes, endereços de memória e representação em Complemento de Dois).
-> * **Pergunta de Entrada Concreta:** Como fazer um circuito eletrônico que só manipula bits somar números, tomar decisões condicionais e saltar entre funções de forma previsível e veloz?
-> * **Objetivo de Aprendizagem do Leigo:** Ser capaz de ler um pequeno trecho de assembly x86-64, identificar o papel de cada registrador, rastrear chamadas de função na pilha e prever o resultado de operações aritméticas sem decorar tabelas complexas.
-> * **Critério de Domínio:** Prever com precisão o estado dos registradores e da pilha após um cálculo com chamada de função, e verificar a convenção de chamada inspecionando o assembly gerado pelo compilador GCC.
+> * **Pré-requisitos:** Módulo 01 (bytes, endereços e caixinhas de largura fixa).
+> * **Pergunta de Entrada Concreta:** Como fazer um circuito que só manipula bits somar números, tomar decisões e saltar entre funções de forma previsível e veloz?
+> * **Objetivo de Aprendizagem do Leigo:** Ser capaz de acompanhar uma ordem de máquina curta, dizer onde cada valor mora e prever para onde a execução volta após uma chamada.
+> * **Critério de Domínio:** Explicar com as próprias palavras o papel de cada registrador em uma soma com chamada e por que a pilha cresce para baixo.
 
 ---
 
@@ -39,15 +45,15 @@ Neste módulo, examinamos diretamente o processador em ação. Você vai entende
 Antes de olharmos para comandos em C ou para a sintaxe do Assembly, imagine a CPU como um artesão sentado em uma bancada de trabalho:
 
 1. **A Bancada Rápida (Os 16 Registradores):**
-   Sobre a mesa, o artesão possui exatamente 16 gavetas metálicas ultrarrápidas, numeradas e identificadas por siglas como `%rax`, `%rbx`, `%rcx`, `%rdx`, `%rsi`, `%rdi`, `%rsp`, `%rbp` e `%r8` a `%r15`. Cada gaveta guarda exatamente 64 bits (8 bytes). Pegar ou guardar uma ferramenta em uma dessas gavetas é instantâneo (leva menos de 1 nanossegundo).
-2. **O Armazém Distante (A Memória RAM):**
-   A memória RAM é um depósito gigantesco com bilhões de gavetas, mas fica a centenas de metros de distância. Ir até o armazém buscar um dado custa centenas de ciclos de clock (dezenas de nanossegundos). A regra de ouro da CPU é clara: mantenha o trabalho pesado nas 16 gavetas da mesa; só vá ao armazém quando não houver mais espaço.
-3. **A Lista de Tarefas (O Instruction Pointer `%rip`):**
-   O artesão tem um ponteiro que aponta linha a linha para uma lista de ordens simples gravada na memória: o registrador `%rip` (*Instruction Pointer*). A cada passo, o artesão lê a linha atual, executa a instrução e avança o marcador para a linha seguinte.
+   Sobre a mesa, o artesão possui exatamente 16 gavetas metálicas ultrarrápidas, com apelidos como `%rax`, `%rbx`, `%rcx`, `%rdx`, `%rsi`, `%rdi`, `%rsp`, `%rbp` e `%r8` a `%r15`. Cada gaveta guarda exatamente 64 bits (8 bytes). Pegar ou guardar uma ferramenta em uma dessas gavetas é instantâneo (leva menos de 1 nanossegundo).
+2. **O Armazém Distante (A Memória <Term id="RAM">RAM</Term>):**
+   A memória <Term id="RAM">RAM</Term> é um depósito gigantesco com bilhões de gavetas, mas fica longe e lento. Ir até o armazém buscar um dado custa centenas de ciclos de clock. A regra de ouro da <Term id="CPU">CPU</Term> é clara: mantenha o trabalho pesado nas 16 gavetas da mesa; só vá ao armazém quando não houver mais espaço.
+3. **A Lista de Tarefas (O Ponteiro `%rip`):**
+   O artesão tem um ponteiro que aponta linha a linha para uma lista de ordens simples gravada na memória: o registrador `%rip`. A cada passo, o artesão lê a linha atual, executa a instrução e avança o marcador para a linha seguinte.
 
 Tudo o que um processador moderno faz resume-se a quatro gestos fundamentais:
-* **Copiar dados (`mov`):** Transferir um número da RAM para uma gaveta da mesa, ou de uma gaveta para outra.
-* **Calcular (`add`, `sub`, `imul`):** Passar dois números por um circuito somador (a ALU) e guardar o resultado em uma gaveta.
+* **Copiar dados (`mov`):** Transferir um número da <Term id="RAM">RAM</Term> para uma gaveta da mesa, ou de uma gaveta para outra.
+* **Calcular (`add`, `sub`, `imul`):** Passar dois números por um circuito somador (a <Term id="ALU">ALU</Term>) e guardar o resultado em uma gaveta.
 * **Comparar (`cmp`):** Subtrair dois números em silêncio e ligar ou desligar quatro pequenas lâmpadas de status (as `flags`: resultado deu zero? deu negativo?).
 * **Desviar (`jmp`, `je`, `jne`):** Olhar para as lâmpadas de status e, se a condição for satisfeita, mudar o ponteiro `%rip` para pular para outra linha da lista de tarefas.
 
@@ -55,40 +61,29 @@ Tudo o que um processador moderno faz resume-se a quatro gestos fundamentais:
 
 ## O Mapa da Aula: Do Problema de Engenharia ao Mecanismo no Hardware
 
-Para manter os pés no chão, cada conceito deste módulo parte de uma barreira física de hardware ou de segurança de sistemas:
+Para manter os pés no chão, cada conceito deste módulo parte de uma barreira física real de hardware ou de segurança de sistemas:
 
-1. **O que é uma ISA e a Cadeia de Tradução:** O conceito universal de ISA como contrato hardware-software, as famílias arquiteturais (CISC vs RISC), o estudo de caso principal: x86-64 sob Linux e as regras da sintaxe AT&T.
-2. **A Bancada de Trabalho da CPU (Os 16 Registradores):** Por que ler a memória DRAM custa centenas de ciclos de clock e a regra física do zeramento automático de 32 bits (*zero-extension*).
-3. **A Convenção de Chamada System V AMD64 ABI:** O contrato de passagem de argumentos em registradores e a fronteira entre registradores voláteis (*Caller-Saved*) e preservados (*Callee-Saved*).
-4. **Modos de Endereçamento e a Aritmética do LEAQ:** Como a Unidade de Geração de Endereços (AGU) calcula posições de memória e realiza multiplicações rápidas em um único ciclo de clock sem tocar na RAM.
-5. **Tomada de Decisão (Flags e Controle de Fluxo):** Como o processador avalia condições através dos códigos de condição (`ZF`, `SF`, `OF`, `CF`) e como o compilador transforma estruturas `switch` em tabelas de salto com tempo constante $O(1)$.
-6. **A Pilha de Execução e Stack Frames:** As três leis operacionais da pilha, a mecânica exata do par `callq`/`retq` e o alinhamento obrigatório de 16 bytes.
-7. **Alinhamento de Memória e Layout de Structs:** Por que o barramento de dados exige palavras alinhadas e como ordenar variáveis para eliminar bytes vazios de *padding*.
-8. **O Ataque do Buffer Overflow e Defesas Modernas:** A anatomia do ataque do Morris Worm de 1988 por esmagamento do endereço de retorno na pilha e os três escudos de contenção do sistema operacional (*Stack Canaries*, *ASLR* e *Bit NX*).
-9. **Síntese de Arquitetura e Regras Invariantes:** A matriz de custos de ciclos de clock e as quatro regras invariantes de produção na arquitetura x86-64.
+1. **Como transformar função em ordens de máquina?**
+2. **Onde guardar valores para não ir à memória lenta?**
+3. **Como entregar valores a uma função sem bagunça?**
+4. **Como calcular endereço de vetor sem ler memória?**
+5. **Como decidir e pular sem perder o fio?**
+6. **Como voltar exatamente para quem chamou?**
+7. **Por que a ordem dos campos muda o tamanho?**
+8. **Como uma entrada sem limite derruba a máquina e como barrar?**
+9. **Quanto custa cada gesto e quais regras evitam armadilhas?**
 
 ---
 
 ## 1. O Que É uma ISA e Como o Código Vira Binário
 
-Antes de inspecionarmos instruções específicas de registradores, precisamos compreender a fronteira conceitual mais importante da ciência da computação: a **Arquitetura de Conjunto de Instruções** (*Instruction Set Architecture* ou **ISA**).
+Antes de inspecionarmos instruções específicas de registradores, precisamos compreender a fronteira conceitual mais importante da ciência da computação: a **Arquitetura de Conjunto de Instruções** (*Instruction Set Architecture*, ou **<Term id="ISA">ISA</Term>**: o dicionário de ordens que o processador entende).
 
 ### 1.1 O Conceito Universal de ISA: O Contrato entre Software e Hardware
 
-A ISA não é uma peça física de silício: ela é uma **especificação abstrata**. Ela define o contrato fundamental que separa o mundo dos compiladores e desenvolvedores de software do mundo dos engenheiros de microarquitetura:
+A <Term id="ISA">ISA</Term> não é uma peça física do chip: ela é uma **especificação abstrata**. Ela define o contrato fundamental que separa o mundo de quem escreve programas do mundo de quem projeta circuitos:
 
-```text
-Linguagens de Alto Nível (C, Rust, Go, Python)
-           ↓ (Compilador)
-   CONCEITO UNIVERSAL DE ISA (O Contrato Abstrato)
-   [Registradores, Modos de Endereçamento, Fluxo de Controle, Pilha]
-           ↓
-   MODELOS DE ARQUITETURA (Filosofias de Design)
-   [CISC: Instruções ricas e variáveis | RISC: Load-Store e tamanho fixo]
-           ↓
-   ESTUDO DE CASO PRINCIPAL DA TRILHA
-   [x86-64 AMD64 sob GNU/Linux com System V ABI]
-```
+<IsaLayers />
 
 Toda ISA moderna define quatro elementos universais:
 1. **O Banco de Registradores:** Uma quantidade finita de células de memória de altíssima velocidade internas à CPU;
@@ -96,39 +91,41 @@ Toda ISA moderna define quatro elementos universais:
 3. **Os Modos de Endereçamento:** As regras matemáticas para calcular endereços de memória na RAM;
 4. **O Modelo de Controle e Pilha:** Como desvios condicionais alteram o fluxo e como subrotinas salvam seus contextos de execução.
 
-Historicamente, as ISAs divergiram em duas grandes filosofias:
-* **CISC (Complex Instruction Set Computer):** Instruções de tamanho variável com operações densas que combinam cálculo aritmético e leitura de memória em uma única instrução (filosofia da família x86).
-* **RISC (Reduced Instruction Set Computer):** Instruções de tamanho fixo seguindo uma arquitetura estrita *Load-Store*, onde a aritmética opera exclusivamente entre registradores e o acesso à memória exige instruções explícitas de carga e armazenamento (filosofia das famílias ARM e RISC-V).
+Historicamente, os dicionários de ordens divergiram em duas grandes filosofias:
+* **<Term id="CISC">CISC</Term> (instruções ricas e variáveis):** uma única ordem pode combinar leitura de memória, conta e gravação (filosofia da família x86).
+* **<Term id="RISC">RISC</Term> (instruções simples e fixas):** a conta opera só entre gavetas e a memória exige ordens explícitas de carga e gravação (filosofia das famílias ARM e RISC-V).
 
 > **Plataforma de Referência da Trilha:**  
 > Nesta trilha, nós adotamos o **x86-64 sob o sistema operacional Linux** como nossa plataforma de referência concreta. O x86-64 é a arquitetura dominante em servidores de produção e na infraestrutura de nuvem. Contudo, os princípios fundamentais que você aprenderá: a fronteira de convenção de chamada (*caller-saved* vs *callee-saved*), o mecanismo de pilha de ativação (*stack frame*), a resolução de símbolos na linkedição e o alinhamento de memória: são propriedades universais de qualquer sistema de computação moderno.
 
 ---
 
-### 1.2 Da Linguagem C ao Código de Máquina Executável
+### 1.2 Da Função ao Código de Máquina Executável
 
-A CPU não entende texto em C, Rust ou Python. No nível físico, o hardware possui circuitos decodificadores que reconhecem exclusivamente sequências binárias de bytes, denominadas **Código de Máquina**.
+O processador não entende texto de programa. No nível físico, o hardware possui circuitos que reconhecem exclusivamente sequências binárias de bytes, denominadas **Código de Máquina**.
 
-Como programar decorando números binários é impraticável para a mente humana, os pioneiros da computação criaram o **Assembly**: uma representação simbólica legível por humanos onde cada instrução de máquina recebe uma palavra mnemônica direta (como `movq`, `addq`, `subq`, `cmpq` e `callq`).
+Como decorar números binários é impraticável, os pioneiros criaram o **Assembly**: uma representação legível onde cada ordem de máquina recebe uma palavra curta (como `movq`, `addq`, `subq`, `cmpq` e `callq`).
 
-A transformação de um arquivo em C até um executável em código de máquina segue uma esteira determinística de quatro fases:
+A transformação de uma função até um executável segue uma esteira de quatro fases. Leia como mapa, sem executar nada:
 
 | Etapa | Arquivo Gerado | Ferramenta Responsável | Transformação Realizada |
 | :--- | :--- | :--- | :--- |
-| **1. Código Fonte C** | `soma.c` | Desenvolvedor / Editor | Texto de alto nível contendo tipos, variáveis e estruturas lógicas |
-| **2. Assembly x86-64** | `soma.s` | Compilador (`gcc -Og -S`) | Tradução das estruturas da linguagem para mnemônicos da ISA |
-| **3. Objeto Relocável** | `soma.o` | Montador (`as soma.s -o soma.o`) | Codificação dos mnemônicos em código de máquina binário ELF |
-| **4. Executável ELF** | `programa` | Linker (`ld soma.o -o programa`) | Resolução de símbolos de bibliotecas e amarração final de endereços |
+| **1. Função em texto** | `soma.c` | Editor | Texto com variáveis e lógica |
+| **2. Assembly x86-64** | `soma.s` | Compilador | Tradução para ordens da <Term id="ISA">ISA</Term> |
+| **3. Objeto Relocável** | `soma.o` | Montador | Codificação em binário <Term id="ELF">ELF</Term> (Formato Executável e Ligável) |
+| **4. Executável <Term id="ELF">ELF</Term>** | `programa` | Linker | Amarração final de endereços |
 
 <BuildPipelineVisualizer client:load />
 
-Quando o sistema operacional executa o programa, o componente **Loader** do kernel lê o arquivo executável do disco, projeta suas seções de código e dados na memória virtual do processo e inicializa o ponteiro de instrução da CPU (`%rip`) no ponto de entrada inicial (`_start`), iniciando a decodificação dos bytes da função `main`.
+O diagrama acima é fallback em texto logo abaixo: cada fase recebe o produto da anterior até o executável. Roteiro: 1. Localize a função em texto. 2. Veja as ordens geradas. 3. Confira o binário amarrado. Conclusão em 1 frase: texto vira ordens, ordens viram bytes executáveis.
+
+Quando o sistema operacional executa o programa, o componente **Loader** do kernel lê o arquivo do disco, projeta código e dados na memória do processo e aponta o `%rip` para o início, começando a decodificação.
 
 ---
 
 ### 1.3 A Sintaxe AT&T vs Sintaxe Intel
 
-No ecossistema GNU/Linux e nas ferramentas padrão do GCC, a convenção padrão adotada é a **Sintaxe AT&T**.
+No Linux com GCC, a convenção padrão é a **Sintaxe AT&T**. Leia as 4 regras uma vez e consulte depois, sem decorar.
 
 Essa convenção possui quatro regras operacionais estritas:
 
@@ -149,61 +146,54 @@ Por exemplo, a instrução `movb` move 1 byte, enquanto `movq` move 8 bytes inte
 
 ---
 
-### 1.4 Anatomia do Binário ELF, Relocação e Código Independente de Posição (PIC)
+### 1.4 Anatomia do Binário <Term id="ELF">ELF</Term>: Código, Dados e Símbolos
 
-No ecossistema Linux e sistemas Unix modernos, o formato padrão adotado para arquivos objeto e executáveis é o formato ELF (Executable and Linkable Format).
-Um arquivo binário ELF possui uma estrutura interna organizada em seções com permissões e propósitos específicos:
+No Linux, o formato padrão de executáveis é o <Term id="ELF">ELF</Term> (Formato Executável e Ligável).
+Um binário <Term id="ELF">ELF</Term> organiza o programa em seções com propósitos específicos:
 
-1. **A seção `.text`:** Contém as instruções em código de máquina executável da aplicação.
-2. **A seção `.rodata`:** Armazena dados estáticos somente leitura como strings literais e tabelas de salto.
-3. **A seção `.data`:** Contém variáveis globais e estáticas explicitamente inicializadas.
-4. **A seção `.bss`:** Reserva espaço para variáveis globais e estáticas não-inicializadas ou inicializadas com zero. Essa seção ocupa zero bytes no arquivo de disco: o kernel apenas aloca páginas zeradas sob demanda quando o processo é carregado na memória RAM.
-5. **A tabela de símbolos `.symtab`:** Armazena os nomes e endereços de funções e variáveis globais, essencial para que o ligador resolva dependências entre múltiplos módulos compilados.
+1. **A seção `.text`:** Contém as ordens em código de máquina do programa.
+2. **A seção `.rodata`:** Guarda dados somente leitura como textos e tabelas.
+3. **A seção `.data`:** Contém variáveis globais com valor inicial.
+4. **A seção `.bss`:** Reserva espaço para variáveis zeradas. Ocupa zero bytes no disco: o kernel aloca páginas zeradas na carga.
+5. **A tabela de símbolos `.symtab`:** Guarda nomes e endereços para o ligador juntar módulos.
 
-#### Código Independente de Posição (PIC) e Bibliotecas Compartilhadas (`.so`)
-Bibliotecas compartilhadas `.so` precisam ser carregadas em endereços virtuais variáveis sob ASLR.
-Para viabilizar o compartilhamento de código entre processos sem duplicar memória física, o compilador gera Código Independente de Posição (PIC).
-Na arquitetura x86-64, o código PIC acessa dados internos através de endereçamento relativo ao registrador RIP.
-Para referenciar uma variável estática, a instrução adiciona um deslocamento fixo ao ponteiro de instrução atual:
-```asm
-movq 0x2005(%rip), %rax   # Lê a variável a 0x2005 bytes de distância da instrução atual
-```
-Como a distância entre as seções é fixa em tempo de compilação, o código executa corretamente em qualquer endereço virtual.
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. **Dicionário antes de ordem:** <Term id="ISA">ISA</Term> é o contrato, Assembly é a escrita legível dele;
+> 2. **Texto vira bytes em 4 fases:** função, ordens, objeto e executável <Term id="ELF">ELF</Term>;
+> 3. **Binário tem gavetas:** código, dados lidos, dados gravados e tabela de nomes.
 
-#### Ligação Dinâmica e Resolução Preguiçosa: A Tabela GOT e a Tabela PLT
-Para funções de bibliotecas externas (como `printf()` da `libc.so`), o compilador gera a tabela GOT (Global Offset Table) e a tabela PLT (Procedure Linkage Table).
-O mecanismo de ligação preguiçosa (lazy binding) resolve o símbolo apenas na primeira execução da chamada:
-* A instrução do programa salta para o trampolim correspondente na tabela PLT.
-* O trampolim da PLT consulta a entrada correspondente na tabela GOT.
-* Na primeira chamada, a tabela GOT aponta de volta para o resolvedor na PLT, que invoca o ligador dinâmico do sistema operacional (`ld.so`).
-* O ligador dinâmico `ld.so` localiza a função na biblioteca e sobrescreve a entrada na tabela GOT com o endereço físico resolvido.
-* Nas chamadas subsequentes, o salto via tabela PLT lê o endereço resolvido da tabela GOT diretamente, eliminando qualquer sobrecarga adicional.
+<DeepDive title="Detalhe de implementação: PIC, GOT e PLT">
+Bibliotecas compartilhadas precisam carregar em endereços variáveis. O compilador gera código independente de posição com acesso relativo ao `%rip`, e funções externas passam por duas tabelas: <Term id="PLT">PLT</Term> (Tabela de Ligação, o trampolim) e <Term id="GOT">GOT</Term> (Tabela de Deslocamentos Globais, o endereço resolvido), com resolução preguiçosa na primeira chamada pelo ligador dinâmico. Nada aqui muda o modelo da Trilha 1, só detalha como o endereço final é amarrado.
+</DeepDive>
 
 ---
 
-## 2. A Bancada de Trabalho: Os 16 Registradores da CPU x86-64
+## 2. A Bancada de Trabalho: Os 16 Registradores da <Term id="CPU">CPU</Term> x86-64
 
-A memória RAM é externa ao encapsulamento do processador. Toda vez que a CPU precisa buscar ou gravar uma variável na memória DRAM através do barramento, ela perde entre 150 e 250 ciclos de clock esperando os elétrons percorrerem os circuitos da placa-mãe.
+A memória <Term id="RAM">RAM</Term> é externa ao processador. Toda vez que a <Term id="CPU">CPU</Term> precisa buscar ou gravar uma variável na memória <Term id="DRAM">DRAM</Term> pelo barramento, ela perde centenas de ciclos esperando os elétrons percorrerem a placa.
 
-Se a CPU dependesse da memória RAM para cada cálculo aritmético simples, ela passaria mais de noventa por cento do seu tempo ociosa. Esse abismo de velocidade entre a velocidade de cálculo do núcleo e a latência de barramento da memória é conhecido na engenharia de sistemas como a **Barreira da Memória** (*Memory Wall*).
+Se a <Term id="CPU">CPU</Term> dependesse da memória para cada conta simples, ela passaria quase todo o tempo ociosa. Esse abismo entre cálculo rápido e barramento lento é a **Barreira da Memória** (*Memory Wall*).
 
-Para trabalhar na velocidade máxima de um cálculo por pulso de clock, o processador possui uma bancada de trabalho ultrarrápida integrada diretamente ao núcleo da CPU: os **16 Registradores de Propósito Geral de 64 bits**.
+Para trabalhar a 1 cálculo por pulso, o processador tem uma bancada ultrarrápida dentro do núcleo: os **16 Registradores de Propósito Geral de 64 bits**.
 
-Registradores são pequenas células de memória estática construídas com flip-flops de alta velocidade localizados a poucos micrômetros da Unidade Lógica e Aritmética (ALU). A leitura e a escrita ocorrem em zero a um ciclo de clock.
+Registradores são células construídas com flip-flops velozes a micrômetros da <Term id="ALU">ALU</Term>. Leitura e escrita levem de zero a um ciclo.
 
 <ObservationMission
   title="O Inspetor dos 16 Registradores x86-64"
-  action="Clique nos botões dos registradores (como %rax, %rdi, %rsp) para inspecionar suas fatias de 32, 16 e 8 bits e seu papel na convenção de chamada (ABI)."
+  action="Clique nos botões dos registradores (como %rax, %rdi, %rsp) para inspecionar suas fatias de 32, 16 e 8 bits e seu papel na convenção de chamada."
   takeaway="A CPU x86-64 possui 16 registradores de 64 bits. Cada um deles pode ser acessado em fatias menores para manter compatibilidade histórica com programas de 32 e 16 bits."
 >
   <RegisterInspector client:load />
 </ObservationMission>
 
+Roteiro: 1. Abra `%rax` e veja as fatias de 32, 16 e 8 bits. 2. Confira `%rdi` marcado como 1º argumento. 3. Confira `%rsp` marcado como topo da pilha. Conclusão em 1 frase: nome diz o tamanho, papel diz o uso na chamada.
+
 ---
 
 ### 2.1 A Tabela dos 16 Registradores e Suas Fatias Históricas
 
-Para manter compatibilidade retroativa com códigos legados de 16 bits (do antigo processador 8086 de 1978) e de 32 bits (do 80386 de 1985), cada registrador de 64 bits pode ser acessado em fatias menores de submúltiplos:
+Na primeira leitura, acompanhe só 4 nomes: `%rdi` e `%rsi` levam argumentos, `%rax` devolve a resposta, `%rsp` marca o topo da pilha. O resto da tabela volta quando cada regra pedir. Cada registrador de 64 bits pode ser acessado em fatias menores por compatibilidade com programas antigos:
 
 | Registrador (64 bits) | Fatia de 32 bits | Fatia de 16 bits | Fatia de 8 bits | Papel na Convenção System V AMD64 | Preservação |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -242,15 +232,15 @@ movl $0x12345678, %eax
 
 o valor resultante em `%rax` não será `0xFFFFFFFF12345678`: ele se tornará obrigatoriamente **`0x0000000012345678`**!
 
-**Por Que os Arquitetos da AMD Criaram Essa Regra no Padrão AMD64?**
-A causa raiz reside na mecânica dos processadores superescalares modernos com execução fora de ordem (*Out-of-Order Execution*).
+**Por que zerar em vez de preservar?**
+Se a gravação de 32 bits precisasse manter a metade superior intacta, a nova ordem dependeria do valor antigo gravado, e o hardware esperaria a ordem anterior terminar para fundir as metades.
 
-Se a gravação de 32 bits em `%eax` precisasse manter os 32 bits superiores de `%rax` intactos, a nova instrução dependeria formalmente do valor que estava gravado no registrador antes da execução (uma dependência de dados falsa de leitura-após-escrita sobre a metade superior). O circuito de hardware seria obrigado a esperar a instrução anterior terminar para fundir a metade antiga com a metade nova.
-
-Ao definir que qualquer instrução de 32 bits apaga e zera os 32 bits superiores, a instrução redefine o registrador por completo. O motor de **renomeação de registradores** (*Register Renaming*) da CPU pode mapear o `%rax` lógico imediatamente para um registrador físico novo e limpo, eliminando dependências falsas e permitindo que instruções vizinhas executem em paralelo sem conflito.
+<DeepDive title="Detalhe de implementação: renomeação e execução fora de ordem">
+Ao zerar a metade superior, a instrução redefine o registrador por completo. O motor de renomeação mapeia o nome lógico para um registrador físico novo e limpo, eliminando a dependência falsa e liberando paralelismo entre ordens vizinhas, inclusive fora de ordem. Nada aqui muda a regra da Trilha 1, só detalha o ganho interno.
+</DeepDive>
 
 > [!IMPORTANT]
-> **REGRA CENTRAL (Core Principle):** Na arquitetura x86-64, qualquer instrução cujo registrador de destino seja de 32 bits (como `%eax`, `%ebx`, `%edi`) zera compulsoriamente os 32 bits superiores do registrador correspondente de 64 bits (`%rax`, `%rbx`, `%rdi`). Essa regra física de circuito elimina dependências falsas de dados, permitindo que o motor de renomeação de registradores da CPU execute instruções vizinhas em paralelo.
+> **REGRA CENTRAL (Core Principle):** Na arquitetura x86-64, qualquer instrução cujo registrador de destino seja de 32 bits (como `%eax`, `%ebx`, `%edi`) zera compulsoriamente os 32 bits superiores do registrador correspondente de 64 bits (`%rax`, `%rbx`, `%rdi`). Essa regra física de circuito elimina dependências falsas de dados; com isso, o motor de renomeação de registradores da CPU pode despachar instruções vizinhas em paralelo.
 
 <PredictionChallenge
   client:load
@@ -278,17 +268,17 @@ Ao definir que qualquer instrução de 32 bits apaga e zera os 32 bits superiore
 
 ---
 
-## 3. A Convenção de Chamada System V AMD64 ABI
+## 3. A Convenção de Chamada System V AMD64 <Term id="ABI">ABI</Term>
 
-Quando o seu código em C executa uma chamada de função como `calcular(10, 20, 30)`, como os números são entregues à função de destino?
+Quando um programa chama uma função com valores, como os números chegam ao destino?
 
-Nos sistemas operacionais da família Unix (Linux, macOS, FreeBSD), a norma oficial que rege essa comunicação é a especificação **System V AMD64 ABI** (*Application Binary Interface*).
+Nos sistemas Unix, a norma que rege essa entrega é a **System V AMD64 <Term id="ABI">ABI</Term>** (*Application Binary Interface*, ou Interface Binária de Aplicação: o combinado de como funções trocam valores no binário).
 
 A convenção estabelece três regras contratuais invioláveis:
 
 ### 3.1 Passagem de Argumentos em Registradores
 
-Em vez de empilhar todos os parâmetros na memória RAM (como faziam os computadores lentos de 32 bits do passado), a ABI System V determina que os seis primeiros argumentos inteiros ou ponteiros sejam transmitidos em registradores dedicados:
+Em vez de empilhar todos os valores na memória (como faziam computadores lentos de 32 bits do passado), a <Term id="ABI">ABI</Term> System V determina que os seis primeiros valores inteiros ou ponteiros viajem em registradores dedicados:
 
 1. **1º Argumento:** Registrador `%rdi`
 2. **2º Argumento:** Registrador `%rsi`
@@ -307,7 +297,7 @@ O valor de retorno de qualquer função (com largura de até 64 bits) é colocad
 
 Imagine que uma função chamada `processar_dados()` esteja usando o registrador `%rbx` para guardar uma conta importante. No meio do caminho, ela chama uma função auxiliar chamada `limpar_buffer()`. Se `limpar_buffer()` sobrescrever `%rbx`, o cálculo de `processar_dados()` seria destruído silenciosamente!
 
-Para evitar que funções colidam e destruam variáveis alheias, a ABI divide os 16 registradores em duas categorias:
+Para evitar que funções colidam e destruam valores alheios, a <Term id="ABI">ABI</Term> divide os 16 registradores em duas categorias:
 
 1. **Caller-Saved (Salvos pelo Chamador / Voláteis):**
    * Registradores: `%rax`, `%rdi`, `%rsi`, `%rdx`, `%rcx`, `%r8`, `%r9`, `%r10`, `%r11`.
@@ -318,11 +308,17 @@ Para evitar que funções colidam e destruam variáveis alheias, a ABI divide os
 
 ---
 
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. **Gaveta tem nome e papel:** `%rdi` leva valor, `%rax` devolve resposta, `%rsp` marca o topo;
+> 2. **32 zera a metade de cima:** gravar na fatia de 32 apaga os bits 63 a 32;
+> 3. **Chamada tem combinado:** 6 primeiros valores em registradores, resto na pilha.
+
 ## 4. Modos de Endereçamento e a Aritmética do LEAQ
 
-Quando um programa em C acessa um elemento de um vetor (`array[i]`) ou um campo de uma estrutura, como o processador calcula a posição física daquele byte na memória RAM?
+Quando um programa acessa um elemento de um vetor (`array[i]`) ou um campo de uma estrutura, como o processador calcula a posição daquele byte na memória?
 
-No circuito interno da CPU existe uma unidade dedicada chamada **AGU** (*Address Generation Unit*, ou Unidade de Geração de Endereços). Ela calcula o endereço físico aplicando em hardware a **fórmula universal de endereçamento**:
+No circuito interno existe uma unidade dedicada que calcula endereços em hardware pela **fórmula universal de endereçamento**:
 
 $$\mathbf{\text{Endereço Efetivo} = \text{Imm} + \text{Base} + (\text{Index} \times \text{Scale})}$$
 
@@ -331,11 +327,11 @@ $$\mathbf{\text{Endereço Efetivo} = \text{Imm} + \text{Base} + (\text{Index} \t
 * **Index:** Qualquer registrador de propósito geral que guarde o índice do elemento desejado (por exemplo: `%rcx`).
 * **Scale (Escala física de hardware):** O tamanho de cada elemento em bytes. Devido à fiação dos circuitos do somador da AGU, o fator de escala só pode assumir quatro valores: **1, 2, 4 ou 8**.
 
-Note como esses quatro números coincidem exatamente com o tamanho dos tipos primitivos da linguagem C:
-* Escala **1**: para arrays de `char` ou `int8_t` (1 byte por elemento);
-* Escala **2**: para arrays de `short` ou `int16_t` (2 bytes por elemento);
-* Escala **4**: para arrays de `int` ou `int32_t` (4 bytes por elemento);
-* Escala **8**: para arrays de ponteiros, `int64_t` ou `double` (8 bytes por elemento).
+Note como esses quatro números coincidem com o tamanho dos tipos primitivos:
+* Escala **1**: para elementos de 1 byte;
+* Escala **2**: para elementos de 2 bytes;
+* Escala **4**: para elementos de 4 bytes;
+* Escala **8**: para elementos de 8 bytes.
 
 <ObservationMission
   title="Calculadora de Endereçamento e a Aritmética do LEAQ"
@@ -344,6 +340,8 @@ Note como esses quatro números coincidem exatamente com o tamanho dos tipos pri
 >
   <AddressingModeVisualizer client:load />
 </ObservationMission>
+
+Roteiro: 1. Monte base mais índice vezes escala e confira o endereço. 2. Troque para `leaq` e veja o mesmo cálculo sem leitura. 3. Multiplique por 5 com 1 ordem e confira. Conclusão em 1 frase: o somador de endereços calcula sem buscar.
 
 ---
 
@@ -355,9 +353,9 @@ A instrução `leaq` (*Load Effective Address Quadword*) foi projetada originalm
 leaq (%rdi, %rsi, 4), %rax   # %rax recebe o ponteiro: %rdi + %rsi * 4
 ```
 
-Contudo, os engenheiros de compiladores perceberam algo fascinante: **o somador de endereços da AGU opera de forma totalmente independente da ALU e calcula somas e multiplicações por 2, 3, 4, 5, 8 e 9 em um único ciclo de clock sem tocar na memória RAM**!
+Contudo, os compiladores perceberam algo fascinante: **o somador de endereços opera de forma independente da <Term id="ALU">ALU</Term> e calcula somas e multiplicações por 2, 3, 4, 5, 8 e 9 em um único ciclo sem tocar na memória**!
 
-Quando você pede para o GCC compilar uma multiplicação por constantes simples, ele frequentemente descarta a instrução tradicional de multiplicação (`imulq`, que pode exigir 3 ciclos de clock) e utiliza o `leaq` para fazer matemática pura em 1 ciclo:
+Quando o compilador encontra multiplicação por constante simples, ele frequentemente troca a ordem de multiplicar (que pode exigir 3 ciclos) pelo `leaq` de 1 ciclo. Leia os exemplos como ilustração, sem executar:
 
 ```asm
 # Multiplicar x por 3 (x + 2*x):
@@ -378,40 +376,37 @@ Essa versatilidade transforma o somador de endereços em um acelerador aritméti
 
 ---
 
-## 5. Como a CPU Toma Decisões: Flags e Controle de Fluxo
+## 5. Como a <Term id="CPU">CPU</Term> Toma Decisões: Flags e Controle de Fluxo
 
-Como o processador executa blocos condicionais como `if (x > 10)`, laços `while` e instruções `switch` se os circuitos digitais só sabem avançar sequencialmente linha após linha?
+Como o processador executa blocos condicionais como `se x maior que 10`, repetições e escolhas múltiplas se os circuitos só avançam linha após linha?
 
 A tomada de decisão na CPU x86-64 é executada deterministicamente em **duas fases separadas**:
 
-1. **Fase 1 (Operação Aritmética ou de Comparação):** A CPU executa uma instrução que atualiza automaticamente um grupo de quatro bits de estado chamados **Condition Codes** (ou Flags), gravados no registrador especial de controle `RFLAGS`.
-2. **Fase 2 (Instrução de Salto Condicional):** Uma instrução de desvio condicional (`j` seguido da condição) lê a combinação lógica dessas flags e decide se altera o ponteiro de instrução `%rip` para um novo endereço ou se continua a execução na linha subsequente.
+1. **Fase 1 (Conta ou comparação):** a <Term id="CPU">CPU</Term> executa uma ordem que atualiza quatro lâmpadas de status chamadas **Condition Codes** (ou Flags), no registrador de controle `RFLAGS`.
+2. **Fase 2 (Pulo condicional):** uma ordem de desvio (`j` mais condição) lê essas lâmpadas e decide se muda o `%rip` para outro endereço ou segue na linha seguinte.
 
 ---
 
 ### 5.1 Os Quatro Códigos de Condição Fundamentais
 
-| Flag de Condição | Nome Formal | Mecanismo de Acionamento Físico na ALU |
+| Flag de Condição | Nome Formal | Quando acende na <Term id="ALU">ALU</Term> |
 | :--- | :--- | :--- |
-| **`ZF`** | Zero Flag | Ativado (`ZF = 1`) se o resultado da última operação for exatamente ZERO. |
-| **`SF`** | Sign Flag | Ativado (`SF = 1`) se o bit mais à esquerda do resultado for 1 (número NEGATIVO). |
-| **`OF`** | Overflow Flag | Ativado (`OF = 1`) se ocorreu estouro aritmético em Complemento de Dois (sinal invertido). |
-| **`CF`** | Carry Flag | Ativado (`CF = 1`) se ocorreu transporte elétrico para fora do bit mais significativo (overflow sem sinal). |
+| **`ZF`** | Zero Flag | Acende (`ZF = 1`) se o resultado for exatamente ZERO. |
+| **`SF`** | Sign Flag | Acende (`SF = 1`) se o bit à esquerda for 1 (NEGATIVO). |
+| **`OF`** | Overflow Flag | Acende (`OF = 1`) se houve estouro com sinal (sinal invertido). |
+| **`CF`** | Carry Flag | Acende (`CF = 1`) se houve transporte para fora do último bit. |
 
 <CpuFlagsVisualizer client:load />
+
+Roteiro: 1. Some 5 mais 5 e veja nenhuma lâmpada de zero. 2. Subtraia iguais e veja `ZF` acender. 3. Estoure o sinal e veja `OF` acender. Conclusão em 1 frase: conta acende lâmpada, pulo lê lâmpada.
 
 ---
 
 ### 5.2 A Semântica de CMPQ e Saltos Condicionais
 
-A instrução padrão de comparação é `cmpq S2, S1`.
+A ordem padrão de comparação é `cmpq S2, S1`. Ela subtrai por dentro ($S1 - S2$), acende as lâmpadas e **joga o número fora**, mantendo os valores intactos. Leia o exemplo resolvido como ilustração.
 
-Preste atenção na mecânica interna de `cmpq`:
-* Ela calcula internamente a subtração aritmética **$S1 - S2$**;
-* Atualiza as flags de condição `ZF`, `SF`, `OF` e `CF` com base no resultado dessa subtração;
-* **Descarta o resultado numérico da subtração**, mantendo os operandos $S1$ e $S2$ intactos!
-
-Vejamos como as instruções de salto condicional avaliam essas flags:
+Vejamos como as ordens de salto avaliam essas lâmpadas:
 
 | Instrução de Salto | Significado Lógico | Condição Booleana das Flags | Interpretação Prática |
 | :--- | :--- | :--- | :--- |
@@ -423,12 +418,12 @@ Vejamos como as instruções de salto condicional avaliam essas flags:
 | **`jb`** (Jump Below / Sem Sinal) | Pula se $S1 < S2$ (unsigned) | `CF = 1` | Exigiu transporte elétrico no somador |
 
 #### Exemplo Resolvido Passo a Passo:
-Considere a seguinte sequência em assembly x86-64:
+Considere a sequência (leitura, sem executar):
 
 ```asm
 movq $5, %rdi        # %rdi recebe 5
 cmpq $10, %rdi       # Compara 5 com 10
-jg destino           # Salta para 'destino' se %rdi > 10
+jg destino           # Pula se %rdi > 10
 ```
 
 1. A instrução `cmpq $10, %rdi` executa internamente a subtração `%rdi - $10`, ou seja: $5 - 10 = -5$.
@@ -451,7 +446,7 @@ jg destino           # Salta para 'destino' se %rdi > 10
     {
       id: "A",
       label: "A CPU compara os bits de %rax com 10 por igualdade booleana bit a bit e, se todos forem iguais, salta sem alterar nenhuma flag.",
-      explanation: "Incorreto. A CPU não possui comparador dedicado de igualdade: ela utiliza a própria ALU para efetuar a subtração e atualiza compulsoriamente os códigos de condição (flags)."
+      explanation: "Incorreto. A CPU não possui comparador dedicado de igualdade: ela utiliza a própria ALU para subtrair os operandos e atualiza compulsoriamente os códigos de condição (flags)."
     },
     {
       id: "B",
@@ -468,20 +463,14 @@ jg destino           # Salta para 'destino' se %rdi > 10
 
 ---
 
-### 5.3 Tabelas de Salto (Jump Tables): Como o Switch Vira Tempo Constante O(1)
+### 5.3 Tabelas de Salto: Como a Escolha Vira Tempo Constante
 
-Quando você escreve uma cadeia longa de dez blocos `if-else if` em C, o processador é forçado a testar cada condição sequencialmente, custando tempo proporcional ao número de casos testados ($O(N)$).
+Quando um programa testa dez condições em cadeia, o processador prova uma por uma, com custo proporcional ao número de casos.
 
-No entanto, quando você utiliza um bloco `switch` em C com valores inteiros contíguos ou próximos (por exemplo: casos de 0 a 6), o compilador emprega uma técnica de engenharia de software de altíssimo desempenho: a **Jump Table** (Tabela de Salto).
-
-O compilador constrói essa otimização em três etapas mecânicas:
-1. **O Vetor de Ponteiros:** O compilador cria um array estático na seção de código ou de dados somente leitura (`.rodata`) contendo os endereços de memória de cada rótulo de código correspondente aos casos: `.quad .Lcase0, .quad .Lcase1, .quad .Lcase2...`.
-2. **A Validação de Limites:** A CPU realiza uma única comparação (`cmpq $6, %rdi`) e um salto condicional para tratar valores que caiam fora da faixa válida (o bloco `default`).
-3. **O Salto Indireto Indexado:** Para valores válidos, a CPU executa um salto indireto indexado em hardware:
-   ```asm
-   jmp *.Ljump_table(,%rdi,8)
-   ```
-   A CPU calcula o endereço do ponteiro de código multiplicando o índice por 8, busca o endereço da instrução e desvia o `%rip` diretamente para o bloco correto em **tempo constante $O(1)$**, sem importar se o switch possui 5 ou 500 cases!
+No entanto, com valores inteiros próximos (por exemplo: casos de 0 a 6), o compilador monta uma **Jump Table** (Tabela de Pulos): um vetor com o endereço de cada caso, mais 1 comparação de limite e 1 pulo indexado, em **tempo constante**, tenha 5 ou 500 casos. Leia como ilustração.
+1. **O Vetor de Ponteiros:** vetor estático com o endereço de cada caso.
+2. **A Validação de Limites:** 1 comparação trata o valor fora da faixa.
+3. **O Pulo Indexado:** 1 pulo calculado alcança o caso direto, sem corrente de testes.
 
 ---
 
@@ -491,8 +480,8 @@ Como o computador sabe exatamente para onde voltar quando uma função conclui a
 
 A resposta reside na **Pilha de Execução** (*Call Stack*). No x86-64, a pilha possui três invariantes fundamentais de arquitetura:
 
-1. **A Pilha Cresce Para Baixo:** Diferente de uma pilha de pratos no mundo real, a pilha de execução na memória virtual cresce em direção a endereços menores (de endereços altos como `0x7FFFFFFFE000` em direção a endereços menores).
-2. **O Registrador `%rsp` Marca o Topo:** O registrador `%rsp` (*Stack Pointer*) armazena o endereço do byte mais baixo atualmente alocado na pilha.
+1. **A Pilha Cresce Para Baixo:** diferente de pratos empilhados, a pilha na memória cresce em direção a endereços menores.
+2. **O Registrador `%rsp` Marca o Topo:** o `%rsp` guarda o endereço do byte mais baixo atualmente alocado.
 3. **Alocação é Subtração:** Alocar espaço na pilha significa simplesmente subtrair de `%rsp` (`subq $32, %rsp`). Liberar memória alocada significa somar a `%rsp` (`addq $32, %rsp`).
 
 ---
@@ -501,22 +490,7 @@ A resposta reside na **Pilha de Execução** (*Call Stack*). No x86-64, a pilha 
 
 O fluxo de chamada e retorno entre funções funciona como uma coreografia mecânica entre os registradores `%rsp` e `%rip`:
 
-```text
-Chamador (Caller)                                  Função Chamada (Callee)
-       │                                                      ▲
-       ▼                                                      │
-1. Grava argumentos em %rdi, %rsi...                          │
-2. Executa 'callq funcao'                                     │
-   ├── Subtrai 8 de %rsp (%rsp = %rsp - 8)                    │
-   ├── Grava o Endereço de Retorno na pilha                   │
-   └── Carrega o endereço da função em %rip ──► 3. Aloca variáveis locais (subq $16, %rsp)
-                                                4. Executa cálculos e guarda retorno em %rax
-                                                5. Libera variáveis locais (addq $16, %rsp)
-                                                6. Executa 'retq'
-                                                   ├── Lê Endereço de Retorno do topo da pilha
-                                                   ├── Soma 8 a %rsp (%rsp = %rsp + 8)
-                                                   └── Carrega Endereço de Retorno em %rip ───┘
-```
+<CallSequence />
 
 1. **A Execução de `callq funcao`:**
    * A CPU decrementa `%rsp` em 8 bytes (`%rsp = %rsp - 8`);
@@ -535,6 +509,8 @@ Chamador (Caller)                                  Função Chamada (Callee)
 >
   <StackFrameVisualizer client:load />
 </ObservationMission>
+
+Roteiro: 1. Passe os valores e veja as gavetas ocupadas. 2. Execute `call` e veja o retorno empilhado com `%rsp` menor. 3. Execute `ret` e veja o `%rip` retomar o chamador. Conclusão em 1 frase: chamar guarda onde voltar, retornar volta.
 
 > [!IMPORTANT]
 > **REGRA CENTRAL (Core Principle):** A pilha de execução na arquitetura x86-64 cresce para baixo (em direção a endereços menores de memória). A instrução `callq` decrementa o ponteiro da pilha `%rsp` em 8 bytes e grava o endereço de retorno na memória. A instrução `retq` desempilha esse endereço para o ponteiro de instruções `%rip` e incrementa `%rsp` em 8 bytes, retomando o chamador com simetria mecânica absoluta.
@@ -567,40 +543,41 @@ Chamador (Caller)                                  Função Chamada (Callee)
 
 ### 6.2 O Alinhamento de 16 Bytes da Pilha
 
-A especificação System V AMD64 ABI impõe uma regra rígida de alinhamento para chamadas de função: **no momento em que uma instrução `callq` é executada, o valor de `%rsp` deve ser obrigatoriamente um múltiplo de 16 bytes**.
+A <Term id="ABI">ABI</Term> System V impõe uma regra de alinhamento: **quando `callq` executa, o `%rsp` deve ser múltiplo de 16 bytes**.
 
-Como o comando `callq` empilha 8 bytes de endereço de retorno, no primeiro ciclo dentro da função chamada `%rsp` estará desalinhado por 8 bytes (terminando em `8` em vez de `0`). Por essa razão, os compiladores sempre iniciam funções ajustando `%rsp` com subtrações de múltiplos ímpares de 8 (`subq $8, %rsp`, `subq $24, %rsp`, etc.) antes de fazer novas chamadas. Esse alinhamento garante que instruções vetoriais SSE/AVX (que manipulam blocos de 128 e 256 bits) possam carregar dados da pilha sem disparar falhas de proteção de hardware.
+Como o `callq` empilha 8 bytes de retorno, dentro da função o `%rsp` chega desalinhado por 8. Por isso o compilador ajusta o `%rsp` com subtrações antes de novas chamadas. Esse alinhamento permite que ordens vetoriais que movem blocos de 128 e 256 bits carreguem da pilha sem falha de hardware.
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. **Endereço se calcula:** base mais índice vezes escala, sem ler memória;
+> 2. **Lâmpada decide pulo:** conta acende `ZF SF OF CF`, salto lê e desvia `%rip`;
+> 3. **Pilha guarda a volta:** `call` empilha retorno e desce, `ret` desempilha e retoma.
 
 ---
 
-## 7. Alinhamento de Memória: Por Que a Ordem dos Campos da Struct Importa?
+## 7. Alinhamento de Memória: Por Que a Ordem dos Campos Importa?
 
-Você já declarou uma `struct` em linguagem C e descobriu que ela consome substancialmente mais memória RAM do que a soma matemática das suas variáveis?
+Você já viu uma estrutura com 4 campos pequenos ocupar bem mais memória do que a soma dos campos? Leia o exemplo como ilustração, sem compilar.
 
-Analise este exemplo real em uma máquina de 64 bits:
+Analise este exemplo em uma máquina de 64 bits:
 
 ```c
 struct Ineficiente {
-    char a;      // 1 byte
-    int32_t b;   // 4 bytes
-    char c;      // 1 byte
-    int64_t d;   // 8 bytes
+  char a; int32_t b; char c; int64_t d;
 };
 ```
 
-A soma matemática pura das variáveis é: $1 + 4 + 1 + 8 = \mathbf{14\text{ bytes}}$.
+A soma pura é $1 + 4 + 1 + 8 = \mathbf{14\text{ bytes}}$.
 
-Contudo, ao consultar o tamanho real ocupado na memória através do operador `sizeof(struct Ineficiente)`, o compilador informa **24 bytes**! Foram desperdiçados 10 bytes inteiros em uma única estrutura.
+Contudo, o tamanho real ocupado é **24 bytes**. Foram 10 bytes de enchimento em uma única estrutura.
 
 ---
 
 ### 7.1 A Causa Física: O Barramento de Dados
 
-A memória física não transfere bytes avulsos através dos fios da placa-mãe. Os barramentos de hardware transferem palavras alinhadas de **4 ou 8 bytes por ciclo**.
+A memória não transfere bytes avulsos pelos fios. Os barramentos transferem palavras alinhadas de **4 ou 8 bytes por ciclo**.
 
-Se uma variável de 4 bytes (como `int32_t b`) começasse em um endereço ímpar (como `0x1001`), o número cruzaria a fronteira de duas palavras alinhadas na memória (`0x1000` e `0x1004`). O controlador de memória seria forçado a realizar **dois ciclos de leitura na DRAM**, rotacionar os bytes na CPU e mascarar os pedaços para reconstituir o valor, degradando severamente a velocidade de acesso.
-
-Para proteger o desempenho, a arquitetura impõe a **Regra do Alinhamento Natural**: qualquer dado com largura de $K$ bytes deve ter o seu endereço inicial alinhado em um **múltiplo exato de $K$**.
+Se um valor de 4 bytes começasse em endereço ímpar, ele cruzaria duas palavras e o controlador precisaria de **2 leituras** para reconstituir o valor. Por isso vale a **Regra do Alinhamento Natural**: dado de $K$ bytes mora em endereço múltiplo de $K$.
 
 * Tipos de 1 byte (`char`): podem residir em qualquer endereço ($K = 1$).
 * Tipos de 2 bytes (`short`): devem começar em endereços múltiplos de 2 (`0x1000`, `0x1002`, `0x1004`...).
@@ -611,66 +588,49 @@ Para proteger o desempenho, a arquitetura impõe a **Regra do Alinhamento Natura
 
 ### 7.2 Como o Compilador Insere Padding e Como Eliminar o Desperdício
 
-Para satisfazer o alinhamento de hardware, o compilador insere bytes vazios de preenchimento, denominados **padding**:
+Para satisfazer o alinhamento, o compilador insere bytes vazios de **padding**. No exemplo: 3 bytes após `a`, 7 bytes após `c`, total **24 bytes**.
 
-1. `char a` (1 byte) é posicionado no offset `0`.
-2. O próximo campo (`int32_t b`) requer alinhamento múltiplo de 4. O offset `1` não é múltiplo de 4. O compilador injeta **3 bytes de padding** (offsets 1, 2 e 3).
-3. `int32_t b` (4 bytes) é gravado nos offsets `4` a `7`.
-4. `char c` (1 byte) é gravado no offset `8`.
-5. O próximo campo (`int64_t d`) requer alinhamento múltiplo de 8. O offset `9` não é múltiplo de 8. O compilador injeta **7 bytes de padding** (offsets 9 a 15).
-6. `int64_t d` (8 bytes) ocupa os offsets `16` a `23`.
-7. O tamanho total atinge **24 bytes**.
-
-#### A Regra de Ouro da Reorganização de Campos:
-Para eliminar o padding inútil, basta ordenar os campos da struct em **ordem decrescente de tamanho**:
+#### A Regra de Ouro da Reorganização:
+Ordene os campos em **ordem decrescente de tamanho**:
 
 ```c
 struct Otimizada {
-    int64_t d;   // 8 bytes (Offset 0 a 7)
-    int32_t b;   // 4 bytes (Offset 8 a 11)
-    char a;      // 1 byte  (Offset 12)
-    char c;      // 1 byte  (Offset 13)
-    // 2 bytes de padding no final para manter o total múltiplo de 8
+  int64_t d; int32_t b; char a; char c;
 };
 ```
 
-Ao aplicar a ordenação decrescente ($8 \to 4 \to 1 \to 1$), o tamanho cai imediatamente de 24 para **16 bytes**: uma economia direta de **33% de memória RAM**, sem perder um único dado e acelerando a taxa de acertos nas memórias cache do processador.
+O tamanho cai de 24 para **16 bytes**: economia de **33%**, sem perder dado e com mais acerto na cache.
 
 ---
 
 ## 8. O Ataque do Buffer Overflow: Esmagando a Pilha
 
-Na linguagem C, cadeias de texto (*strings*) são armazenadas como arrays sequenciais de bytes terminados pelo caractere nulo `\0`. O compilador C tradicional não insere checagens automáticas de tamanho em acessos de arrays.
+Em C, texto é uma fila de bytes terminada em zero. A linguagem tradicional não checa tamanho em acesso de vetor. Leia como ilustração.
 
-O que acontece se uma função aloca um espaço fixo na pilha e lê dados externos sem validar o tamanho do texto recebido?
+O que acontece se uma função reserva espaço fixo na pilha e lê entrada externa sem validar o tamanho?
 
 ---
 
 ### 8.1 O Caso Histórico do Morris Worm (2 de Novembro de 1988)
 
-Em 2 de novembro de 1988, um estudante de pós-graduação da Universidade de Cornell chamado Robert Tappan Morris liberou na ARPANET o primeiro código malicioso que paralisou a nascente rede da Internet: o **Morris Worm**.
+Em 2 de novembro de 1988, um estudante de Cornell liberou na rede o primeiro código que paralisou a Internet nascente: o **Morris Worm**.
 
-O vetor principal de invasão explorava uma vulnerabilidade no daemon `fingerd` (um serviço do sistema BSD Unix que respondia a consultas de usuários na rede):
+O vetor principal explorava o serviço `fingerd` do Unix:
 
-1. **O Buffer Local na Pilha:** O código do servidor alocava um buffer local de 512 bytes na pilha de execução.
-2. **A Leitura Sem Limites com `gets()`:** Para ler o comando transmitido pela rede, o desenvolvedor utilizou a função padrão da biblioteca C `gets(buf)`. Essa função lê bytes continuamente da entrada até encontrar uma quebra de linha, sem jamais consultar a capacidade máxima da caixinha receptora.
-3. **O Transbordamento Físico:** Morris transmitiu uma cadeia especialmente formatada contendo **536 bytes**.
-4. **O Esmagamento do Endereço de Retorno:** Os primeiros 512 bytes preencheram o buffer legítimo. Os 24 bytes excedentes transbordaram a memória contígua da pilha:
-   * Esmagaram as variáveis locais vizinhas;
-   * Esmagaram o valor do registrador `%rbp` salvo na pilha;
-   * **Sobrescreveram exatamente a célula que continha o Endereço de Retorno salvo pelo `callq`!**
-5. **O Sequestro do Fluxo de Execução:** Em vez de retornar para a linha seguinte da função chamadora, o endereço de retorno foi substituído por um ponteiro que apontava de volta para a própria pilha, onde Morris havia gravado um pequeno bloco de código de máquina denominado **shellcode**.
-6. **O Controle Total:** Quando a função executou `retq`, a CPU desempilhou o endereço adulterado, carregou-o no `%rip` e começou a executar as instruções do invasor, abrindo um terminal de comando com privilégios de administrador.
-
-O verme espalhou-se de máquina em máquina e infectou aproximadamente dez por cento de todos os computadores conectados à internet da época (cerca de 6.000 servidores).
+1. **O Buffer Local na Pilha:** o servidor reservava 512 bytes na pilha.
+2. **A Leitura Sem Limites:** para ler o comando da rede, o código usava `gets(buf)`, que lê até a quebra de linha sem perguntar o tamanho da caixinha.
+3. **O Transbordamento:** Morris enviou **536 bytes**.
+4. **O Esmagamento do Endereço de Retorno:** os 512 primeiros bytes encheram o buffer. Os 24 excedentes avançaram pela pilha e **reescreveram a célula do Endereço de Retorno salvo pelo `callq`**.
+5. **O Sequestro do Fluxo:** no `retq`, a <Term id="CPU">CPU</Term> carregou o endereço forjado no `%rip` e passou a executar o código do invasor.
+6. **O Controle Total:** o verme abriu terminal com privilégios e se espalhou, infectando cerca de 10% da Internet da época (por volta de 6.000 servidores).
 
 <HistoricalIncident
   title="O Primeiro Desastre de Segurança da Internet: O Morris Worm"
   date="2 de novembro de 1988"
-  system="Daemon fingerd no BSD Unix / Função gets(buf)"
-  impact="Contaminação e paralisia de 10% de toda a internet da época (~6.000 servidores)"
+  system="Serviço fingerd no Unix / leitura sem limite"
+  impact="Paralisia de 10% da Internet da época, por volta de 6.000 servidores"
 >
-  O estudante Robert Tappan Morris explorou uma vulnerabilidade crítica no serviço fingerd do Unix. O daemon declarava um buffer local de 512 bytes na pilha e lia os dados de rede usando a perigosa função da biblioteca padrão gets(buf). Como a função gets() não aceita parâmetro de tamanho limite, o invasor enviou 536 bytes de dados especialmente preparados. Os bytes extras transbordaram o buffer, esmagaram o ponteiro de frame salvo e sobrescreveram o Endereço de Retorno na pilha com um ponteiro apontando de volta para um código malicioso (shellcode) embutido no próprio payload, assumindo controle total do servidor.
+  O serviço reservava 512 bytes na pilha e lia a rede sem limite de tamanho. O invasor enviou 536 bytes. O excedente esmagou o endereço de retorno e apontou a execução para código malicioso embutido, assumindo o controle do servidor.
 </HistoricalIncident>
 
 <ObservationMission
@@ -681,24 +641,28 @@ O verme espalhou-se de máquina em máquina e infectou aproximadamente dez por c
   <BufferOverflowPlayground client:load />
 </ObservationMission>
 
+Roteiro: 1. Digite até 8 e veja o buffer cheio e íntegro. 2. Passe de 8 e veja a sentinela corrompida. 3. Alcance o retorno e veja o destino sequestrado. Conclusão em 1 frase: sem limite, o excedente reescreve para onde voltar.
+
 ---
 
 ### 8.2 As Três Defesas Modernas Contra Buffer Overflow
 
-Para neutralizar em definitivo essa classe catastrófica de vulnerabilidades, a indústria de computação desenvolveu três barreiras de defesa coordenadas entre compilador, sistema operacional e hardware:
+Para neutralizar essa classe de vulnerabilidades, a indústria montou três barreiras entre compilador, sistema operacional e hardware:
 
-1. **Stack Canaries (`-fstack-protector`):**
-   O compilador insere automaticamente um valor de 8 bytes, denominado palavra sentinela (*canary*), entre os buffers locais e o endereço de retorno na pilha. No início da função, esse número sentinela é copiado de uma área segura do sistema operacional. No epílogo da função, imediatamente antes de emitir a instrução `retq`, o código verifica se o canary continua intacto. Se um buffer overflow tiver ocorrido, o valor da sentinela foi corrompido; o programa detecta a violação e aborta a execução instantaneamente com a mensagem `*** stack smashing detected ***`, antes que o `%rip` execute o endereço forjado.
-2. **ASLR (Address Space Layout Randomization):**
-   O kernel do sistema operacional sorteia aleatoriamente os endereços base da pilha, do heap e das bibliotecas dinâmicas a cada execução do programa. Mesmo que o invasor consiga transbordar o buffer, ele não consegue prever em qual endereço de memória o seu shellcode reside, transformando a tentativa de sequestro em uma falha de segmentação aleatória.
-3. **Bit NX / W^X (No-Execute / Write XOR Execute):**
-   A Unidade de Gerenciamento de Memória (MMU) da CPU e o sistema operacional marcam as páginas da memória da pilha com permissão de gravação, mas **com a permissão de execução desativada**. Mesmo que um invasor consiga injetar código binário malicioso na pilha, a CPU se recusa a executar instruções a partir daquela região e dispara uma exceção imediata de Falha de Segmentação (*Segmentation Fault*).
+1. **Stack Canaries:**
+   O compilador escreve um valor sentinela entre os buffers e o endereço de retorno. Antes do `retq`, confere a sentinela. Se houve transbordo, aborta com `*** stack smashing detected ***` antes de pular.
+2. **<Term id="ASLR">ASLR</Term> (Sorteio do Layout de Memória):**
+   O kernel sorteia os endereços de pilha, heap e bibliotecas a cada execução. Mesmo com transbordo, o invasor não sabe onde mora seu código e cai em falha de segmentação.
+3. **Bit <Term id="NX">NX</Term> (Não-Execute):**
+   A <Term id="MMU">MMU</Term> com o sistema marca a pilha como gravável mas não executável, detalhe de tradução completo no Módulo 05. Mesmo com código injetado, a <Term id="CPU">CPU</Term> recusa executar e dispara Falha de Segmentação.
 
 ---
 
-## 9. Síntese de Arquitetura e Regras Invariantes
+## 9. Síntese de Arquitetura e Regras de Engenharia
 
 ### 9.1 Matriz de Custos de Hardware na Arquitetura x86-64
+
+Custos típicos em núcleos x86-64 de alto desempenho classe desktop e servidor. Não são constantes universais, variam por microarquitetura e carga.
 
 | Operação Assembly | Instrução Exemplo | Latência Típica | Custo Físico Subjacente |
 | :--- | :--- | :---: | :--- |
@@ -711,56 +675,38 @@ Para neutralizar em definitivo essa classe catastrófica de vulnerabilidades, a 
 
 ---
 
-### 9.2 Quatro Regras Invariantes de Arquitetura para o Desenvolvedor
+### 9.2 Quatro Regras de Engenharia para o Desenvolvedor
 
-1. **Nunca use a função `gets()` em nenhuma circunstância:** A função `gets()` é o vetor do clássico *Stack Smashing*. Utilize sempre funções que recebem o tamanho limite do buffer de destino, como `fgets()` ou rotinas seguras de cópia com limites estritos.
-2. **Ordene os campos das suas structs por ordem decrescente de tamanho:** Posicione variáveis de 8 bytes primeiro, seguidas por variáveis de 4 bytes, 2 bytes e 1 byte. Isso elimina o preenchimento inútil de *padding* de hardware e pode reduzir o consumo de memória em mais de 30%.
-3. **Escrever em registrador de 32 bits zera a metade superior de 64 bits:** Esteja ciente de que qualquer operação com tipos de 32 bits (`int`) em x86-64 apaga os bits 63..32 do registrador de 64 bits correspondente para eliminar dependências falsas de dados no pipeline da CPU.
-4. **Mantenha o código amigável ao Branch Predictor da CPU:** Estruturas condicionais previsíveis permitem que a CPU continue executando instruções sem esvaziar o pipeline. Em caminhos críticos de alto desempenho, evite saltos imprevisíveis ou prefira instruções condicionais sem salto (`cmov`).
+1. **Nunca use leitura sem limite:** prefira funções que recebem o tamanho do destino.
+2. **Ordene campos do maior para o menor:** elimina enchimento e pode economizar mais de 30% neste padrão típico.
+3. **Lembre que 32 zera a metade de cima:** regra física que elimina dependência falsa.
+4. **Prefira decisão previsível em caminho quente:** salto imprevisível esvazia a esteira, detalhe completo no Módulo 03.
 
-## 10. Missão Prática de Investigação: Dissecando Funções com GCC e GDB
+## 10. Leitura guiada: da função às ordens e aos registradores
 
-Em vez de memorizar tabelas de registradores e instruções, vamos utilizar as ferramentas reais do ecossistema GNU/Linux para observar a geração de assembly na prática.
+Você não precisa compilar nem depurar nada. Uma função que soma dois valores vira 2 ordens: 1 conta e 1 retorno.
 
-### Experimento: A Tradução de uma Função em C para Assembly x86-64
-
-Considere a criação de um arquivo de teste denominado `soma.c`:
+Par mínimo 1: a função em texto.
 
 ```c
-int somar_valores(int a, int b) {
-    return a + b;
-}
+int somar(int a, int b) { return a + b; }
 ```
 
-#### Passo 1: Compilar para Assembly Puro com o GCC
-Execute no terminal:
-```bash
-gcc -O2 -S -fno-asynchronous-unwind-tables soma.c -o soma.s
-```
+Par mínimo 2: as ordens geradas, leia como ilustração.
 
-Ao inspecionar o arquivo gerado `soma.s`, observe a economia de instruções produzida pelo compilador:
 ```asm
-somar_valores:
-    leal    (%rdi,%rsi), %eax
-    ret
+somar:
+  leal (%rdi,%rsi), %eax
+  ret
 ```
 
-#### O Que o Hardware Está Fazendo Aqui:
-1. **Passagem de Parâmetros pela ABI:** O primeiro argumento (`int a`) foi entregue no registrador `%edi` (sub-registrador de 32 bits de `%rdi`). O segundo argumento (`int b`) chegou em `%esi`.
-2. **Aritmética sem Memória:** Em vez de usar instruções pesadas de soma ou tocar na memória RAM, o compilador utilizou `leal (%rdi, %rsi), %eax` para somar os dois números na Unidade de Geração de Endereços em apenas 1 ciclo de clock.
-3. **Convenção de Retorno:** O resultado foi deixado em `%eax`, exatamente onde a convenção System V AMD64 ABI exige.
-4. **Retorno:** A instrução `ret` lê o endereço de retorno da pilha e retoma o chamador.
+O primeiro valor chegou em `%rdi`, o segundo em `%rsi`, a conta saiu no somador de endereços em 1 ciclo e a resposta ficou em `%eax`, onde a <Term id="ABI">ABI</Term> manda. O `ret` lê o retorno da pilha e retoma o chamador.
 
-#### Passo 2: Inspecionando Registradores no GDB
-Se compilarmos um programa com símbolos de depuração (`gcc -g`) e executarmos o depurador GDB:
-```bash
-gdb ./programa
-(gdb) break somar_valores
-(gdb) run
-(gdb) info registers rdi rsi rax rsp
-(gdb) x/gx $rsp
-```
-O comando `info registers` revelará os números que acabaram de ser depositados nas gavetas da CPU, e `x/gx $rsp` exibirá o endereço de retorno gravado no topo da pilha.
+Par mínimo 3: o que o depurador mostraria, sem executar. Registradores com `rdi` e `rsi` guardando os valores e `rax` com a resposta; na pilha, o endereço de retorno no topo apontado por `rsp`.
+
+Com isso, este módulo entrega a pergunta do próximo: e se 1 ordem por vez for lenta demais? No Módulo 03, várias ordens avançam juntas em esteira.
+
+> **Nota de dialeto para o Módulo 03:** lá usamos ordens didáticas curtas como `add t0` e `lw t0` em vez de `movq %rax`. É o mesmo gesto de copiar, calcular e ler memória, só que sem os prefixos `%` e `$` e sem sufixos de tamanho, para focar na esteira sem ruído de sintaxe.
 
 ---
 

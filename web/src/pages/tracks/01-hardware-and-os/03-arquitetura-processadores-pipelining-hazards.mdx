@@ -9,26 +9,37 @@ trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 import PipelineSimulator from "../../../components/learning-objects/PipelineSimulator";
 import { pipelineSteadyStateSpec } from "../../../data/learning-objects/pipeline-steady-state";
 import { pipelineRawHazardSpec } from "../../../data/learning-objects/pipeline-raw-hazard";
+import SingleCycleWaste from "../../../components/diagrams/SingleCycleWaste.astro";
+import DatapathStages from "../../../components/diagrams/DatapathStages.astro";
+import ForwardingDatapath from "../../../components/diagrams/ForwardingDatapath.astro";
+import SmithAutomaton from "../../../components/diagrams/SmithAutomaton.astro";
+import TimelineGrid from "../../../components/diagrams/TimelineGrid.astro";
 import PredictionChallenge from "../../../components/PredictionChallenge";
+import DeepDive from "../../../components/DeepDive.astro";
+import Term from "../../../components/Term.astro";
+
+{/* Curriculum Ledger 03: KNOWN=[soma, registrador, clock, caixinha, ALU, assembly basico] CURRENT=[estagio, vazao vs latencia, hazard de dados, atalho, bolha Load-Use, desvio e predicao] DEFERRED=[cache, MMU, OoO e renomeacao, Spectre avancado, perf, PGO] */}
 
 # Módulo 03: Arquitetura de Processadores: Pipelining e Execução Instrucional
 
-No Módulo 01, nós exploramos como a informação é codificada em bits, inteiros e ponto flutuante. No Módulo 02, dissecamos as instruções assembly x86-64, os registradores e a pilha de execução. Mas como a microarquitetura do processador executa essas instruções no ritmo vertiginoso de bilhões de ciclos por segundo sem derreter ou travar a cada cálculo?
+> **O que você precisa aqui:** 1. Ter visto registradores que fotografam no clock do Módulo 00. 2. Ter visto que programa vira instruções e que instrução lê registradores do Módulo 02. 3. Saber que memória demora mais que conta. Nada de terminal, nada de medir hardware.
 
-Neste módulo, nós abrimos o motor interno da CPU para desvendar a sua maior invenção de rendimento: a linha de montagem de instruções (*pipelining*). Você vai entender como dividir o trajeto elétrico em múltiplos estágios multiplica a vazão da máquina, o que acontece quando duas instruções colidem disputando o mesmo dado ou circuito, e como os engenheiros usam caminhos dedicados de encaminhamento (data forwarding) e previsões probabilísticas para manter a esteira sempre em movimento.
+Uma instrução assembly descreve o que deve ser computado, mas não dita como os circuitos realizam a operação a cada ciclo de clock. Se a CPU executasse cada instrução do início ao fim antes de buscar a próxima, o tempo total seria a soma de todos os atrasos de propagação do caminho de dados.
+
+Este módulo analisa a técnica fundamental de vazão em microarquitetura: a linha de montagem de instruções (*pipelining*). Veremos como a inserção de registradores intermediários permite sobrepor etapas de instruções diferentes, quais conflitos de dados e de controle exigem paradas (*stalls*), e como circuitos de encaminhamento (*forwarding*) e preditores de desvio mantêm a esteira em operação contínua.
 
 > [!NOTE]
 > **Contrato de Aprendizagem do Módulo 03**
 >
 > * **Pré-requisitos:** Módulo 00 (portas lógicas, flip-flops e registradores sincronizados por clock) e Módulo 02 (instruções assembly x86-64, registradores e a pilha).
-> * **Pergunta de Entrada:** Se uma instrução leva 5 ciclos de clock inteiros para atravessar o caminho de dados do início ao fim, como o processador consegue a façanha mecânica de completar quase uma instrução inteira a cada pulso de clock (CPI próximo de 1.0)?
+> * **Pergunta de Entrada:** Se uma instrução leva 5 ciclos de clock inteiros para atravessar o caminho de dados do início ao fim, como o processador consegue completar quase uma instrução inteira a cada pulso de clock?
 > * **O Que Você Vai Construir e Dominar:**
->   1. O fatiamento temporal em 5 estágios (IF, ID, EX, MEM, WB) e o papel dos registradores de pipeline na taxa de clock.
->   2. Os 3 tipos fundamentais de Hazards: Estrutural, de Dados (RAW) e de Controle (Desvios).
->   3. A engenharia de Data Forwarding (Bypassing) que resolve dependências sem parar a esteira.
->   4. A barreira física do Load-Use Hazard e a injeção inevitável de bolhas de stall.
->   5. A predição dinâmica de saltos com o autômato de 2 bits de Smith e o custo do Pipeline Flush.
-> * **Critérios de Domínio:** Você saberá que domina este módulo quando for capaz de prever exatamente onde e por que ocorrem bolhas em uma sequência de código, calcular o CPI efetivo e medir eventos de branch-misses no mundo real com ferramentas de instrumentação de hardware.
+>   1. Como fatiar uma ordem longa em etapas com barreiras de clock?
+>   2. O que trava quando uma ordem precisa do resultado da anterior?
+>   3. Como atalhar o resultado sem esperar a gravação final?
+>   4. Quando a espera de 1 ciclo é fisicamente inevitável?
+>   5. Como adivinhar o próximo salto e quanto custa errar?
+> * **Critérios de Domínio:** Você saberá que domina este módulo quando for capaz de prever onde aparecem bolhas em uma sequência curta e explicar por que cada bolha existe.
 
 ---
 
@@ -38,23 +49,23 @@ Para manter os pés no chão, cada conceito deste módulo parte de uma barreira 
 
 | O Que Vamos Estudar | O Problema Concreto no Mundo Real | O Mecanismo na Microarquitetura do Pipeline |
 | :--- | :--- | :--- |
-| **3.1 A Gênese do Pipelining** | Processadores lentos travados pela instrução mais demorada | Fatiamento do caminho combinacional com registradores de estágio. |
-| **3.2 A Anatomia dos Hazards** | Instruções dependentes colidindo na linha de montagem | Detecção de conflito RAW, injeção de bolhas e congelamento de estágios. |
-| **3.3 Data Forwarding** | Esperar pela gravação em registrador atrasa a CPU | Fiação de atalho conectando a saída da ALU à entrada da próxima instrução. |
-| **3.4 O Hazard Load-Use** | O dado da RAM só chega no final do ciclo de memória | Atraso físico inevitável de 1 ciclo mesmo com forwarding completo. |
-| **3.5 Desvios e Especulação** | A CPU não sabe para onde o código vai pular | Predição de saltos, tabelas de histórico e custo de descarte do pipeline. |
-| **3.6 Síntese e Heurísticas** | Trade-offs reais de otimização na esteira | Matriz de custos e diretrizes de engenharia de software. |
+| **3.1 A Gênese do Pipelining** | Por que a ordem mais lenta dita o ritmo de todas? | Fatiar o caminho com barreiras de clock. |
+| **3.2 A Anatomia dos Hazards** | O que acontece quando uma ordem precisa do resultado da anterior? | Detectar a colisão e congelar 1 etapa. |
+| **3.3 Data Forwarding** | Por que esperar a gravação final se o valor já existe no fio? | Atalho da saída da conta para a próxima entrada. |
+| **3.4 O Hazard Load-Use** | Por que o dado da memória chega tarde demais para o atalho? | Bolha física de 1 ciclo e ajuda do compilador. |
+| **3.5 Desvios e Especulação** | Como buscar a próxima ordem sem saber para onde pular? | Adivinhar com histórico e descartar se errar. |
+| **3.6 Síntese e Heurísticas** | Quando cada truque compensa na prática? | Matriz de custos e diretrizes com dependências. |
 
 ---
 
 
 ## 3.1 Da Execução Sequencial à Linha de Montagem: A Gênese do Pipelining
 
-Todo processador, em sua essência mais elementar, repete sem cessar o mesmo ciclo fundamental: buscar uma instrução na memória, compreender o que ela ordena, executar a operação requerida, acessar a memória se necessário e guardar o resultado obtido.
+A execução de qualquer programa resume-se a um ciclo determinístico de cinco operações sucessivas: buscar a instrução na memória, decodificar a operação, executar o cálculo nos circuitos lógicos, acessar a memória quando necessário e gravar o resultado no registrador de destino.
 
-Nos primórdios da arquitetura de computadores, a maneira mais direta e óbvia de projetar uma CPU consistia em tratar cada instrução como um bloco único e indivisível. O processador buscava a primeira instrução, esperava que os sinais elétricos atravessassem todos os circuitos combinacionais de ponta a ponta e, apenas quando o resultado estava definitivamente gravado, buscava a instrução seguinte.
+Nos primórdios da arquitetura de computadores, a maneira mais direta de projetar uma CPU consistia em tratar cada instrução como um bloco sequencial completo. O processador buscava a primeira instrução, aguardava que os sinais elétricos atravessassem todos os circuitos combinacionais de ponta a ponta e, apenas quando o resultado estava gravado, buscava a instrução seguinte.
 
-Esse modelo recebe o nome de **Processador de Ciclo Único** (*Single-Cycle Processor*). Ele é intuitivo e matematicamente simples de projetar, mas carrega um custo fatal de engenharia: a tirania da instrução mais lenta.
+Esse modelo recebe o nome de **Processador de Ciclo Único** (*Single-Cycle Processor*). Ele simplifica a lógica de controle, mas impõe um limite estrito de desempenho: o período de clock precisa ser longo o suficiente para acomodar o atraso da instrução mais lenta de todo o conjunto.
 
 ---
 
@@ -63,7 +74,7 @@ Esse modelo recebe o nome de **Processador de Ciclo Único** (*Single-Cycle Proc
 Em um circuito digital, os elétrons não viajam instantaneamente. Cada porta lógica, somador e multiplexador impõe uma pequena resistência e capacitância, exigindo um tempo físico real para que as tensões elétricas se estabilizem no valor correto (o chamado *atraso de propagação combinacional*).
 
 Considere duas instruções típicas em nosso processador:
-1. **Soma Aritmética Simples:** precisa buscar a instrução, decodificar os registradores, somar os valores na Unidade Lógica e Aritmética (ALU) e gravar o resultado de volta no banco de registradores. Ela não precisa acessar a memória de dados (percorre 4 etapas conceituais).
+1. **Soma Aritmética Simples:** precisa buscar a instrução, decodificar os registradores, somar os valores na Unidade Lógica e Aritmética (<Term id="ALU">ALU</Term>) e gravar o resultado de volta no banco de registradores. Ela não precisa acessar a memória de dados (percorre 4 etapas conceituais).
 2. **Leitura de Memória (Load):** precisa buscar a instrução, decodificar, calcular o endereço na ALU, navegar pela fiação lenta até a memória de dados para ler o valor e, finalmente, gravar esse valor no banco de registradores (percorre as 5 etapas conceituais).
 
 Em um processador de ciclo único, o relógio da máquina (o *clock*) precisa ser ajustado para acomodar o pior caso absoluto. O período de clock deve ser longo o suficiente para que a instrução mais demorada e complexa de todo o catálogo consiga completar seu trajeto antes do próximo pulso.
@@ -72,16 +83,9 @@ Em um processador de ciclo único, o relógio da máquina (o *clock*) precisa se
 
 Sob a arquitetura de ciclo único, o relógio do processador é obrigado a pulsar a cada 5 nanossegundos:
 
-```text
-COMPARAÇÃO: O Desperdício Temporal no Processador de Ciclo Único
+<SingleCycleWaste />
 
-Instrução Load (5 ns)   [ Busca | Decodifica | Executa | Memória | Gravação ] ──> OK (5 ns)
-Instrução Add (3 ns)    [ Busca | Decodifica | Executa | Gravação ] [ Ocioso ] ──> Desperdício (2 ns)
-
-★ Insight: Circuitos rápidos são forçados a ficar ociosos esperando o ciclo de clock terminar.
-```
-
-Quando a CPU executa uma sequência de somas, ela conclui o cálculo aos 3 nanossegundos e passa 2 nanossegundos inteiros de braços cruzados, simplesmente aguardando o metrônomo do clock autorizar a próxima busca. Pior ainda: enquanto a ALU está trabalhando no meio do ciclo, o circuito de busca na memória passa o tempo ocioso; quando o estágio de memória está sendo acessado, a ALU fica desocupada. Noventa por cento dos circuitos do caminho de dados passam a maior parte do tempo sem fazer trabalho útil.
+Quando a <Term id="CPU">CPU</Term> executa uma sequência de somas, ela conclui o cálculo aos 3 nanossegundos e passa 2 nanossegundos inteiros de braços cruzados, simplesmente aguardando o metrônomo do clock autorizar a próxima busca. Pior ainda: enquanto a <Term id="ALU">ALU</Term> está trabalhando no meio do ciclo, o circuito de busca na memória passa o tempo ocioso; quando o estágio de memória está sendo acessado, a <Term id="ALU">ALU</Term> fica desocupada. Imagine, de forma simplificada, que quase todos os circuitos do caminho de dados passam a maior parte do tempo sem fazer trabalho útil neste modelo didático.
 
 ---
 
@@ -109,7 +113,7 @@ O mapeamento entre a lavanderia e o caminho de dados da CPU é rigorosamente iso
 
 | Estação da Lavanderia | Estágio do Processador | Função Física no Hardware |
 | :--- | :--- | :--- |
-| **Máquina de Lavar** | Busca de Instrução (`IF`) | Lê o código de máquina da memória no endereço do PC |
+| **Máquina de Lavar** | Busca de Instrução (`IF`) | Lê o código de máquina da memória no endereço do <Term id="PC">PC</Term> |
 | **Secadora** | Decodificação (`ID`) | Decodifica a instrução e lê os registradores de origem |
 | **Mesa de Dobragem** | Execução (`EX`) | A Unidade Lógica e Aritmética realiza a operação física |
 | **Armário / Gavetas** | Acesso à Memória (`MEM`) | Lê ou grava palavras na memória de dados |
@@ -125,17 +129,7 @@ Como o processador consegue impedir que os sinais elétricos da segunda instruç
 
 A resposta de engenharia foi o corte físico do caminho combinacional longo através da instalação de **Registradores de Estágio** (*Pipeline Registers* ou *Latches* intermediários):
 
-```text
-CAMINHO DE DADOS: O Fatiamento por Registradores de Estágio
-
-[Memória IF] ──> [ IF/ID ] ──> [Decodificador ID] ──> [ ID/EX ] ──> [ALU EX] ──> [ EX/MEM ] ──> [Memória MEM] ──> [ MEM/WB ] ──> [Banco WB]
-                     │                                    │                              │                                │
-                     ▲                                    ▲                              ▲                                ▲
-                Barreira 1                           Barreira 2                     Barreira 3                       Barreira 4
-                (Sincronizada pelo Clock)
-
-★ Insight: Os registradores de estágio funcionam como represas que retêm os dados até o próximo pulso de clock.
-```
+<DatapathStages />
 
 Esses registradores atuam como represas síncronas posicionadas entre cada fase:
 * No estágio `IF/ID`, guardam a instrução buscada;
@@ -162,20 +156,26 @@ Em nossa microarquitetura didática com cinco estágios em regime estável:
 * No processador de ciclo único, a máquina concluía 1 instrução a cada 5 nanossegundos.
 * No processador com pipeline, a máquina completa 1 instrução a cada ciclo de clock, entregando uma instrução a cada pulso regular de tempo.
 
+O simulador abaixo responde: quando a esteira cheia entrega 1 por ciclo?
+1. Avance até o ciclo 5 e veja as 5 instruções em voo.
+2. Avance 1 ciclo e conte 1 conclusão.
+3. Pause e confira cada estágio ocupado.
+Conclusão em 1 frase: cheia a esteira, cada pulso aposenta 1 instrução.
+
 <PipelineSimulator client:visible spec={pipelineSteadyStateSpec} />
 
-```text
-LINHA DO TEMPO: A Sobreposição Temporal no Pipeline de Cinco Estágios
-
-            C1   C2   C3   C4   C5   C6   C7
-Instrução 1  F    D    E    M    W
-Instrução 2       F    D    E    M    W
-Instrução 3            F    D    E    M    W
-Instrução 4                 F    D    E    M    W
-Instrução 5                      F    D    E    M    W
-
-★ Insight: A partir do Ciclo 5 (esteira cheia), o processador conclui exatamente uma instrução por ciclo.
-```
+<TimelineGrid
+  title="Sobreposição temporal no pipeline de cinco estágios"
+  columns={["C1", "C2", "C3", "C4", "C5", "C6", "C7"]}
+  rows={[
+    { label: "Instrução 1", cells: ["F", "D", "E", "M", "W", null, null] },
+    { label: "Instrução 2", cells: [null, "F", "D", "E", "M", "W", null] },
+    { label: "Instrução 3", cells: [null, null, "F", "D", "E", "M", "W"] },
+    { label: "Instrução 4", cells: [null, null, null, "F", "D", "E", "M"] },
+    { label: "Instrução 5", cells: [null, null, null, null, "F", "D", "E"] },
+  ]}
+  footnote="A partir do Ciclo 5 (esteira cheia), o processador conclui exatamente uma instrução por ciclo."
+/>
 
 ---
 
@@ -201,10 +201,16 @@ Existem duas barreiras físicas intransponíveis que impõem um limite rigoroso 
 
 #### 1. O Overhead dos Registradores de Estágio
 Um registrador intermediário não é uma barreira mágica imaterial; ele é construído com transistores reais. Todo registrador consome uma fatia de tempo elétrico para travar o dado (*setup time*) e liberar o sinal na saída (*clock-to-Q delay*).
-Se você divide uma tarefa combinacional de 5 nanossegundos em 5 estágios de 1 nanossegundo, mas cada registrador adiciona 0,2 nanossegundo de atraso fixo de chaveamento, o período do clock passa a ser de 1,2 nanossegundo. Se você tentar dividir em 50 estágios de 0,1 nanossegundo, o overhead fixo de 0,2 nanossegundo por registrador passa a devorar o dobro do tempo do próprio trabalho útil da lógica.
+Imagine, de forma simplificada, neste modelo didático de 5 estágios: se você divide uma tarefa de 5 nanossegundos em 5 fatias de 1 nanossegundo, mas cada registrador adiciona 0,2 nanossegundo fixo, o período passa a 1,2 nanossegundo. Os valores ilustram o mecanismo, não medição de chip real.
 
 #### 2. O Desbalanceamento entre Estágios
-Em uma linha de montagem, a velocidade da esteira inteira é ditada pela estação mais lenta. Se quatro estágios do seu processador levam 0,8 nanossegundo, mas um circuito complexo de multiplicação ou acesso à memória leva 1,5 nanossegundo, o clock de todos os estágios é forçado a pulsar no ritmo de 1,5 nanossegundo. O trabalho que terminou antes passa o resto do ciclo esperando o estágio mais lento se estabilizar.
+Em uma linha de montagem, a velocidade da esteira inteira é ditada pela estação mais lenta. Imagine, de forma simplificada: se quatro estágios levam 0,8 nanossegundo e um leva 1,5, o clock de todos pulsa em 1,5. Valores ilustrativos do modelo, não de um chip específico.
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. **Fatiar multiplica vazão:** barreiras de clock isolam etapas e aposentam 1 por pulso;
+> 2. **Latência não cai:** cada ordem leva o mesmo tempo ou pouco mais;
+> 3. **Fatiar demais cobra pedágio:** registrador e etapa lenta ditam o ritmo.
 
 ---
 
@@ -225,7 +231,7 @@ Essa colisão inevitável recebe o nome de **Pipeline Hazard**, e é o tema exat
 
 ## 3.2 Quando a Linha de Montagem Colide: A Anatomia dos Hazards
 
-Na Seção 3.1, vimos como o pipeline transforma a execução de instruções em uma linha de montagem contínua. Cada instrução avança passo a passo pelos estágios de hardware, permitindo que o processador entregue, no melhor cenário, a vazão de uma instrução concluída a cada pulso de clock. No entanto, aquele diagrama ideal escondia uma premissa silenciosa: até agora, tratamos as instruções como se fossem completamente independentes umas das outras.
+Na Seção 3.1, vimos como o pipeline transforma a execução de instruções em uma linha de montagem contínua. Cada instrução avança passo a passo pelos estágios de hardware; em regime estacionário ideal, a vazão atinge uma instrução concluída a cada pulso de clock. Esse modelo, contudo, assume que as instruções adjacentes são independentes entre si.
 
 Em programas reais, as instruções quase nunca trabalham em isolamento. Elas dialogam e constroem resultados de forma sequencial:
 
@@ -335,7 +341,7 @@ A literatura clássica de arquitetura de computadores divide os hazards em três
 #### 1. Conflito de Dados (Data Hazard)
 > **Um Data Hazard surge quando uma dependência de dados interage com o pipeline de modo que, sem algum mecanismo de resolução, a instrução consumidora chegaria ao ponto de uso antes de receber o valor correto.**
 
-É crucial separar os três conceitos envolvidos:
+É necessário distinguir com rigor três conceitos distintos:
 * **A Dependência RAW:** é uma propriedade do programa (a instrução consumidora precisa do valor produzido pela anterior);
 * **O Data Hazard:** é a interação entre essa dependência e a sobreposição temporal do pipeline (sem intervenção, a leitura ocorreria antes do valor estar disponível);
 * **O Forwarding:** é um mecanismo de hardware que consegue resolver muitos desses hazards encaminhando o valor diretamente para o ponto de consumo, evitando stalls quando o dado já está disponível a tempo.
@@ -382,29 +388,39 @@ Esse conflito estrutural específico pode ser evitado fornecendo caminhos indepe
 
 ### A Solução por Espera: Congelamento (Stall) e a Mecânica da Bolha
 
-Quando nosso processador didático depara com um conflito de dados RAW e opera sem circuitos de encaminhamento direto, a solução segura consiste em atrasar a instrução dependente até que o dado seja gravado no banco de registradores.
+Quando nosso processador didático depara com um conflito de dados <Term id="RAW">RAW</Term> e opera sem circuitos de encaminhamento direto, a solução segura consiste em atrasar a instrução dependente até que o dado seja gravado no banco de registradores.
 
 Para visualizar com precisão onde ocorrem os atrasos, compare o fluxo com e sem o conflito:
 
 Em um pipeline ideal sem conflitos, a instrução `sub` chegaria normalmente ao estágio `ID` no Ciclo 3 e avançaria para `EX` logo no Ciclo 4:
-```text
-Linha de Base Ideal:   C1   C2   C3   C4   C5   C6
-sub                          F    D    E    M    W
-```
+
+<TimelineGrid
+  title="Linha de base ideal, sem conflito"
+  columns={["C1", "C2", "C3", "C4", "C5", "C6"]}
+  rows={[
+    { label: "sub", cells: [null, null, "F", "D", "E", "M"] },
+  ]}
+/>
 
 Com o hazard de dados ativo, a instrução `sub` ainda chega normalmente ao estágio `ID` no Ciclo 3. Os atrasos adicionais (*stalls*) ocorrem nos ciclos subsequentes:
 
+O simulador abaixo responde: onde a bolha aparece?
+1. Localize a instrução dependente retida em `ID`.
+2. Conte os ciclos marcados com espera até a gravação.
+3. Confira a retomada sem erro no valor lido.
+Conclusão em 1 frase: sem atalho, a dependente espera a gravação antes de avançar.
+
 <PipelineSimulator client:visible spec={pipelineRawHazardSpec} />
 
-```text
-                  O CONGELAMENTO DO PIPELINE COM BOLHAS
-                  
-           C1   C2   C3   C4   C5   C6   C7   C8
-add t0      F    D    E    M    W
-sub t3           F    D   D*   D*    E    M    W
-                          ↑    ↑
-                        Stalls adicionais
-```
+<TimelineGrid
+  title="Congelamento do pipeline com bolhas (células marcadas indicam espera)"
+  columns={["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"]}
+  rows={[
+    { label: "add t0", cells: ["F", "D", "E", "M", "W", null, null, null] },
+    { label: "sub t3", cells: [null, "F", "D", "D*", "D*", "E", "M", "W"] },
+  ]}
+  footnote="O dado só emerge de MEM ao final do Ciclo 4; sub aguarda em ID até o Ciclo 5."
+/>
 
 Note a cronologia exata em cada ciclo:
 
@@ -422,7 +438,7 @@ Nesse cenário específico de cinco estágios sem caminhos de encaminhamento, fo
 
 O congelamento garantiu a integridade matemática da execução: o programa não produziu resultados errados. No entanto, o preço pago em desempenho foi considerável.
 
-Para quantificar a perda de rendimento de um processador com pipeline, a engenharia de computadores utiliza a métrica **CPI** (*Cycles Per Instruction*, ou Ciclos por Instrução). Em nosso pipeline single-issue, em regime estável e desconsiderando o enchimento e esvaziamento da esteira, o CPI ideal tende a 1.0.
+Para quantificar a perda de rendimento de um processador com pipeline, a engenharia utiliza a métrica **<Term id="CPI">CPI</Term>** (*Cycles Per Instruction*, ou Ciclos por Instrução). Em nosso pipeline de 1 instrução por vez, em regime estável e desconsiderando enchimento e esvaziamento, o <Term id="CPI">CPI</Term> ideal tende a 1.0.
 
 Quando ocorrem stalls, o tempo médio por instrução sobe:
 
@@ -433,7 +449,13 @@ $$CPI = CPI_{base} + (\text{Frequência de Hazards} \times \text{Penalidade em C
 
 $$CPI = 1.0 + \left( \frac{1}{3} \times 2 \right) = 1.0 + 0.67 = 1.67$$
 
-Em vez de completar uma instrução por ciclo, o processador passa a necessitar, em média, de **1.67 ciclo por instrução**. Mantendo o número de instruções e o período de clock constantes, elevar o CPI de 1.0 para 1.67 aumenta o tempo de execução em aproximadamente 67%. Toda a vantagem de vazão construída pela sobreposição temporal de estágios na Seção 3.1 é corroída se o processador passar boa parte da sua vida útil injetando bolhas na esteira de execução.
+Em vez de completar uma instrução por ciclo, o processador passa a necessitar, em média, de **1.67 ciclo por instrução**. Mantendo o número de instruções e o período de clock constantes, elevar o <Term id="CPI">CPI</Term> de 1.0 para 1.67 aumenta o tempo de execução em aproximadamente 67%. Toda a vantagem de vazão construída pela sobreposição temporal de estágios na Seção 3.1 é corroída se o processador passar boa parte da sua vida útil injetando bolhas na esteira de execução.
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. **Colisão de dados:** ordem que lê o que a anterior ainda calcula trava a esteira;
+> 2. **Bolha é espera sem efeito:** instrução parada mais operação neutra no estágio seguinte;
+> 3. **Custo vira número:** cada bolha média sobe o <Term id="CPI">CPI</Term> acima de 1.0.
 
 ---
 
@@ -476,28 +498,7 @@ Como a microarquitetura do processador implementa esse atalho no caminho de dado
 
 Em vez de conectar as entradas da ALU exclusivamente às saídas do registrador de estágio `ID/EX` (que guarda os dados lidos do banco de registradores), os projetistas instalam multiplexadores seletores 3:1 imediatamente antes de cada uma das duas entradas da ALU (entradas A e B):
 
-```text
-CAMINHO DE DADOS COM FORWARDING (ESTÁGIO DE EXECUÇÃO EX)
-
-                 ┌─────────────── Registrador EX/MEM (Resultado da ALU anterior)
-                 │
-                 │  ┌──────────── Registrador MEM/WB (Dado calculado há 2 ciclos)
-                 │  │
-                 │  │  ┌───────── Registrador ID/EX (Lido do Banco de Registradores)
-                 ▼  ▼  ▼
-               ┌─────────┐
-Operando A ──> │ Mux 3:1 │ ──> Entrada A ┐
-               └─────────┘               │
-                    ▲                    ├──> [ Unidade Lógica e Aritmética (ALU) ] ──> Saída
-               ┌────┴────┐               │
-Operando B ──> │ Mux 3:1 │ ──> Entrada B ┘
-               └─────────┘
-                    ▲
-                    │
-            Forwarding Unit (Compara registradores de destino e de origem)
-
-★ Insight: A Forwarding Unit comuta os multiplexadores para interceptar dados dos estágios posteriores.
-```
+<ForwardingDatapath />
 
 Esses multiplexadores 3:1 recebem três caminhos condutores distintos:
 1. A via convencional vinda do registrador `ID/EX`, contendo o valor lido do banco de registradores;
@@ -585,7 +586,7 @@ Não existe atalho elétrico capaz de viajar no tempo dentro do circuito. O hard
     {
       id: "C",
       label: "Porque o registrador %rax é travado pelo sistema operacional até a instrução seguinte terminar.",
-      explanation: "Incorreto. O travamento não é feito por software nem pelo SO, mas sim pela Hazard Detection Unit na microarquitetura do silício."
+      explanation: "Incorreto. O travamento não é feito por software nem pelo SO, mas sim pela Hazard Detection Unit no caminho de dados do hardware."
     }
   ]}
 />
@@ -596,19 +597,17 @@ Não existe atalho elétrico capaz de viajar no tempo dentro do circuito. O hard
 
 Sob as premissas da microarquitetura in-order de cinco estágios, a ocorrência de uma dependência direta Load-Use impõe **obrigatoriamente um ciclo de congelamento (uma bolha)** na esteira de instruções:
 
-```text
-CRONOLOGIA DO HAZARD LOAD-USE COM 1 BOLHA DE STALL
+<TimelineGrid
+  title="Hazard load-use com 1 bolha de stall"
+  columns={["C1", "C2", "C3", "C4", "C5", "C6", "C7"]}
+  rows={[
+    { label: "lw t0", cells: ["F", "D", "E", "M", "W", null, null] },
+    { label: "sub t2", cells: [null, "F", "D", "D*", "E", "M", "W"] },
+  ]}
+  footnote="O dado só emerge de MEM ao final do Ciclo 4; sub aguarda em ID até o Ciclo 5."
+/>
 
-         C1   C2   C3   C4   C5   C6   C7
-lw t0     F    D    E    M    W
-sub t2         F    D   D*    E    M    W
-                        ▲
-                      1 Bolha de Stall
-                      
-★ Insight: O dado só emerge de MEM ao final do Ciclo 4; sub aguarda em ID até o Ciclo 5.
-```
-
-O circuito responsável por orquestrar essa proteção é a **Unidade de Detecção de Hazards** (*Hazard Detection Unit*). Ela monitora o estágio `ID/EX` e identifica o conflito quando duas condições são satisfeitas simultaneamente:
+O circuito responsável por executar essa proteção é a **Unidade de Detecção de Hazards** (*Hazard Detection Unit*). Ela monitora o estágio `ID/EX` e identifica o conflito quando duas condições são satisfeitas simultaneamente:
 1. A instrução presente em `ID/EX` é uma leitura de memória (`ID/EX.MemRead == 1`);
 2. O registrador de destino dessa leitura coincide com algum dos registradores de origem da instrução presente em decodificação (`ID/EX.Rd == IF/ID.Rs1` ou `ID/EX.Rd == IF/ID.Rs2`).
 
@@ -657,6 +656,12 @@ addi t3, t1, 2     # Consome t1 com zero bolhas via forwarding de MEM/WB
 ```
 
 Ao antecipar a leitura de `b` para preencher o intervalo entre a leitura de `a` e seu uso, o compilador mascara completamente o tempo de espera do circuito. O programa executa exatamente o mesmo trabalho e preserva o resultado pretendido, mas agora com **zero ciclos de stall**.
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. **Atalho resolve conta:** resultado da <Term id="ALU">ALU</Term> volta direto para a próxima entrada;
+> 2. **Memória não volta no tempo:** dado que só sai no fim de `MEM` exige 1 bolha;
+> 3. **Compilador ajuda:** ordem independente no meio mascara a espera.
 
 ---
 
@@ -708,32 +713,14 @@ O contador saturante de 2 bits resolve essa instabilidade introduzindo a proprie
 
 O circuito é implementado como um autômato de quatro estados:
 
-```text
-O AUTÔMATO DE ESTADOS DE SMITH (2 BITS) COM HISTERESE
-
-      ┌──────── (Não Tomado) ───────┐               ┌──────── (Não Tomado) ───────┐
-      │                             │               │                             │
-      ▼                             │               ▼                             │
-┌───────────┐                 ┌───────────┐   ┌───────────┐                 ┌───────────┐
-│ Estado 00 │ ── (Tomado) ──> │ Estado 01 │   │ Estado 10 │ ── (Tomado) ──> │ Estado 11 │
-│  Strongly │                 │   Weakly  │   │   Weakly  │                 │  Strongly │
-│ Not-Taken │ <─ (Não Tom) ── │ Not-Taken │   │   Taken   │ <─ (Não Tom) ── │   Taken   │
-└───────────┘                 └───────────┘   └───────────┘                 └───────────┘
-      ▲                             │               ▲                             │
-      │                             │ (Tomado)      │ (Tomado)                    │
-      │                             └───────┬───────┘                             │
-      │                                     │                                     │
-      └────────────────── (Não Tomado) ─────┴──────────────── (Tomado) ───────────┘
-
-★ Insight: A histerese impede que uma única saída de laço reverta a predição para a próxima chamada.
-```
+<SmithAutomaton />
 
 Os quatro estados dividem-se em dois hemisférios de ação:
 * Estados `00` (Strongly Not-Taken) e `01` (Weakly Not-Taken): a microarquitetura prevê **Não-Tomado**;
 * Estados `10` (Weakly Taken) e `11` (Strongly Taken): a microarquitetura prevê **Tomado**.
 
 A estabilidade da histerese manifesta-se claramente no encerramento do laço:
-Quando a 100ª iteração termina, o contador (que sob a premissa de repetições consecutivas já se estabilizou no estado saturado `11 - Strongly Taken`) recebe o resultado Não-Tomado. Ele transiciona para `10 - Weakly Taken`. Ele errou a predição de encerramento do laço, mas permaneceu no hemisfério Tomado! Quando o mesmo laço for acionado novamente pelo software, o preditor continuará apostando que o desvio será tomado, acertando a primeira iteração de imediato. Sob esse regime estabilizado com histórico prévio aquecido, o contador de 2 bits mitiga o erro de reentrada e falha apenas na saída do laço.
+Quando a 100ª iteração termina, o contador (que sob a premissa de repetições consecutivas já se estabilizou no estado saturado `11 - Strongly Taken`) recebe o resultado Não-Tomado. Ele transiciona para `10 - Weakly Taken`. Ele errou a predição de encerramento do laço, mas permaneceu no hemisfério Tomado! Quando o mesmo laço for acionado novamente pelo software, o preditor continuará apostando que o desvio será tomado, acertando a primeira iteração de imediato. Sob esse regime estabilizado com histórico prévio aquecido, o contador de 2 bits mitiga o erro de reentrada e falha apenas na saída do laço. Note a troca de premissa: o exemplo de 1 bit partiu de estado frio sem histórico, este parte de estado aquecido após repetições.
 
 ---
 
@@ -752,7 +739,7 @@ O hardware precisa executar imediatamente um **esvaziamento do pipeline** (*Pipe
 
 A penalidade de tempo desse erro varia profundamente conforme a profundidade do projeto:
 * Em nosso pipeline didático in-order de cinco estágios, onde o desvio é avaliado no estágio `EX`, a penalidade de descarte é de apenas **1 a 2 ciclos de clock**.
-* Em microarquiteturas comerciais de alto desempenho (como núcleos x86 com esteiras de 14 a 20 estágios de profundidade), um erro de predição descarta dezenas de instruções parciais e impõe uma penalidade medida empiricamente entre **14 e 20 ciclos de clock** para reiniciar o fluxo. Se um programa cometer muitos erros de salto, o processador passará grande parte do seu tempo descartando trabalho inútil.
+* Em microarquiteturas comerciais de alto desempenho com esteiras profundas (exemplo típico citado em literatura de núcleos x86 com 14 a 20 estágios), um erro de predição impõe penalidade medida empiricamente entre **14 e 20 ciclos de clock** para reiniciar o fluxo, conforme a profundidade e o projeto. Se um programa cometer muitos erros de salto, o processador passará grande parte do seu tempo descartando trabalho inútil.
 
 <PredictionChallenge
   client:load
@@ -773,7 +760,7 @@ A penalidade de tempo desse erro varia profundamente conforme a profundidade do 
     {
       id: "C",
       label: "A CPU dispara uma interrupção de hardware não-mascarável (NMI) e transfere o controle para o kernel Linux.",
-      explanation: "Incorreto. Erros de predição de desvio ocorrem bilhões de vezes por dia em qualquer computador e são tratados inteiramente no silício pelo hardware sem intervenção do kernel."
+      explanation: "Incorreto. Erros de predição de desvio ocorrem bilhões de vezes por dia em qualquer computador e são tratados inteiramente no hardware sem intervenção do kernel."
     }
   ]}
 />
@@ -792,13 +779,23 @@ Quando o processador executa instruções especulativas ao longo de um caminho q
 
 Em 2018, pesquisadores de segurança da computação demonstraram que um programa malicioso pode medir o tempo exato de acesso a determinadas posições de memória para deduzir se um dado foi colocado na cache durante a execução especulativa (um acesso rápido em nanossegundos indica cache hit; um acesso lento indica cache miss). Por meio dessas medições de tempo, o invasor consegue reconstruir senhas e chaves criptográficas que o software jamais deveria ter lido. Essa família de vulnerabilidades de canal lateral microarquitetural é conhecida como **Spectre**.
 
+<DeepDive title="Detalhe de implementação: por que o rastro fica na cache">
+A garantia da ISA cobre registradores visíveis e memória RAM: rota descartada não consolida efeito arquitetural. O rastro que sobra é microarquitetural, nas linhas de cache L1 e L2 trazidas pela leitura especulativa. É essa diferença de tempo entre hit e miss que o ataque mede. Nada aqui muda o mecanismo da Trilha 1, só detalha onde o resíduo mora no hardware.
+</DeepDive>
+
+> [!TIP]
+> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
+> 1. **Desvio trava a busca:** sem saber o destino, a esteira aposta;
+> 2. **Histórico acerta laço:** contador de 2 bits estabiliza com repetição;
+> 3. **Erro custa descarte:** aposta errada vira bolhas e recomeço no <Term id="PC">PC</Term> certo.
+
 ---
 
 ## 3.6 Síntese de Arquitetura e Heurísticas de Otimização
 
 Ao longo deste módulo, nós desmontamos a máquina para enxergar como o processador moderno transforma código sequencial em uma linha de montagem com sobreposição temporal contínua.
 
-Para sintetizar o conhecimento em uma visão abrangente de engenharia, a matriz a seguir consolida as causas físicas, os mecanismos de resolução e o custo de cada conflito de esteira:
+Para sintetizar o conhecimento em uma visão abrangente de engenharia, a matriz a seguir consolida as causas físicas, os mecanismos de resolução e o custo de cada conflito de esteira. Custos típicos para o pipeline didático de 5 estágios e, onde indicado, para núcleos comerciais profundos medidos em literatura e suítes como SPEC CPU. Não são constantes universais.
 
 | Conflito no Pipeline | Causa Física no Hardware | Mecanismo de Mitigação | Custo Típico em Ciclos |
 | :--- | :--- | :--- | :--- |
@@ -851,7 +848,7 @@ Ao contrário de invariantes normativas da ISA ou contratos estritos da ABI (que
 3. **Seleção Condicional de Dados sem Salto (Dependência de Custo Operacional):**
    * *Mecanismo:* Instruções como `cmov` (x86) e `csel` (ARM) convertem um desvio de fluxo de controle em uma operação de seleção puramente aritmética no caminho de dados.
    * *Diretriz:* Quando uma decisão lógica for intrinsecamente imprevisível (probabilidade de salto próxima a 50%), substituir a bifurcação por instruções condicionais elimina as penalidades de esvaziamento da esteira.
-   * *Limitação e Trade-off:* O `cmov` não é uma otimização universal. Ele obriga o circuito a calcular antecipadamente os operandos de ambas as alternativas antes de efetuar a seleção, criando dependências de dados em ambas as vias de entrada. Se o desvio original for altamente previsível, o salto tradicional com predição correta terá custo nulo de bolhas, enquanto o `cmov` pagará o custo combinado dos dois cálculos. Além disso, `cmov` não pode ser utilizado caso um dos ramos realize acessos arriscados à memória ou gere exceções.
+   * *Limitação e Trade-off:* O `cmov` não é uma otimização universal. Ele obriga o circuito a calcular antecipadamente os operandos de ambas as alternativas antes de selecionar o valor, criando dependências de dados em ambas as vias de entrada. Se o desvio original for altamente previsível, o salto tradicional com predição correta terá custo nulo de bolhas, enquanto o `cmov` pagará o custo combinado dos dois cálculos. Além disso, `cmov` não pode ser utilizado caso um dos ramos realize acessos arriscados à memória ou gere exceções.
 
 4. **Cooperação com o Compilador como Otimizador de Pipeline:**
    * *Mecanismo:* O compilador modela formalmente o grafo de dependências e as tabelas de latência de ciclos de cada instrução suportada pela arquitetura alvo.
@@ -860,75 +857,27 @@ Ao contrário de invariantes normativas da ISA ou contratos estritos da ABI (que
 
 ---
 
-## 3.7 Missão Prática de Engenharia: Medição de Branch-Misses e IPC com o Linux perf
+## 3.7 Leitura guiada: por que vetor ordenado parece mais rápido
 
-Para consolidar o aprendizado, conecte a teoria ao hardware real do seu computador utilizando o subsistema de contadores de desempenho de hardware do kernel Linux (`perf`).
+Você não precisa compilar nem medir nada. O experimento clássico compara o mesmo filtro sobre vetor aleatório e vetor ordenado. No aleatório, o desvio erra muito e a esteira descarta trabalho. No ordenado, o preditor estabiliza e a vazão se mantém.
 
-#### O Experimento Clássico: Vetor Ordenado versus Vetor Desordenado
-Considere o célebre enigma de ciência da computação: por que percorrer e filtrar um vetor previamente ordenado é dramaticamente mais rápido do que processar os mesmos números em ordem aleatória?
+Par mínimo 1: o filtro que o preditor tenta adivinhar.
 
-Crie um arquivo de teste `branch_bench.c`:
 ```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#define TAMANHO 32768
-#define ITERACOES 50000
-
-int comparar_inteiros(const void *a, const void *b) {
-    return (*(int *)a - *(int *)b);
-}
-
-int main(int argc, char **argv) {
-    int dados[TAMANHO];
-    for (int c = 0; c < TAMANHO; ++c) {
-        dados[c] = rand() % 256;
-    }
-
-    if (argc > 1) {
-        qsort(dados, TAMANHO, sizeof(int), comparar_inteiros);
-        printf("Executando sobre dados ORDENADOS...\n");
-    } else {
-        printf("Executando sobre dados ALEATORIOS...\n");
-    }
-
-    long long soma = 0;
-    for (int i = 0; i < ITERACOES; ++i) {
-        for (int c = 0; c < TAMANHO; ++c) {
-            if (dados[c] >= 128) {
-                soma += dados[c];
-            }
-        }
-    }
-
-    printf("Soma final: %lld\n", soma);
-    return 0;
-}
+if (dados[c] >= 128) soma += dados[c];
 ```
 
-Execute o comando de compilação com otimizações:
+Par mínimo 2: como observar sem mexer no código, só lendo contadores (opcional, fora da Trilha 1).
+
 ```bash
-gcc -O2 branch_bench.c -o branch_bench
+perf stat -e branches,branch-misses,cycles,instructions ./prog
 ```
 
-#### Passo 1: Executar sobre Dados Aleatórios (Alta Imprevisibilidade)
-Execute no terminal monitorando os eventos de hardware:
-```bash
-perf stat -e branches,branch-misses,cycles,instructions ./branch_bench
-```
-Neste cenário aleatório, o preditor dinâmico de saltos falha frequentemente (taxa de erro de 15% a 20%), provocando sucessivos esvaziamentos de esteira (*pipeline flushes*) e derrubando a taxa de instruções por ciclo (IPC).
+Em cenário aleatório típico relatado em literatura, a taxa de erro fica na casa de 15% a 20%. Imagine, de forma simplificada, o cenário ordenado: a taxa cai para menos de 0,1%. Cada erro em esteira profunda custa na ordem de 14 a 20 ciclos, conforme a profundidade do projeto.
 
-#### Passo 2: Executar sobre Dados Ordenados (Alta Previsibilidade)
-Execute no terminal com os dados ordenados:
-```bash
-perf stat -e branches,branch-misses,cycles,instructions ./branch_bench ordenar
-```
-Quando o vetor está ordenado, todos os números menores que 128 aparecem primeiro, seguidos pelos números maiores. O contador saturante de 2 bits estabiliza-se no hemisfério correto e a taxa de erros despenca para menos de 0,1%, permitindo que o processador opere próximo da vazão máxima.
-
-#### O Que o Hardware Está Fazendo:
-1. **A Microarquitetura Importa Tanto Quanto o Big-O:** O programa executa rigorosamente as mesmas comparações aritméticas em ambos os casos.
-2. **O Custo Real da Especulação:** Cada erro de predição em um processador moderno descarta as instruções especuladas e desperdiça de 14 a 20 ciclos de clock reiniciando o pipeline.
+#### O que o hardware está fazendo:
+1. **A microarquitetura importa tanto quanto o Big-O:** o programa executa as mesmas comparações nos dois casos.
+2. **O custo real da especulação:** cada erro descarta o trabalho especulado e reinicia a busca no endereço certo.
 
 ---
 

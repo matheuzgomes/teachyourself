@@ -61,22 +61,20 @@ export default function CmosNandCard() {
 
             <svg viewBox="0 0 620 380" className="w-full h-auto select-none" style={{ maxHeight: "380px" }}>
               {/* Trilho Superior VDD */}
-              <line x1="160" y1="24" x2="400" y2="24" stroke="#3c3836" strokeWidth="3" />
-              <text x="280" y="16" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">
+              <text x="280" y="30" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">
                 + VDD (Alimentacao: 3.3V)
               </text>
+              <line x1="180" y1="42" x2="380" y2="42" stroke="#3c3836" strokeWidth="3" />
 
               {/* Ramificacao VDD para PMOS A e PMOS B em Paralelo */}
-              <line x1="280" y1="24" x2="280" y2="48" stroke="#3c3836" strokeWidth="2.5" />
-              <line x1="205" y1="48" x2="355" y2="48" stroke="#3c3836" strokeWidth="2.5" />
-              <line x1="205" y1="48" x2="205" y2="68" stroke={inputA === 0 ? "#2d5a27" : "#8c827a"} strokeWidth={inputA === 0 ? "3" : "2"} />
-              <line x1="355" y1="48" x2="355" y2="68" stroke={inputB === 0 ? "#2d5a27" : "#8c827a"} strokeWidth={inputB === 0 ? "3" : "2"} />
+              <line x1="205" y1="42" x2="205" y2="68" stroke={inputA === 0 ? "#2d5a27" : "#8c827a"} strokeWidth={inputA === 0 ? "3" : "2"} />
+              <line x1="355" y1="42" x2="355" y2="68" stroke={inputB === 0 ? "#2d5a27" : "#8c827a"} strokeWidth={inputB === 0 ? "3" : "2"} />
 
               {/* PMOS A (Esquerda) */}
               <g transform="translate(170, 68)">
                 <rect x="0" y="0" width="70" height="52" rx="4" fill={inputA === 0 ? "#2d5a27" : "#dfd7c2"} stroke="#3c3836" strokeWidth="1.5" />
-                <text x="35" y="24" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill={inputA === 0 ? "#ffffff" : "#2c2825"}>PMOS A</text>
-                <text x="35" y="42" textAnchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill={inputA === 0 ? "#ffffff" : "#5c554e"}>
+                <text x="35" y="24" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={inputA === 0 ? "#ffffff" : "#2c2825"}>PMOS A</text>
+                <text x="35" y="42" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="bold" fill={inputA === 0 ? "#ffffff" : "#5c554e"}>
                   {inputA === 0 ? "CONDUZ" : "CORTA"}
                 </text>
                 <circle cx="-6" cy="26" r="5" fill="#fdfcfb" stroke="#3c3836" strokeWidth="1.5" />
@@ -85,8 +83,8 @@ export default function CmosNandCard() {
               {/* PMOS B (Direita) */}
               <g transform="translate(320, 68)">
                 <rect x="0" y="0" width="70" height="52" rx="4" fill={inputB === 0 ? "#2d5a27" : "#dfd7c2"} stroke="#3c3836" strokeWidth="1.5" />
-                <text x="35" y="24" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill={inputB === 0 ? "#ffffff" : "#2c2825"}>PMOS B</text>
-                <text x="35" y="42" textAnchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill={inputB === 0 ? "#ffffff" : "#5c554e"}>
+                <text x="35" y="24" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={inputB === 0 ? "#ffffff" : "#2c2825"}>PMOS B</text>
+                <text x="35" y="42" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="bold" fill={inputB === 0 ? "#ffffff" : "#5c554e"}>
                   {inputB === 0 ? "CONDUZ" : "CORTA"}
                 </text>
                 <circle cx="76" cy="26" r="5" fill="#fdfcfb" stroke="#3c3836" strokeWidth="1.5" />
@@ -101,10 +99,10 @@ export default function CmosNandCard() {
               <line x1="280" y1="142" x2="280" y2="182" stroke="#3c3836" strokeWidth="2.5" />
               <circle cx="280" cy="182" r="5" fill="#3c3836" />
               <line x1="280" y1="182" x2="435" y2="182" stroke={outputY === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={outputY === 1 ? "3.5" : "2"} />
-              <text x="448" y="177" font-family="monospace" font-size="14" font-weight="bold" fill={outputY === 1 ? "#2d5a27" : "#2c2825"}>
+              <text x="448" y="177" fontFamily="monospace" fontSize="14" fontWeight="bold" fill={outputY === 1 ? "#2d5a27" : "#2c2825"}>
                 Saida Y = {outputY}
               </text>
-              <text x="448" y="197" font-family="monospace" font-size="12" font-weight="bold" fill={outputY === 1 ? "#2d5a27" : "#5c554e"}>
+              <text x="448" y="197" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={outputY === 1 ? "#2d5a27" : "#5c554e"}>
                 {outputY === 1 ? "Nivel 1 (VDD Ativo)" : "Nivel 0 (GND Drenado)"}
               </text>
 
@@ -114,8 +112,8 @@ export default function CmosNandCard() {
               {/* NMOS A (Superior da Serie) */}
               <g transform="translate(245, 212)">
                 <rect x="0" y="0" width="70" height="50" rx="4" fill={inputA === 1 ? "#2d5a27" : "#dfd7c2"} stroke="#3c3836" strokeWidth="1.5" />
-                <text x="35" y="23" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill={inputA === 1 ? "#ffffff" : "#2c2825"}>NMOS A</text>
-                <text x="35" y="40" textAnchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill={inputA === 1 ? "#ffffff" : "#5c554e"}>
+                <text x="35" y="23" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={inputA === 1 ? "#ffffff" : "#2c2825"}>NMOS A</text>
+                <text x="35" y="40" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="bold" fill={inputA === 1 ? "#ffffff" : "#5c554e"}>
                   {inputA === 1 ? "CONDUZ" : "CORTA"}
                 </text>
               </g>
@@ -126,8 +124,8 @@ export default function CmosNandCard() {
               {/* NMOS B (Inferior da Serie) */}
               <g transform="translate(245, 282)">
                 <rect x="0" y="0" width="70" height="50" rx="4" fill={inputB === 1 ? "#2d5a27" : "#dfd7c2"} stroke="#3c3836" strokeWidth="1.5" />
-                <text x="35" y="23" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill={inputB === 1 ? "#ffffff" : "#2c2825"}>NMOS B</text>
-                <text x="35" y="40" textAnchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill={inputB === 1 ? "#ffffff" : "#5c554e"}>
+                <text x="35" y="23" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={inputB === 1 ? "#ffffff" : "#2c2825"}>NMOS B</text>
+                <text x="35" y="40" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="bold" fill={inputB === 1 ? "#ffffff" : "#5c554e"}>
                   {inputB === 1 ? "CONDUZ" : "CORTA"}
                 </text>
               </g>
@@ -139,31 +137,33 @@ export default function CmosNandCard() {
               <line x1="220" y1="352" x2="340" y2="352" stroke="#3c3836" strokeWidth="3" />
               <line x1="240" y1="358" x2="320" y2="358" stroke="#3c3836" strokeWidth="2" />
               <line x1="260" y1="364" x2="300" y2="364" stroke="#3c3836" strokeWidth="1.5" />
-              <text x="280" y="378" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill="#2c2825">
+              <text x="280" y="378" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#2c2825">
                 - GND (0V / Terra)
               </text>
 
               {/* Roteamento Ortogonal da Entrada A */}
               <line x1="40" y1="94" x2="164" y2="94" stroke={inputA === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputA === 1 ? "3" : "2"} />
               <circle cx="40" cy="94" r="5" fill={inputA === 1 ? "#2d5a27" : "#8c827a"} />
-              <text x="40" y="74" font-family="monospace" font-size="13" font-weight="bold" fill={inputA === 1 ? "#2d5a27" : "#2c2825"}>
+              <text x="40" y="74" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={inputA === 1 ? "#2d5a27" : "#2c2825"}>
                 A = {inputA}
               </text>
               <circle cx="120" cy="94" r="4" fill={inputA === 1 ? "#2d5a27" : "#8c827a"} />
               <line x1="120" y1="94" x2="120" y2="237" stroke={inputA === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputA === 1 ? "3" : "2"} />
               <line x1="120" y1="237" x2="245" y2="237" stroke={inputA === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputA === 1 ? "3" : "2"} />
 
-              {/* Roteamento Ortogonal da Entrada B (Sem Cruzamento) */}
+              {/* Roteamento Ortogonal da Entrada B (com Ponte Jumper sobre Entrada A) */}
               <line x1="40" y1="307" x2="245" y2="307" stroke={inputB === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputB === 1 ? "3" : "2"} />
               <circle cx="40" cy="307" r="5" fill={inputB === 1 ? "#2d5a27" : "#8c827a"} />
-              <text x="40" y="287" font-family="monospace" font-size="13" font-weight="bold" fill={inputB === 1 ? "#2d5a27" : "#2c2825"}>
+              <text x="40" y="287" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={inputB === 1 ? "#2d5a27" : "#2c2825"}>
                 B = {inputB}
               </text>
               <circle cx="70" cy="307" r="4" fill={inputB === 1 ? "#2d5a27" : "#8c827a"} />
-              <line x1="70" y1="307" x2="70" y2="38" stroke={inputB === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputB === 1 ? "3" : "2"} />
-              <line x1="70" y1="38" x2="415" y2="38" stroke={inputB === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputB === 1 ? "3" : "2"} />
-              <line x1="415" y1="38" x2="415" y2="94" stroke={inputB === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputB === 1 ? "3" : "2"} />
-              <line x1="415" y1="94" x2="396" y2="94" stroke={inputB === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={inputB === 1 ? "3" : "2"} />
+              <path
+                d="M 70 307 L 70 100 A 6 6 0 0 0 70 88 L 70 16 L 430 16 L 430 94 L 396 94"
+                fill="none"
+                stroke={inputB === 1 ? "#2d5a27" : "#8c827a"}
+                strokeWidth={inputB === 1 ? "3" : "2"}
+              />
             </svg>
           </div>
         </div>

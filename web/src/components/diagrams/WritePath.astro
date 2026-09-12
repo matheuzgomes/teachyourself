@@ -1,0 +1,36 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+
+const steps = [
+  { box: 'Aplicação de usuário (Ring 3)', note: 'fwrite e fflush' },
+  { box: 'Buffer da biblioteca libc (RAM)', note: null },
+  { box: 'Kernel: page cache (RAM volátil)', note: 'Dados marcados como DIRTY. Retorno imediato do write!' },
+  { box: 'Fila do escalonador de blocos', note: 'Flusher threads assíncronas' },
+  { box: 'Cache volátil interna do SSD', note: 'Transferência DMA' },
+  { box: 'Mídia não-volátil (flash NAND)', note: 'Persistência real. Descarga física.' },
+];
+---
+
+<DiagramFrame
+  eyebrow="Caminho da escrita"
+  title="Do fwrite à Célula Flash: 6 Degraus até Persistir"
+  subtitle="Cada degrau abaixo do page cache é volátil até a descarga física. Só o último persiste."
+  steps={[
+    '<strong>Passo 1:</strong> desça os degraus do usuário ao kernel e pare no page cache: é aqui que o write retorna, antes de persistir.',
+    '<strong>Passo 2:</strong> continue descendo pelas filas e caches voláteis até a mídia física.',
+    '<strong>Passo 3:</strong> conte quantos degraus podem evaporar numa queda de energia e conclua por que write não é durabilidade.',
+  ]}
+  conclusion="Escrita retorna cedo e persiste tarde: entre o retorno do write e a célula flash há filas voláteis que morrem na queda. Durabilidade exige descarga explícita, não retorno da chamada."
+>
+  <ol class="flex flex-col items-stretch gap-1 font-mono text-xs md:text-sm">
+    {steps.map((s, i) => (
+      <li>
+        <div class={`rounded-2xl border px-4 py-3 text-center ${i === steps.length - 1 ? 'border-2 border-[#0e7c54] bg-[#a7fccd]/20 font-bold text-off-black' : i === 2 ? 'border-2 border-[#b93815] bg-[#ff9473]/10 font-bold text-off-black' : 'border-ash bg-parchment text-graphite'}`}>
+          {s.box}
+          {s.note && <span class="block font-normal text-xs mt-1">{s.note}</span>}
+        </div>
+        {i < steps.length - 1 && <div class="text-center text-graphite py-0.5" aria-hidden="true">↓</div>}
+      </li>
+    ))}
+  </ol>
+</DiagramFrame>

@@ -1,0 +1,51 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Deadlock"
+  title="A Espera Circular Mútua"
+  subtitle="A retém 1 e aguarda 2. B retém 2 e aguarda 1. Ninguém solta primeiro."
+  steps={[
+    '<strong>Passo 1:</strong> localize o que cada thread retém: A segura a Trava 1, B segura a Trava 2.',
+    '<strong>Passo 2:</strong> localize o que cada thread aguarda: A quer a 2, B quer a 1.',
+    '<strong>Passo 3:</strong> feche o ciclo com o dedo: cada espera aponta para um recurso retido por quem também espera. Sem ordem global de aquisição, o ciclo nunca se desfaz.',
+  ]}
+  conclusion="Deadlock é espera circular sem saída: retenção mais espera cruzada. A prevenção clássica impõe ordem total de aquisição para que o ciclo não consiga se formar."
+>
+  <svg viewBox="0 0 560 260" class="w-full h-auto font-mono" role="img" aria-label="Thread A retém trava 1 e aguarda trava 2, thread B retém trava 2 e aguarda trava 1, formando ciclo">
+    <title>Espera circular entre duas threads e duas travas</title>
+    <g>
+      <rect x="20" y="100" width="120" height="60" rx="12" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
+      <text x="80" y="125" text-anchor="middle" font-size="14" font-weight="bold" class="fill-off-black">Thread A</text>
+      <text x="80" y="145" text-anchor="middle" font-size="11" class="fill-graphite">retém Trava 1</text>
+      <rect x="420" y="100" width="120" height="60" rx="12" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
+      <text x="480" y="125" text-anchor="middle" font-size="14" font-weight="bold" class="fill-off-black">Thread B</text>
+      <text x="480" y="145" text-anchor="middle" font-size="11" class="fill-graphite">retém Trava 2</text>
+      <rect x="220" y="20" width="120" height="44" rx="12" fill="#ff9473" fill-opacity="0.15" stroke="#b93815" stroke-width="2" />
+      <text x="280" y="47" text-anchor="middle" font-size="13" font-weight="bold" class="fill-off-black">Trava 2</text>
+      <rect x="220" y="196" width="120" height="44" rx="12" fill="#ff9473" fill-opacity="0.15" stroke="#b93815" stroke-width="2" />
+      <text x="280" y="223" text-anchor="middle" font-size="13" font-weight="bold" class="fill-off-black">Trava 1</text>
+      <path d="M 140 110 C 170 75, 185 45, 218 42" fill="none" stroke="#b93815" stroke-width="2" marker-end="url(#dl-red)" />
+      <text x="145" y="65" font-size="11" class="fill-graphite">A aguarda 2</text>
+
+      <path d="M 340 42 C 375 45, 390 75, 418 110" fill="none" stroke="#6b7280" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#dl)" />
+      <text x="355" y="65" font-size="11" class="fill-graphite">B retém 2</text>
+
+      <path d="M 420 150 C 390 185, 375 215, 342 218" fill="none" stroke="#b93815" stroke-width="2" marker-end="url(#dl-red)" />
+      <text x="355" y="195" font-size="11" class="fill-graphite">B aguarda 1</text>
+
+      <path d="M 220 218 C 185 215, 170 185, 142 150" fill="none" stroke="#6b7280" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#dl)" />
+      <text x="145" y="195" font-size="11" class="fill-graphite">A retém 1</text>
+    </g>
+    <defs>
+      <marker id="dl" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8" fill="none" stroke="#6b7280" stroke-width="1.5" />
+      </marker>
+      <marker id="dl-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8" fill="none" stroke="#b93815" stroke-width="1.5" />
+      </marker>
+    </defs>
+  </svg>
+  <p class="mt-2 text-center font-mono text-xs text-[#b93815] font-bold">Espera circular mútua: ninguém solta primeiro</p>
+</DiagramFrame>

@@ -398,7 +398,7 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
                 <span className="rounded bg-black/60 px-2 py-0.5 backdrop-blur-sm">
                   RISC-V 5-STAGE CORE : THREE.JS VIRTUAL INSPECTOR
                 </span>
-                <span className="text-[9px] text-smoke">
+                <span className="text-[10px] text-smoke">
                   Arraste para orbitar • Scroll para aproximar
                 </span>
               </div>
@@ -448,9 +448,9 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
                     >
                       <div className="font-mono text-sm font-bold">{stage}</div>
                       <div className="text-[10px] text-graphite mt-1 leading-tight">{STAGE_LABELS[stage]}</div>
-                      <div className="mt-2 text-[9px] font-mono">
+                      <div className="mt-2 text-[10px] font-mono">
                         {isActive ? (
-                          <span className="rounded bg-mint/10 text-mint px-1.5 py-0.5 font-medium">Ocupado</span>
+                          <span className="rounded bg-mint/30 border border-mint/60 text-off-black px-1.5 py-0.5 font-medium">Ocupado</span>
                         ) : (
                           <span className="text-smoke">Vazio</span>
                         )}

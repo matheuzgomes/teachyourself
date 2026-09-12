@@ -54,7 +54,7 @@ export default function CmosInverterCard() {
 
               {/* Trilho de Alimentacao VDD (Topo) */}
               <line x1="180" y1="28" x2="380" y2="28" stroke="#3c3836" strokeWidth="3" />
-              <text x="280" y="20" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">
+              <text x="280" y="20" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">
                 + VDD (Alimentacao: 3.3V)
               </text>
 
@@ -84,9 +84,9 @@ export default function CmosInverterCard() {
                   x="40"
                   y="26"
                   textAnchor="middle"
-                  font-family="monospace"
-                  font-size="13"
-                  font-weight="bold"
+                  fontFamily="monospace"
+                  fontSize="13"
+                  fontWeight="bold"
                   fill={vin === 0 ? "#ffffff" : "#2c2825"}
                 >
                   PMOS
@@ -95,9 +95,9 @@ export default function CmosInverterCard() {
                   x="40"
                   y="44"
                   textAnchor="middle"
-                  font-family="monospace"
-                  font-size="11"
-                  font-weight="bold"
+                  fontFamily="monospace"
+                  fontSize="11"
+                  fontWeight="bold"
                   fill={vin === 0 ? "#ffffff" : "#5c554e"}
                 >
                   {vin === 0 ? "CONDUZ" : "CORTA"}
@@ -109,7 +109,7 @@ export default function CmosInverterCard() {
               {/* Fio de Entrada Vin Geral */}
               <line x1="40" y1="98" x2="234" y2="98" stroke={inputHigh ? "#2d5a27" : "#8c827a"} strokeWidth={inputHigh ? "3" : "2"} />
               <circle cx="40" cy="98" r="5" fill={inputHigh ? "#2d5a27" : "#8c827a"} />
-              <text x="40" y="78" font-family="monospace" font-size="13" font-weight="bold" fill={inputHigh ? "#2d5a27" : "#2c2825"}>
+              <text x="40" y="78" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={inputHigh ? "#2d5a27" : "#2c2825"}>
                 V_in = {vin}
               </text>
 
@@ -132,10 +132,10 @@ export default function CmosInverterCard() {
                 strokeWidth={vout === 1 ? "3.5" : "2"}
                 markerEnd="url(#invArrow)"
               />
-              <text x="445" y="168" font-family="monospace" font-size="14" font-weight="bold" fill={vout === 1 ? "#2d5a27" : "#2c2825"}>
+              <text x="445" y="168" fontFamily="monospace" fontSize="14" fontWeight="bold" fill={vout === 1 ? "#2d5a27" : "#2c2825"}>
                 V_out = {vout}
               </text>
-              <text x="445" y="188" font-family="monospace" font-size="12" font-weight="bold" fill={vout === 1 ? "#2d5a27" : "#5c554e"}>
+              <text x="445" y="188" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={vout === 1 ? "#2d5a27" : "#5c554e"}>
                 {vout === 1 ? "3.3V (VDD Ativo)" : "0V (Terra Drenado)"}
               </text>
 
@@ -155,9 +155,9 @@ export default function CmosInverterCard() {
                   x="40"
                   y="26"
                   textAnchor="middle"
-                  font-family="monospace"
-                  font-size="13"
-                  font-weight="bold"
+                  fontFamily="monospace"
+                  fontSize="13"
+                  fontWeight="bold"
                   fill={vin === 1 ? "#ffffff" : "#2c2825"}
                 >
                   NMOS
@@ -166,9 +166,9 @@ export default function CmosInverterCard() {
                   x="40"
                   y="44"
                   textAnchor="middle"
-                  font-family="monospace"
-                  font-size="11"
-                  font-weight="bold"
+                  fontFamily="monospace"
+                  fontSize="11"
+                  fontWeight="bold"
                   fill={vin === 1 ? "#ffffff" : "#5c554e"}
                 >
                   {vin === 1 ? "CONDUZ" : "CORTA"}
@@ -189,7 +189,7 @@ export default function CmosInverterCard() {
               <line x1="220" y1="318" x2="340" y2="318" stroke="#3c3836" strokeWidth="3" />
               <line x1="240" y1="324" x2="320" y2="324" stroke="#3c3836" strokeWidth="2" />
               <line x1="260" y1="330" x2="300" y2="330" stroke="#3c3836" strokeWidth="1.5" />
-              <text x="280" y="348" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">
+              <text x="280" y="348" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">
                 - GND (0V / Terra)
               </text>
             </svg>

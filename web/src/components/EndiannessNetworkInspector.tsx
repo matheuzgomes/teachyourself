@@ -184,17 +184,17 @@ export default function EndiannessNetworkInspector() {
           <div className="rounded-xl bg-white p-4 border border-ash shadow-sm space-y-2">
             <div className="text-[10px] text-graphite flex items-center justify-between">
               <span>Sequencia Serial no Cabo:</span>
-              <span className="font-mono text-[9px] text-smoke">Primeiro &rarr; Ultimo</span>
+              <span className="font-mono text-[10px] text-smoke">Primeiro &rarr; Ultimo</span>
             </div>
             <div className="flex items-center justify-center gap-2 text-sm font-bold tracking-wider">
               <span className={`px-2.5 py-1 rounded-lg border ${
-                useHtons ? 'border-lake-blue bg-[#2b59d1]/10 text-lake-blue' : 'border-[#ff9473] bg-[#ff9473]/10 text-[#b93815]'
+                useHtons ? 'border-lake-blue bg-lake-blue/10 text-lake-blue' : 'border-coral bg-coral/10 text-crimson'
               }`}>
                 0x{simulation.wireBytes[0].toString(16).padStart(2, '0').toUpperCase()}
               </span>
               <span className="text-graphite">&rarr;</span>
               <span className={`px-2.5 py-1 rounded-lg border ${
-                useHtons ? 'border-lake-blue bg-[#2b59d1]/10 text-lake-blue' : 'border-[#ff9473] bg-[#ff9473]/10 text-[#b93815]'
+                useHtons ? 'border-lake-blue bg-lake-blue/10 text-lake-blue' : 'border-coral bg-coral/10 text-crimson'
               }`}>
                 0x{simulation.wireBytes[1].toString(16).padStart(2, '0').toUpperCase()}
               </span>

@@ -187,17 +187,17 @@ export default function BuildPipelineVisualizer() {
 
                 {/* Conector Móvel com Fluxo Causal entre Etapas */}
                 {idx < STEPS.length - 1 && (
-                  <div className="relative flex-1 mx-2 h-7 flex items-center min-w-[36px]">
-                    <svg className="w-full h-4 overflow-visible" preserveAspectRatio="none" viewBox="0 0 40 16">
+                  <div className="relative flex-1 mx-2 h-7 flex items-center min-w-[56px]">
+                    <svg className="w-full h-4 overflow-visible" preserveAspectRatio="none" viewBox="0 0 50 16">
                       {/* Trilha de barramento estática */}
-                      <line x1="0" y1="8" x2="34" y2="8" stroke="#cecac8" strokeWidth="2" strokeLinecap="round" />
+                      <line x1="0" y1="8" x2="42" y2="8" stroke="#cecac8" strokeWidth="2" strokeLinecap="round" />
 
                       {/* Fluxo de Dados Ativo quando avançando ou reproduzindo */}
                       {(selectedIdx > idx || (isSelected && isPlaying)) && (
                         <line
                           x1="0"
                           y1="8"
-                          x2="34"
+                          x2="42"
                           y2="8"
                           stroke="#2b59d1"
                           strokeWidth="2.5"
@@ -210,7 +210,7 @@ export default function BuildPipelineVisualizer() {
 
                     {/* Sinalizador de Pacote em Trânsito */}
                     {(selectedIdx > idx || (isSelected && isPlaying)) && (
-                      <span className="absolute left-1/2 -translate-x-1/2 -top-1.5 px-1.5 py-0.5 rounded-full bg-periwinkle-mist text-lake-blue border border-lake-blue/30 text-[9px] font-mono tracking-tight pointer-events-none">
+                      <span className="absolute left-1/2 -translate-x-1/2 -top-2 px-1.5 py-0.5 rounded-full bg-periwinkle-mist text-lake-blue border border-lake-blue/30 text-[10px] font-mono tracking-tight pointer-events-none whitespace-nowrap">
                         fluxo
                       </span>
                     )}

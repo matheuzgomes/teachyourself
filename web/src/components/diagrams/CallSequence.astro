@@ -1,0 +1,33 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Chamada de função"
+  title="Caller Prepara, Callee Executa, Pilha Devolve"
+  subtitle="Seis passos entre gravar argumentos e ler o retorno em %rax."
+  steps={[
+    '<strong>Passo 1:</strong> acompanhe o chamador: grava argumentos, executa call, empilha o retorno e pula.',
+    '<strong>Passo 2:</strong> acompanhe a chamada: aloca locais, calcula, guarda o retorno em %rax, libera e retorna.',
+    '<strong>Passo 3:</strong> confira o fechamento: ret lê o topo, soma 8 na pilha e devolve o controle ao endereço guardado.',
+  ]}
+  conclusion="Chamada de função é protocolo de pilha: quem chama empilha para onde voltar, quem é chamado aloca, calcula e desempilha. Quebrar qualquer passo corrompe o retorno."
+>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-xs">
+    <div class="rounded-2xl border-2 border-lake-blue bg-[#2b59d1]/5 p-4">
+      <div class="font-bold text-lake-blue text-sm mb-3">Chamador (caller)</div>
+      <ol class="space-y-2 text-off-black list-decimal list-inside">
+        <li class="rounded-xl bg-white border border-ash p-2.5">Grava argumentos em registradores</li>
+        <li class="rounded-xl bg-white border border-ash p-2.5">Executa call: subtrai 8 da pilha, grava o retorno, pula para a função</li>
+      </ol>
+    </div>
+    <div class="rounded-2xl border border-ash bg-parchment p-4">
+      <div class="font-bold text-off-black text-sm mb-3">Função chamada (callee)</div>
+      <ol class="space-y-2 text-graphite list-decimal list-inside" start="3">
+        <li class="rounded-xl bg-white border border-ash p-2.5">Aloca variáveis locais na pilha</li>
+        <li class="rounded-xl bg-white border border-ash p-2.5">Calcula e guarda o retorno em %rax</li>
+        <li class="rounded-xl bg-white border border-ash p-2.5">Libera os locais e executa ret: lê o topo, soma 8, volta ao chamador</li>
+      </ol>
+    </div>
+  </div>
+</DiagramFrame>

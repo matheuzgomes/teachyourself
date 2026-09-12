@@ -1,0 +1,30 @@
+---
+interface Props {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  steps: string[];
+  conclusion: string;
+}
+
+const { eyebrow, title, subtitle, steps, conclusion } = Astro.props;
+---
+
+<div class="my-10 rounded-card border border-ash bg-white p-6 md:p-8 shadow-sm">
+  <div class="border-b border-ash pb-4 mb-5">
+    <span class="font-mono text-xs uppercase tracking-widest text-lake-blue">{eyebrow}</span>
+    <h4 class="font-serif text-xl md:text-2xl font-normal text-off-black mt-1">{title}</h4>
+    {subtitle && <p class="font-mono text-xs text-graphite mt-1">{subtitle}</p>}
+  </div>
+
+  <slot />
+
+  <ol class="mt-6 space-y-2 text-xs md:text-sm text-graphite leading-relaxed list-decimal list-inside">
+    {steps.map((s) => <li set:html={s} />)}
+  </ol>
+
+  <p class="mt-5 rounded-2xl border border-[#a7fccd] bg-[#a7fccd]/20 p-5 text-xs md:text-sm text-off-black leading-relaxed">
+    <strong class="font-mono uppercase tracking-wider text-[#0e7c54] block mb-1">Conclusao</strong>
+    {conclusion}
+  </p>
+</div>

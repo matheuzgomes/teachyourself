@@ -1,0 +1,42 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Coerência MESI"
+  title="Dois Núcleos, Uma Posição de Memória"
+  subtitle="Cada L1 privada carimba seu estado. O barramento de espionagem mantém as cópias coerentes."
+  steps={[
+    '<strong>Passo 1:</strong> compare as duas L1: o Núcleo 0 guarda 42 carimbado M (modificado), o Núcleo 1 guarda 0 carimbado I (inválido).',
+    '<strong>Passo 2:</strong> siga os fios até o barramento de espionagem: toda escrita anuncia na interconexão e as L1 alheias reagem.',
+    '<strong>Passo 3:</strong> confira a L3 e a RAM ainda com 0: o valor 42 só existe na L1 do Núcleo 0 até o write-back.',
+  ]}
+  conclusion="Coerência não é cópia idêntica, é protocolo de estados: uma linha só pode estar modificada em uma L1 por vez, e o barramento garante que ninguém leia valor velho como se fosse novo."
+>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-xs">
+    <div class="rounded-2xl border-2 border-lake-blue bg-[#2b59d1]/5 p-4">
+      <div class="font-bold text-off-black text-sm mb-2">NÚCLEO 0</div>
+      <div class="rounded-xl bg-white border border-ash p-3 text-graphite">Registradores / ALU</div>
+      <div class="rounded-xl bg-white border border-ash p-3 mt-2">
+        <span class="text-graphite">Cache L1 privada</span>
+        <span class="block font-bold text-off-black mt-1">[ 0x1000 = 42 ] (M)</span>
+      </div>
+    </div>
+    <div class="rounded-2xl border border-ash bg-parchment p-4">
+      <div class="font-bold text-off-black text-sm mb-2">NÚCLEO 1</div>
+      <div class="rounded-xl bg-white border border-ash p-3 text-graphite">Registradores / ALU</div>
+      <div class="rounded-xl bg-white border border-ash p-3 mt-2">
+        <span class="text-graphite">Cache L1 privada</span>
+        <span class="block font-bold text-[#b93815] mt-1">[ 0x1000 = 0 ] (I)</span>
+      </div>
+    </div>
+  </div>
+  <div class="mt-3 rounded-2xl border border-ash bg-parchment p-4 font-mono text-xs text-center">
+    <span class="font-bold text-off-black block">Barramento de interconexão e espionagem (snooping)</span>
+    <span class="text-graphite">toda escrita anuncia aqui</span>
+  </div>
+  <div class="mt-3 rounded-2xl border border-ash bg-parchment p-4 font-mono text-xs text-center">
+    <span class="font-bold text-off-black block">Cache L3 compartilhada / Memória RAM</span>
+    <span class="text-graphite">[ 0x1000 = 0 ] (ainda não recebeu o 42)</span>
+  </div>
+</DiagramFrame>

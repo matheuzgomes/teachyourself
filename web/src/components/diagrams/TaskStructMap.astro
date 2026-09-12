@@ -1,0 +1,36 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+
+const fields = [
+  { name: 'pid, tgid, state', desc: 'Quem é a tarefa: identificador, grupo POSIX e estado de execução.' },
+  { name: 'mm_struct', desc: 'Mapa de memória virtual: raiz PML4 física e áreas de pilha e heap.', link: 'Descritor de Memória Virtual' },
+  { name: 'files_struct', desc: 'Tabela de arquivos abertos: fd 0, 1 e 2 para stdin, stdout e stderr.', link: 'Tabela de Arquivos Abertos' },
+  { name: 'signal_struct', desc: 'Gestão de sinais POSIX pendentes e tratados.' },
+  { name: 'thread_struct', desc: 'Contexto de hardware e registradores callee-saved.' },
+  { name: 'stack', desc: 'Pilha privada do kernel, 16 KiB por tarefa.', link: 'Pilha Privada do Kernel' },
+];
+---
+
+<DiagramFrame
+  eyebrow="task_struct"
+  title="A Ficha Cadastral da Tarefa"
+  subtitle="Tudo que o kernel sabe sobre um processo ou thread mora nesta estrutura."
+  steps={[
+    '<strong>Passo 1:</strong> leia a identidade: pid, grupo e estado dizem quem é e como está a tarefa.',
+    '<strong>Passo 2:</strong> siga os três ponteiros de saída: mapa de memória, tabela de arquivos e pilha de kernel.',
+    '<strong>Passo 3:</strong> confira o que falta para trocar de tarefa: contexto de hardware e sinais, sem os quais a retomada erra.',
+  ]}
+  conclusion="A task_struct é o estado completo e serializável de uma tarefa: trocar de processo é trocar de ficha. Clone decide quais ponteiros duplicar e quais compartilhar."
+>
+  <div class="rounded-2xl border border-ash overflow-hidden font-mono text-xs md:text-sm">
+    <div class="bg-off-black text-white px-4 py-3 font-bold">struct task_struct</div>
+    <dl class="divide-y divide-ash/60 bg-white">
+      {fields.map((f) => (
+        <div class="px-4 py-3 grid grid-cols-1 sm:grid-cols-[12rem_1fr] gap-1">
+          <dt class="font-bold text-lake-blue">{f.name}</dt>
+          <dd class="text-graphite">{f.desc}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+</DiagramFrame>

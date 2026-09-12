@@ -1,0 +1,33 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Falso compartilhamento"
+  title="Uma Linha de 64 Bytes, Dois Donos"
+  subtitle="contador_a e contador_b moram na mesma linha. Cada escrita invalida a linha inteira no outro núcleo."
+  steps={[
+    '<strong>Passo 1:</strong> localize os dois contadores de 8 bytes dentro da mesma linha de 64 bytes.',
+    '<strong>Passo 2:</strong> siga a escrita do Núcleo 0 em contador_a: a coerência invalida a linha inteira, incluindo contador_b.',
+    '<strong>Passo 3:</strong> repita mentalmente para o Núcleo 1: os núcleos se invalidam em pingue-pongue sem compartilhar um único byte útil.',
+  ]}
+  conclusion="Falso compartilhamento é pagar o preço da coerência sem o benefício: variáveis independentes na mesma linha forçam invalidações mútuas a cada escrita. A cura é separar os dados em linhas distintas."
+>
+  <div class="rounded-2xl border border-ash overflow-hidden font-mono text-xs" role="img" aria-label="Linha de 64 bytes com contador A gravado pelo núcleo 0 e contador B gravado pelo núcleo 1, com invalidação cruzada">
+    <div class="bg-parchment px-4 py-2.5 text-graphite border-b border-ash">Linha física de 64 bytes</div>
+    <div class="flex">
+      <div class="flex-1 bg-[#2b59d1]/10 border-r border-ash p-4 text-center">
+        <span class="font-bold text-lake-blue block">contador_a (8B)</span>
+        <span class="text-graphite">Núcleo 0 grava</span>
+      </div>
+      <div class="flex-1 bg-[#ff9473]/10 p-4 text-center">
+        <span class="font-bold text-[#b93815] block">contador_b (8B)</span>
+        <span class="text-graphite">Núcleo 1 grava</span>
+      </div>
+      <div class="flex-[2] bg-white p-4 text-center text-smoke hidden sm:block">preenchimento…</div>
+    </div>
+    <div class="bg-[#ff9473]/10 px-4 py-3 text-[#b93815] font-bold border-t border-[#ff9473]/40 text-center">
+      Cada escrita invalida a linha inteira no outro núcleo
+    </div>
+  </div>
+</DiagramFrame>

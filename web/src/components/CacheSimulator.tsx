@@ -310,15 +310,15 @@ export default function CacheSimulator() {
           <label className="block text-xs font-mono uppercase tracking-wider text-smoke font-medium">
             Endereço de Memória (Hexadecimal):
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap gap-2">
             <input
               type="text"
               value={addressInput}
               onChange={(e) => setAddressInput(e.target.value)}
-              className="flex-1 rounded-xl border border-ash bg-parchment/60 px-4 py-2.5 font-mono text-sm text-off-black focus:border-lake-blue focus:bg-white focus:outline-none focus:ring-1 focus:ring-lake-blue"
+              className="flex-1 min-w-[140px] rounded-xl border border-ash bg-parchment/60 px-4 py-2.5 font-mono text-sm text-off-black focus:border-lake-blue focus:bg-white focus:outline-none focus:ring-1 focus:ring-lake-blue"
               placeholder="Ex: 0x00000040"
             />
-            <div className="flex rounded-xl border border-ash bg-parchment p-1">
+            <div className="flex shrink-0 rounded-xl border border-ash bg-parchment p-1">
               <button
                 type="button"
                 onClick={() => setAccessMode('read')}
@@ -341,7 +341,7 @@ export default function CacheSimulator() {
             <button
               type="button"
               onClick={() => handleAccess()}
-              className="flex items-center gap-1.5 rounded-xl bg-off-black text-white hover:bg-black px-4 py-2.5 min-h-[44px] text-xs font-mono font-medium transition-all shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-off-black text-white hover:bg-black px-4 py-2.5 min-h-[44px] text-xs font-mono font-medium transition-all shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2"
             >
               <HugeiconsIcon icon={PlayIcon} className="h-3.5 w-3.5" />
               <span>Acessar</span>
@@ -402,9 +402,9 @@ export default function CacheSimulator() {
           </span>
         </div>
 
-        <div className="grid grid-cols-12 gap-2 text-center font-mono text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-center font-mono text-xs">
           {/* Tag */}
-          <div className="col-span-8 rounded-xl border border-lake-blue/40 bg-lake-blue/10 p-3">
+          <div className="sm:col-span-6 md:col-span-8 rounded-xl border border-lake-blue/40 bg-lake-blue/10 p-3">
             <span className="block text-[10px] text-lake-blue font-bold uppercase tracking-wider">
               Tag (56 bits: [63:8])
             </span>
@@ -415,7 +415,7 @@ export default function CacheSimulator() {
           </div>
 
           {/* Set Index */}
-          <div className="col-span-2 rounded-xl border border-gold/40 bg-gold/10 p-3">
+          <div className="sm:col-span-3 md:col-span-2 rounded-xl border border-gold/40 bg-gold/10 p-3">
             <span className="block text-[10px] text-gold font-bold uppercase tracking-wider">
               Set (2 bits: [7:6])
             </span>
@@ -426,7 +426,7 @@ export default function CacheSimulator() {
           </div>
 
           {/* Offset */}
-          <div className="col-span-2 rounded-xl border border-coral/40 bg-coral/10 p-3">
+          <div className="sm:col-span-3 md:col-span-2 rounded-xl border border-coral/40 bg-coral/10 p-3">
             <span className="block text-[10px] text-coral font-bold uppercase tracking-wider">
               Offset (6 bits: [5:0])
             </span>

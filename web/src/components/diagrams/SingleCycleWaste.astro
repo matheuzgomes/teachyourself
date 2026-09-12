@@ -1,0 +1,46 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+
+const load = ['Busca (1ns)', 'Decodifica (1ns)', 'Executa (1ns)', 'Memória (1ns)', 'Gravação (1ns)'];
+const add = ['Busca (1ns)', 'Decodifica (1ns)', 'Executa (1ns)'];
+---
+
+<DiagramFrame
+  eyebrow="Ciclo único"
+  title="O Desperdício do Caminho Combinacional Longo"
+  subtitle="Load usa 5 ns. Add usa 3 ns. O relógio pulsa a cada 5 ns para acomodar o pior caso."
+  steps={[
+    '<strong>Passo 1:</strong> percorra a barra do Load e conte 5 fatias ocupadas, uma por etapa do caminho elétrico.',
+    '<strong>Passo 2:</strong> percorra a barra do Add e localize as 2 fatias ociosas após a gravação.',
+    '<strong>Passo 3:</strong> some o ocioso: a cada soma, 2 ns de silício parado esperando o metrônomo.',
+  ]}
+  conclusion="No ciclo único, a instrução mais lenta dita o ritmo de todas. Circuitos rápidos passam parte de cada ciclo ociosos, e nenhum outro circuito pode aproveitar esse tempo porque o caminho é indivisível."
+>
+  <div class="space-y-5 font-mono text-xs">
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-bold text-off-black text-xs md:text-sm">Load (5 ns)</span>
+        <span class="text-[#0e7c54] font-bold">OK em 5 ns</span>
+      </div>
+      <div class="flex rounded-xl overflow-hidden border border-ash" role="img" aria-label="Load ocupa as 5 fatias de 1 nanossegundo">
+        {load.map((s) => (
+          <div class="flex-1 bg-lake-blue/80 text-white text-center px-1 py-3 text-[10px] md:text-xs border-l border-white/40 first:border-l-0">{s}</div>
+        ))}
+      </div>
+    </div>
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-bold text-off-black text-xs md:text-sm">Add (3 ns)</span>
+        <span class="text-[#b93815] font-bold">2 ns de desperdício</span>
+      </div>
+      <div class="flex rounded-xl overflow-hidden border border-ash" role="img" aria-label="Add ocupa 3 fatias e deixa 2 ociosas">
+        {add.map((s) => (
+          <div class="flex-1 bg-lake-blue/80 text-white text-center px-1 py-3 text-[10px] md:text-xs border-l border-white/40 first:border-l-0">{s}</div>
+        ))}
+        {[0, 1].map(() => (
+          <div class="flex-1 bg-[#ff9473]/20 text-[#b93815] text-center px-1 py-3 text-[10px] md:text-xs border-l border-[#ff9473]/50 font-bold">Ocioso</div>
+        ))}
+      </div>
+    </div>
+  </div>
+</DiagramFrame>

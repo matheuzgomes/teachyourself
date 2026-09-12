@@ -1,0 +1,31 @@
+---
+interface Field {
+  name: string;
+  detail: string;
+  span: number;
+}
+
+interface Props {
+  fields: Field[];
+  caption?: string;
+}
+
+const { fields, caption } = Astro.props;
+const total = fields.reduce((a, f) => a + f.span, 0);
+---
+
+<div class="my-3 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+  <div class="flex min-w-[520px] rounded-xl border border-ash overflow-hidden" role="img" aria-label={fields.map((f) => `${f.name}: ${f.detail}`).join('. ')}>
+    {fields.map((f, i) => (
+      <div
+        class={`px-2 py-3 text-center border-ash ${i > 0 ? 'border-l' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-parchment'}`}
+        style={`flex: ${f.span} 1 0; min-width: 0;`}
+        title={`${f.name} (${f.detail})`}
+      >
+        <div class="font-mono text-xs md:text-sm font-bold text-off-black leading-tight truncate px-1">{f.name}</div>
+        <div class="font-mono text-[10px] md:text-xs text-lake-blue mt-1 truncate px-1">{f.detail}</div>
+      </div>
+    ))}
+  </div>
+  {caption && <p class="mt-2 font-mono text-xs text-smoke">{caption}</p>}
+</div>

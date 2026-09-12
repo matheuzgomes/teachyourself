@@ -1,0 +1,43 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+
+const stages = [
+  { box: 'Memória IF', kind: 'unit' },
+  { box: 'IF/ID', kind: 'barrier', note: 'Barreira 1' },
+  { box: 'Decodificador ID', kind: 'unit' },
+  { box: 'ID/EX', kind: 'barrier', note: 'Barreira 2' },
+  { box: 'ALU EX', kind: 'unit' },
+  { box: 'EX/MEM', kind: 'barrier', note: 'Barreira 3' },
+  { box: 'Memória MEM', kind: 'unit' },
+  { box: 'MEM/WB', kind: 'barrier', note: 'Barreira 4' },
+  { box: 'Banco WB', kind: 'unit' },
+];
+---
+
+<DiagramFrame
+  eyebrow="Caminho de dados"
+  title="O Fatiamento por Registradores de Estágio"
+  subtitle="Cada barreira fotografa na borda de subida do clock e isola as fases em paralelo."
+  steps={[
+    '<strong>Passo 1:</strong> siga a cadeia da esquerda para a direita e alterne unidade de trabalho e barreira de clock.',
+    '<strong>Passo 2:</strong> pare em cada barreira e leia o que ela retém: instrução, operandos, resultado da ALU ou dado da memória.',
+    '<strong>Passo 3:</strong> imagine a borda de subida: todas as barreiras abrem juntas por uma fração de nanossegundo e cada fase recebe trabalho novo.',
+  ]}
+  conclusion="Os registradores de estágio funcionam como represas sincronizadas: retêm os dados até o próximo pulso e isolam os circuitos combinacionais de cada fase, permitindo trabalho paralelo sem corrupção."
+>
+  <ol class="flex flex-col gap-2 font-mono text-xs md:text-sm">
+    {stages.map((s, i) => (
+      <li class="flex items-stretch gap-2">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-parchment border border-ash text-[10px] font-bold text-smoke">{i + 1}</span>
+        {s.kind === 'barrier' ? (
+          <div class="flex-1 rounded-xl border-2 border-dashed border-lake-blue bg-[#2b59d1]/5 px-4 py-2.5">
+            <span class="font-bold text-lake-blue">{s.box}</span>
+            <span class="text-graphite"> ({s.note}, sincronizada pelo clock)</span>
+          </div>
+        ) : (
+          <div class="flex-1 rounded-xl border border-ash bg-parchment px-4 py-2.5 font-bold text-off-black">{s.box}</div>
+        )}
+      </li>
+    ))}
+  </ol>
+</DiagramFrame>

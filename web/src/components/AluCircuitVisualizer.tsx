@@ -79,6 +79,22 @@ export default function AluCircuitVisualizer() {
     };
   }, [isSub, valA, valB]);
 
+  const flags = useMemo(() => {
+    const rawSum = circuit.rawResult;
+    const s3 = circuit.s[0];
+    const cout3 = circuit.carries[0]; // Cout do Bit 3 (C4)
+    const cin3 = circuit.carries[1];  // Cin do Bit 3 (C3)
+
+    const zf = rawSum === 0 ? 1 : 0;
+    const sf = s3;
+    // Convencao x86: CF = ~Cout na subtracao (Borrow). Na adicao: CF = Cout
+    const cf = isSub ? (cout3 === 1 ? 0 : 1) : cout3;
+    // OF = Cin do MSB ^ Cout do MSB
+    const of = cin3 ^ cout3;
+
+    return { zf, sf, cf, of, cout3, cin3 };
+  }, [circuit, isSub]);
+
   // Propagation animation cycle (bit 0 -> bit 1 -> bit 2 -> bit 3 -> done)
   useEffect(() => {
     if (!isPropagating) return;
@@ -96,7 +112,10 @@ export default function AluCircuitVisualizer() {
   }, [isPropagating]);
 
   return (
-    <div className="my-10 rounded-card border border-ash bg-white p-6 md:p-8 font-sans shadow-sm transition-all">
+    <div
+      data-visual-model="VIS-10-ALU-ADDER-SUBTRACTOR"
+      className="my-10 rounded-card border border-ash bg-white p-6 md:p-8 font-sans shadow-sm transition-all"
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ash pb-5">
         <div className="flex items-center gap-3">
@@ -240,7 +259,7 @@ export default function AluCircuitVisualizer() {
               >
                 {/* Moving Carry Wave Indicator */}
                 {activeStage === bitIdx && (
-                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-lake-blue px-2 py-0.5 text-[9px] font-bold text-white shadow">
+                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-lake-blue px-2 py-0.5 text-[10px] font-bold text-white shadow">
                     <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
                     Propagando
                   </span>
@@ -272,13 +291,20 @@ export default function AluCircuitVisualizer() {
                 </div>
 
                 {/* Full Adder Unit */}
-                <div className="rounded-xl border border-lake-blue/30 bg-[#2b59d1]/5 p-2 text-center">
+                <div className="rounded-xl border border-lake-blue/30 bg-lake-blue/5 p-2 text-center space-y-1">
                   <div className="text-[10px] uppercase tracking-wider text-lake-blue font-bold">
                     Full Adder {bitIdx}
                   </div>
-                  <div className="text-[9px] text-graphite mt-0.5">
-                    Cin = {circuit.carries[arrIdx + 1]} &rarr; Cout = {carryOut}
+                  <div className="text-[10px] text-graphite flex items-center justify-center gap-1.5">
+                    <span>Cin{bitIdx} = <strong className="text-off-black">{circuit.carries[arrIdx + 1]}</strong></span>
+                    <span>&rarr;</span>
+                    <span>Cout{bitIdx} = <strong className="text-off-black">{carryOut}</strong></span>
                   </div>
+                  {isLsb && isSub && (
+                    <span className="inline-block text-[9px] font-bold text-lake-blue bg-lake-blue/10 px-2 py-0.5 rounded-full">
+                      C0 = 1 injetado pelo fio SUB (+1 gratuito)
+                    </span>
+                  )}
                 </div>
 
                 {/* Sum Output */}
@@ -313,6 +339,95 @@ export default function AluCircuitVisualizer() {
           <span className="font-mono text-xl font-bold text-off-black tracking-widest mt-1 block">
             [{circuit.s.join('')}]₂
           </span>
+        </div>
+      </div>
+
+      {/* Flags Deck (Registrador de Estado da CPU / EFLAGS) */}
+      <div className="mt-6 rounded-card border border-ash bg-parchment p-5 font-mono text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ash/80 pb-3 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-forest-green" />
+            <span className="font-bold text-off-black uppercase tracking-wider text-[11px]">
+              Registrador de Flags de Condicao (Status Register)
+            </span>
+          </div>
+          <span className="text-graphite text-[11px]">
+            Sinais derivados diretamente dos barramentos e dos transportes (Cin e Cout)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* ZF */}
+          <div className="rounded-xl border border-ash bg-white p-3 space-y-1.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-off-black">ZF (Zero Flag)</span>
+              <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${
+                flags.zf === 1 ? 'bg-lake-blue text-white' : 'bg-parchment text-graphite border border-ash'
+              }`}>
+                {flags.zf}
+              </span>
+            </div>
+            <p className="text-[11px] text-graphite leading-relaxed">
+              {flags.zf === 1
+                ? 'Ativa: resultado numerico e exatamente zero (S = 0000).'
+                : 'Inativa: resultado possui bits ativos diferente de zero.'}
+            </p>
+          </div>
+
+          {/* SF */}
+          <div className="rounded-xl border border-ash bg-white p-3 space-y-1.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-off-black">SF (Sign Flag)</span>
+              <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${
+                flags.sf === 1 ? 'bg-amber-600 text-white' : 'bg-parchment text-graphite border border-ash'
+              }`}>
+                {flags.sf}
+              </span>
+            </div>
+            <p className="text-[11px] text-graphite leading-relaxed">
+              {flags.sf === 1
+                ? 'Ativa: bit MSB (S3) vale 1, indicando grandeza negativa com sinal.'
+                : 'Inativa: bit MSB (S3) vale 0, indicando grandeza positiva ou zero.'}
+            </p>
+          </div>
+
+          {/* CF */}
+          <div className="rounded-xl border border-ash bg-white p-3 space-y-1.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-off-black">CF (Carry / Borrow)</span>
+              <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${
+                flags.cf === 1 ? 'bg-rose-600 text-white' : 'bg-parchment text-graphite border border-ash'
+              }`}>
+                {flags.cf}
+              </span>
+            </div>
+            <p className="text-[11px] text-graphite leading-relaxed">
+              {isSub
+                ? (flags.cf === 1
+                    ? 'Ativa (x86): Cout=0 gerou emprestimo (Borrow=1), pois A < B na aritmetica unsigned.'
+                    : 'Inativa (x86): Cout=1 dispensou emprestimo (Borrow=0), pois A >= B na aritmetica unsigned.')
+                : (flags.cf === 1
+                    ? 'Ativa: Cout=1 indica estouro de capacidade unsigned (transporte para fora).'
+                    : 'Inativa: Cout=0 indica adicao sem transbordamento unsigned.')}
+            </p>
+          </div>
+
+          {/* OF */}
+          <div className="rounded-xl border border-ash bg-white p-3 space-y-1.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-off-black">OF (Overflow Flag)</span>
+              <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${
+                flags.of === 1 ? 'bg-crimson text-white' : 'bg-parchment text-graphite border border-ash'
+              }`}>
+                {flags.of}
+              </span>
+            </div>
+            <p className="text-[11px] text-graphite leading-relaxed">
+              {flags.of === 1
+                ? `Estouro com sinal: Cin3 (${flags.cin3}) ^ Cout3 (${flags.cout3}) = 1. Resultado extrapolou [-8, +7].`
+                : `Sem estouro com sinal: Cin3 (${flags.cin3}) ^ Cout3 (${flags.cout3}) = 0. Resultado signed valido.`}
+            </p>
+          </div>
         </div>
       </div>
     </div>

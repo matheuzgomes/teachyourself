@@ -1890,7 +1890,7 @@ export default function RetroComputer3D() {
       </div>
 
       {/* VIEWPORT THREE.JS PRINCIPAL */}
-      <div className="relative w-full h-[580px] rounded-3xl overflow-hidden border border-ash bg-gradient-to-b from-[#0a0d12] to-[#12161f] shadow-inner">
+      <div className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-ash bg-[#0e1217] shadow-inner">
         <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
         {/* INDICADOR DE STATUS DO MODO */}
@@ -1912,7 +1912,7 @@ export default function RetroComputer3D() {
 
         {/* DICAS DE CONTROLE ORBITAL */}
         <div className="absolute top-4 right-4 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-mono text-white/90 border border-white/10">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-mint animate-pulse" />
           Roda do mouse: Zoom · Botao esquerdo: Girar 360° · Botao direito: Pan
         </div>
       </div>

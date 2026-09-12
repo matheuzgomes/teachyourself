@@ -102,14 +102,14 @@ export default function AdderCircuitsCard() {
                 {/* Entrada A */}
                 <line x1="40" y1="60" x2="200" y2="60" stroke={haA === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={haA === 1 ? "3" : "2"} />
                 <circle cx="40" cy="60" r="5" fill={haA === 1 ? "#2d5a27" : "#8c827a"} />
-                <text x="40" y="44" font-family="monospace" font-size="13" font-weight="bold" fill={haA === 1 ? "#2d5a27" : "#2c2825"}>
+                <text x="40" y="44" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={haA === 1 ? "#2d5a27" : "#2c2825"}>
                   Entrada A = {haA}
                 </text>
 
                 {/* Entrada B */}
                 <line x1="40" y1="90" x2="200" y2="90" stroke={haB === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={haB === 1 ? "3" : "2"} />
                 <circle cx="40" cy="90" r="5" fill={haB === 1 ? "#2d5a27" : "#8c827a"} />
-                <text x="40" y="112" font-family="monospace" font-size="13" font-weight="bold" fill={haB === 1 ? "#2d5a27" : "#2c2825"}>
+                <text x="40" y="112" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={haB === 1 ? "#2d5a27" : "#2c2825"}>
                   Entrada B = {haB}
                 </text>
 
@@ -125,26 +125,26 @@ export default function AdderCircuitsCard() {
                 {/* Porta XOR (Soma) */}
                 <g transform="translate(200, 48)">
                   <rect x="0" y="0" width="90" height="54" rx="4" fill="#eae3d2" stroke="#3c3836" strokeWidth="1.5" />
-                  <text x="45" y="32" textAnchor="middle" font-family="monospace" font-size="14" font-weight="bold" fill="#2c2825">XOR</text>
+                  <text x="45" y="32" textAnchor="middle" fontFamily="monospace" fontSize="14" fontWeight="bold" fill="#2c2825">XOR</text>
                 </g>
                 <line x1="290" y1="75" x2="420" y2="75" stroke={haSum === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={haSum === 1 ? "3.5" : "2"} markerEnd="url(#haArrow)" />
-                <text x="435" y="70" font-family="monospace" font-size="14" font-weight="bold" fill={haSum === 1 ? "#2d5a27" : "#2c2825"}>
+                <text x="435" y="70" fontFamily="monospace" fontSize="14" fontWeight="bold" fill={haSum === 1 ? "#2d5a27" : "#2c2825"}>
                   Soma (S) = {haSum}
                 </text>
-                <text x="435" y="88" font-family="monospace" font-size="12" font-weight="bold" fill="#5c554e">
+                <text x="435" y="88" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#5c554e">
                   S = A ^ B
                 </text>
 
                 {/* Porta AND (Carry) */}
                 <g transform="translate(200, 138)">
                   <rect x="0" y="0" width="90" height="54" rx="4" fill="#eae3d2" stroke="#3c3836" strokeWidth="1.5" />
-                  <text x="45" y="32" textAnchor="middle" font-family="monospace" font-size="14" font-weight="bold" fill="#2c2825">AND</text>
+                  <text x="45" y="32" textAnchor="middle" fontFamily="monospace" fontSize="14" fontWeight="bold" fill="#2c2825">AND</text>
                 </g>
                 <line x1="290" y1="165" x2="420" y2="165" stroke={haCarry === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={haCarry === 1 ? "3.5" : "2"} markerEnd="url(#haArrow)" />
-                <text x="435" y="160" font-family="monospace" font-size="14" font-weight="bold" fill={haCarry === 1 ? "#2d5a27" : "#2c2825"}>
+                <text x="435" y="160" fontFamily="monospace" fontSize="14" fontWeight="bold" fill={haCarry === 1 ? "#2d5a27" : "#2c2825"}>
                   Carry (C) = {haCarry}
                 </text>
-                <text x="435" y="178" font-family="monospace" font-size="12" font-weight="bold" fill="#5c554e">
+                <text x="435" y="178" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#5c554e">
                   C = A & B
                 </text>
               </svg>
@@ -199,7 +199,7 @@ export default function AdderCircuitsCard() {
                   Soma={faSum}, C_out={faCout}
                 </span>
               </div>
-              <svg viewBox="0 0 620 260" className="w-full h-auto select-none" style={{ maxHeight: "260px" }}>
+              <svg viewBox="0 0 650 260" className="w-full h-auto select-none" style={{ maxHeight: "260px" }}>
                 <defs>
                   <marker id="faArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 1 L 8 5 L 0 9 z" fill="#2d5a27" />
@@ -208,68 +208,71 @@ export default function AdderCircuitsCard() {
 
                 {/* Half Adder 1 */}
                 <rect x="55" y="30" width="130" height="90" rx="4" fill="#eae3d2" stroke="#3c3836" strokeWidth="1.5" />
-                <text x="120" y="58" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">Half Adder 1</text>
-                <text x="120" y="80" textAnchor="middle" font-family="monospace" font-size="11" fill="#5c554e">A ^ B e A & B</text>
+                <text x="120" y="58" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">Half Adder 1</text>
+                <text x="120" y="80" textAnchor="middle" fontFamily="monospace" fontSize="11" fill="#5c554e">A ^ B e A & B</text>
 
                 {/* Entradas A e B no HA 1 */}
                 <line x1="15" y1="52" x2="55" y2="52" stroke={faA === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" />
                 <circle cx="15" cy="52" r="4" fill={faA === 1 ? "#2d5a27" : "#8c827a"} />
-                <text x="18" y="44" font-family="monospace" font-size="12" font-weight="bold" fill="#2c2825">A={faA}</text>
+                <text x="18" y="44" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#2c2825">A={faA}</text>
 
                 <line x1="15" y1="92" x2="55" y2="92" stroke={faB === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" />
                 <circle cx="15" cy="92" r="4" fill={faB === 1 ? "#2d5a27" : "#8c827a"} />
-                <text x="18" y="84" font-family="monospace" font-size="12" font-weight="bold" fill="#2c2825">B={faB}</text>
+                <text x="18" y="84" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#2c2825">B={faB}</text>
 
                 {/* Half Adder 2 */}
                 <rect x="250" y="30" width="130" height="90" rx="4" fill="#eae3d2" stroke="#3c3836" strokeWidth="1.5" />
-                <text x="315" y="58" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">Half Adder 2</text>
-                <text x="315" y="80" textAnchor="middle" font-family="monospace" font-size="11" fill="#5c554e">Soma + C_in</text>
+                <text x="315" y="58" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">Half Adder 2</text>
+                <text x="315" y="80" textAnchor="middle" fontFamily="monospace" fontSize="11" fill="#5c554e">Soma + C_in</text>
 
                 {/* Fio de Soma Intermediaria HA1 -> HA2 */}
                 <line x1="185" y1="52" x2="250" y2="52" stroke="#3c3836" strokeWidth="2.5" />
-                <text x="217" y="44" textAnchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#5c554e">S_int</text>
+                <text x="217" y="44" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="bold" fill="#5c554e">S_int</text>
 
                 {/* Entrada Cin via Linha Ortogonal */}
                 <line x1="15" y1="150" x2="220" y2="150" stroke={faCin === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" />
                 <line x1="220" y1="150" x2="220" y2="92" stroke={faCin === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" />
                 <line x1="220" y1="92" x2="250" y2="92" stroke={faCin === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" />
                 <circle cx="15" cy="150" r="4" fill={faCin === 1 ? "#2d5a27" : "#8c827a"} />
-                <text x="18" y="142" font-family="monospace" font-size="12" font-weight="bold" fill="#2c2825">C_in={faCin}</text>
+                <text x="18" y="142" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#2c2825">C_in={faCin}</text>
 
                 {/* Saida de Soma Final */}
-                <line x1="380" y1="52" x2="480" y2="52" stroke={faSum === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="3.5" markerEnd="url(#faArrow)" />
-                <text x="495" y="48" font-family="monospace" font-size="14" font-weight="bold" fill={faSum === 1 ? "#2d5a27" : "#2c2825"}>
+                <line x1="380" y1="52" x2="505" y2="52" stroke={faSum === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="3.5" markerEnd="url(#faArrow)" />
+                <text x="520" y="48" fontFamily="monospace" fontSize="14" fontWeight="bold" fill={faSum === 1 ? "#2d5a27" : "#2c2825"}>
                   Soma = {faSum}
                 </text>
-                <text x="495" y="68" font-family="monospace" font-size="12" font-weight="bold" fill="#5c554e">
+                <text x="520" y="68" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#5c554e">
                   S = A ^ B ^ Cin
                 </text>
 
-                {/* Conexoes de Carry para a Porta OR (100% Ortogonais) */}
+                {/* Conexoes de Carry para a Porta OR (com ponte jumper sobre C_in) */}
                 {/* Carry 1 do HA 1 */}
-                <line x1="185" y1="92" x2="205" y2="92" stroke="#3c3836" strokeWidth="2" />
-                <line x1="205" y1="92" x2="205" y2="185" stroke="#3c3836" strokeWidth="2" />
-                <line x1="205" y1="185" x2="415" y2="185" stroke="#3c3836" strokeWidth="2" />
-                <text x="215" y="178" font-family="monospace" font-size="10" fill="#5c554e">Carry 1 (A & B)</text>
+                <path
+                  d="M 185 92 L 205 92 L 205 144 A 6 6 0 0 0 205 156 L 205 185 L 415 185"
+                  fill="none"
+                  stroke="#3c3836"
+                  strokeWidth="2"
+                />
+                <text x="215" y="178" fontFamily="monospace" fontSize="10" fill="#5c554e">Carry 1 (A & B)</text>
 
                 {/* Carry 2 do HA 2 */}
                 <line x1="380" y1="92" x2="400" y2="92" stroke="#3c3836" strokeWidth="2" />
                 <line x1="400" y1="92" x2="400" y2="160" stroke="#3c3836" strokeWidth="2" />
                 <line x1="400" y1="160" x2="415" y2="160" stroke="#3c3836" strokeWidth="2" />
-                <text x="350" y="152" font-family="monospace" font-size="10" fill="#5c554e">Carry 2</text>
+                <text x="392" y="145" textAnchor="end" fontFamily="monospace" fontSize="10" fill="#5c554e">Carry 2</text>
 
                 {/* Porta OR */}
                 <g transform="translate(415, 145)">
                   <rect x="0" y="0" width="65" height="52" rx="4" fill="#eae3d2" stroke="#3c3836" strokeWidth="1.5" />
-                  <text x="32" y="32" textAnchor="middle" font-family="monospace" font-size="14" font-weight="bold" fill="#2c2825">OR</text>
+                  <text x="32" y="32" textAnchor="middle" fontFamily="monospace" fontSize="14" fontWeight="bold" fill="#2c2825">OR</text>
                 </g>
 
                 {/* Saida Carry Out */}
-                <line x1="480" y1="171" x2="525" y2="171" stroke={faCout === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="3.5" markerEnd="url(#faArrow)" />
-                <text x="495" y="210" font-family="monospace" font-size="14" font-weight="bold" fill={faCout === 1 ? "#2d5a27" : "#2c2825"}>
+                <line x1="480" y1="171" x2="505" y2="171" stroke={faCout === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="3.5" markerEnd="url(#faArrow)" />
+                <text x="520" y="167" fontFamily="monospace" fontSize="14" fontWeight="bold" fill={faCout === 1 ? "#2d5a27" : "#2c2825"}>
                   C_out = {faCout}
                 </text>
-                <text x="495" y="228" font-family="monospace" font-size="12" font-weight="bold" fill="#5c554e">
+                <text x="520" y="187" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#5c554e">
                   Carry 1 | Carry 2
                 </text>
               </svg>
@@ -333,7 +336,7 @@ export default function AdderCircuitsCard() {
               </span>
             </div>
 
-            <svg viewBox="0 0 680 210" className="w-full h-auto select-none" style={{ maxHeight: "210px" }}>
+            <svg viewBox="0 0 710 210" className="w-full h-auto select-none" style={{ maxHeight: "210px" }}>
               <defs>
                 <marker id="rcArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                   <path d="M 0 1 L 8 5 L 0 9 z" fill="#2d5a27" />
@@ -342,26 +345,26 @@ export default function AdderCircuitsCard() {
 
               {/* 4 Blocos de Full Adder dispostos da direita para esquerda (Bit 0 no canto direito) */}
               {[
-                { bit: 0, x: 505, a: rcA[3], b: rcB[3], s: s0, cin: c0, cout: c1 },
-                { bit: 1, x: 365, a: rcA[2], b: rcB[2], s: s1, cin: c1, cout: c2 },
-                { bit: 2, x: 225, a: rcA[1], b: rcB[1], s: s2, cin: c2, cout: c3 },
-                { bit: 3, x: 85,  a: rcA[0], b: rcB[0], s: s3, cin: c3, cout: c4 }
+                { bit: 0, x: 530, a: rcA[3], b: rcB[3], s: s0, cin: c0, cout: c1 },
+                { bit: 1, x: 390, a: rcA[2], b: rcB[2], s: s1, cin: c1, cout: c2 },
+                { bit: 2, x: 250, a: rcA[1], b: rcB[1], s: s2, cin: c2, cout: c3 },
+                { bit: 3, x: 110, a: rcA[0], b: rcB[0], s: s3, cin: c3, cout: c4 }
               ].map((stage) => (
                 <g key={stage.bit}>
                   <rect x={stage.x} y="45" width="105" height="95" rx="4" fill="#eae3d2" stroke="#3c3836" strokeWidth="1.5" />
-                  <text x={stage.x + 52} y="70" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">
+                  <text x={stage.x + 52} y="70" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">
                     FA Bit {stage.bit}
                   </text>
-                  <text x={stage.x + 52} y="88" textAnchor="middle" font-family="monospace" font-size="11" font-weight="bold" fill="#5c554e">
+                  <text x={stage.x + 52} y="88" textAnchor="middle" fontFamily="monospace" fontSize="11" fontWeight="bold" fill="#5c554e">
                     A={stage.a}, B={stage.b}
                   </text>
-                  <text x={stage.x + 52} y="122" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill={stage.s === 1 ? "#2d5a27" : "#2c2825"}>
+                  <text x={stage.x + 52} y="122" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={stage.s === 1 ? "#2d5a27" : "#2c2825"}>
                     Soma = {stage.s}
                   </text>
 
                   {/* Saida de Soma para baixo */}
                   <line x1={stage.x + 52} y1="140" x2={stage.x + 52} y2="175" stroke={stage.s === 1 ? "#2d5a27" : "#8c827a"} strokeWidth="2.5" markerEnd="url(#rcArrow)" />
-                  <text x={stage.x + 52} y="195" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill={stage.s === 1 ? "#2d5a27" : "#2c2825"}>
+                  <text x={stage.x + 52} y="195" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={stage.s === 1 ? "#2d5a27" : "#2c2825"}>
                     S{stage.bit}={stage.s}
                   </text>
 
@@ -376,7 +379,7 @@ export default function AdderCircuitsCard() {
                         stroke={stage.cin === 1 ? "#2d5a27" : "#8c827a"}
                         strokeWidth={stage.cin === 1 ? "3.5" : "2"}
                       />
-                      <text x={stage.x + 122} y="84" textAnchor="middle" font-family="monospace" font-size="11" font-weight="bold" fill={stage.cin === 1 ? "#2d5a27" : "#5c554e"}>
+                      <text x={stage.x + 122} y="84" textAnchor="middle" fontFamily="monospace" fontSize="11" fontWeight="bold" fill={stage.cin === 1 ? "#2d5a27" : "#5c554e"}>
                         C{stage.bit - 1}={stage.cin}
                       </text>
                     </g>
@@ -385,14 +388,14 @@ export default function AdderCircuitsCard() {
               ))}
 
               {/* Carry In Inicial (Direita) */}
-              <line x1="660" y1="92" x2="610" y2="92" stroke={c0 === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={c0 === 1 ? "3.5" : "2"} />
-              <text x="635" y="82" textAnchor="middle" font-family="monospace" font-size="12" font-weight="bold" fill={c0 === 1 ? "#2d5a27" : "#5c554e"}>
+              <line x1="685" y1="92" x2="635" y2="92" stroke={c0 === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={c0 === 1 ? "3.5" : "2"} />
+              <text x="660" y="82" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={c0 === 1 ? "#2d5a27" : "#5c554e"}>
                 Cin={c0}
               </text>
 
               {/* Carry Out Final (Esquerda) */}
-              <line x1="85" y1="92" x2="25" y2="92" stroke={c4 === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={c4 === 1 ? "3.5" : "2"} markerEnd="url(#rcArrow)" />
-              <text x="35" y="82" textAnchor="middle" font-family="monospace" font-size="13" font-weight="bold" fill={c4 === 1 ? "#2d5a27" : "#2c2825"}>
+              <line x1="110" y1="92" x2="45" y2="92" stroke={c4 === 1 ? "#2d5a27" : "#8c827a"} strokeWidth={c4 === 1 ? "3.5" : "2"} markerEnd="url(#rcArrow)" />
+              <text x="60" y="82" textAnchor="middle" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={c4 === 1 ? "#2d5a27" : "#2c2825"}>
                 C_out={c4}
               </text>
             </svg>

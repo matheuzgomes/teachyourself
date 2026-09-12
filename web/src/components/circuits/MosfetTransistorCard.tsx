@@ -70,23 +70,23 @@ export default function MosfetTransistorCard() {
               {/* Substrato P */}
               <rect x="40" y="140" width="560" height="160" rx="4" fill="#eae3d2" stroke="#3c3836" strokeWidth="1.5" />
               <rect x="40" y="140" width="560" height="160" rx="4" fill="url(#siliconPattern)" opacity="0.6" />
-              <text x="60" y="280" font-family="monospace" font-size="13" fill="#5c554e" font-weight="bold">
+              <text x="60" y="280" fontFamily="monospace" fontSize="13" fill="#5c554e" fontWeight="bold">
                 Substrato Semicondutor de Silicio: Tipo P (Lacunas Positivas)
               </text>
 
               {/* Poco Fonte (Source N+) */}
               <rect x="70" y="140" width="120" height="75" rx="3" fill="#dfd7c2" stroke="#3c3836" strokeWidth="1.5" />
-              <text x="85" y="173" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">Fonte (Source)</text>
-              <text x="85" y="196" font-family="monospace" font-size="12" fill="#5c554e">Tipo N+ (0V)</text>
+              <text x="85" y="173" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">Fonte (Source)</text>
+              <text x="85" y="196" fontFamily="monospace" fontSize="12" fill="#5c554e">Tipo N+ (0V)</text>
 
               {/* Poco Dreno (Drain N+) */}
               <rect x="450" y="140" width="120" height="75" rx="3" fill="#dfd7c2" stroke="#3c3836" strokeWidth="1.5" />
-              <text x="465" y="173" font-family="monospace" font-size="13" font-weight="bold" fill="#2c2825">Dreno (Drain)</text>
-              <text x="465" y="196" font-family="monospace" font-size="12" fill="#5c554e">Tipo N+ (3.3V)</text>
+              <text x="465" y="173" fontFamily="monospace" fontSize="13" fontWeight="bold" fill="#2c2825">Dreno (Drain)</text>
+              <text x="465" y="196" fontFamily="monospace" fontSize="12" fill="#5c554e">Tipo N+ (3.3V)</text>
 
               {/* Camada Isolante de Oxido SiO2 */}
               <rect x="190" y="116" width="260" height="24" rx="2" fill="#fdfcfb" stroke="#3c3836" strokeWidth="1.5" />
-              <text x="215" y="133" font-family="monospace" font-size="12" fill="#5c554e" font-weight="bold">
+              <text x="215" y="133" fontFamily="monospace" fontSize="12" fill="#5c554e" fontWeight="bold">
                 Oxido Isolante SiO2 (Dieletrico)
               </text>
 
@@ -105,9 +105,9 @@ export default function MosfetTransistorCard() {
               <text
                 x="245"
                 y="98"
-                font-family="monospace"
-                font-size="14"
-                font-weight="bold"
+                fontFamily="monospace"
+                fontSize="14"
+                fontWeight="bold"
                 fill={gateHigh ? "#ffffff" : "#2c2825"}
               >
                 Eletrodo Gate (Porta)
@@ -115,7 +115,7 @@ export default function MosfetTransistorCard() {
 
               {/* Fio de Controle de Gate */}
               <line x1="320" y1="20" x2="320" y2="68" stroke={gateHigh ? "#2d5a27" : "#8c827a"} strokeWidth={gateHigh ? "3" : "2"} markerEnd="url(#arrow)" />
-              <text x="335" y="45" font-family="monospace" font-size="13" font-weight="bold" fill={gateHigh ? "#2d5a27" : "#5c554e"}>
+              <text x="335" y="45" fontFamily="monospace" fontSize="13" fontWeight="bold" fill={gateHigh ? "#2d5a27" : "#5c554e"}>
                 V_gate = {vGate}
               </text>
 
@@ -123,7 +123,7 @@ export default function MosfetTransistorCard() {
               {channelFormed ? (
                 <g className="transition-all duration-300">
                   <rect x="190" y="140" width="260" height="36" fill="#2d5a27" opacity="0.85" />
-                  <text x="210" y="156" font-family="monospace" font-size="12" fill="#ffffff" font-weight="bold">
+                  <text x="210" y="156" fontFamily="monospace" fontSize="12" fill="#ffffff" fontWeight="bold">
                     Canal Condutor N Ativo (Eletrons)
                   </text>
                   {/* Linha de Fluxo de Corrente separada do texto */}
@@ -132,7 +132,7 @@ export default function MosfetTransistorCard() {
               ) : (
                 <g className="transition-all duration-300">
                   <rect x="190" y="140" width="260" height="36" fill="none" stroke="#8c827a" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <text x="210" y="163" font-family="monospace" font-size="12" fill="#5c554e" font-weight="bold">
+                  <text x="210" y="163" fontFamily="monospace" fontSize="12" fill="#5c554e" fontWeight="bold">
                     Canal Desfeito (Barreira Isolante)
                   </text>
                 </g>
@@ -141,13 +141,13 @@ export default function MosfetTransistorCard() {
               {/* Terminais Externos */}
               <line x1="130" y1="140" x2="130" y2="55" stroke="#3c3836" strokeWidth="2.5" />
               <circle cx="130" cy="55" r="4" fill="#3c3836" />
-              <text x="60" y="42" font-family="monospace" font-size="12" font-weight="bold" fill="#2c2825">
+              <text x="60" y="42" fontFamily="monospace" fontSize="12" fontWeight="bold" fill="#2c2825">
                 Terminal Fonte (GND)
               </text>
 
               <line x1="510" y1="140" x2="510" y2="55" stroke={channelFormed ? "#2d5a27" : "#3c3836"} strokeWidth="2.5" />
               <circle cx="510" cy="55" r="4" fill={channelFormed ? "#2d5a27" : "#3c3836"} />
-              <text x="440" y="42" font-family="monospace" font-size="12" font-weight="bold" fill={channelFormed ? "#2d5a27" : "#2c2825"}>
+              <text x="440" y="42" fontFamily="monospace" fontSize="12" fontWeight="bold" fill={channelFormed ? "#2d5a27" : "#2c2825"}>
                 Terminal Dreno (3.3V)
               </text>
             </svg>

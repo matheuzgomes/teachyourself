@@ -45,11 +45,11 @@ export default {
         sans: ['Untitled Sans', 'Geist', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       borderRadius: {
-        card: '40px',
-        pill: '100px',
+        card: '24px',
+        pill: '9999px',
       },
       boxShadow: {
-        monad: 'rgba(0, 0, 0, 0.1) 0px 0px 10px 0px',
+        monad: 'rgba(0, 0, 0, 0.06) 0px 1px 3px 0px',
       },
     },
   },

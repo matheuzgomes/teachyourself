@@ -153,8 +153,8 @@ export default function NibbleVisualizer() {
                 }`}
               >
                 <span className="text-lg font-bold">{bit}</span>
-                <span className="text-[9px] opacity-80">Bit {7 - idx}</span>
-                <span className="text-[8px] font-bold opacity-75">
+                <span className="text-[10px] opacity-80">Bit {7 - idx}</span>
+                <span className="text-[10px] font-bold opacity-75">
                   {bit === 1 ? `+${weights[idx]}` : '0'}
                 </span>
               </button>
@@ -216,8 +216,8 @@ export default function NibbleVisualizer() {
                 }`}
               >
                 <span className="text-lg font-bold">{bit}</span>
-                <span className="text-[9px] opacity-80">Bit {3 - idx}</span>
-                <span className="text-[8px] font-bold opacity-75">
+                <span className="text-[10px] opacity-80">Bit {3 - idx}</span>
+                <span className="text-[10px] font-bold opacity-75">
                   {bit === 1 ? `+${weights[idx]}` : '0'}
                 </span>
               </button>

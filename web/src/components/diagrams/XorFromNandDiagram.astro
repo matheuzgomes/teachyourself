@@ -1,0 +1,85 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Universalidade Funcional"
+  title="Síntese da Porta XOR com 4 Portas NAND"
+  subtitle="Topologia em dois níveis comprovando a completude booleana sem transistores dedicados."
+  steps={[
+    '<strong>Passo 1 (Estágio Central):</strong> as entradas A e B entram na porta NAND 1, gerando o sinal intermediário barrado ~(A · B).',
+    '<strong>Passo 2 (Estágio Intermediário):</strong> a porta NAND 2 combina A com a saída da NAND 1; a porta NAND 3 combina B com a saída da NAND 1.',
+    '<strong>Passo 3 (Estágio Final):</strong> as saídas das portas 2 e 3 alimentam a porta NAND 4, produzindo a função XOR pura: A ^ B.',
+  ]}
+  conclusion="Apenas 4 portas NAND interligadas realizam a função OU-Exclusivo. Isso demonstra como operações lógicas e aritméticas complexas são derivadas a partir de uma única chave universal."
+>
+  <div class="my-4 overflow-x-auto">
+    <svg viewBox="0 0 720 280" class="w-full h-auto min-w-[580px] select-none font-mono">
+      <defs>
+        <marker id="arrowXor" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 8 5 L 0 9 z" fill="#2b59d1" />
+        </marker>
+      </defs>
+
+      {/* Inputs */}
+      <g>
+        <rect x="20" y="55" width="45" height="35" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
+        <text x="42" y="78" font-size="16" font-weight="bold" fill="#2c2825" text-anchor="middle">A</text>
+
+        <rect x="20" y="190" width="45" height="35" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
+        <text x="42" y="213" font-size="16" font-weight="bold" fill="#2c2825" text-anchor="middle">B</text>
+      </g>
+
+      {/* NAND 1 (Center) */}
+      <g transform="translate(190, 100)">
+        <rect x="0" y="0" width="130" height="80" rx="10" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
+        <text x="65" y="32" font-size="14" font-weight="bold" fill="#2b59d1" text-anchor="middle">NAND 1</text>
+        <text x="65" y="55" font-size="11" fill="#5c554e" text-anchor="middle">~(A · B)</text>
+      </g>
+
+      {/* NAND 2 (Top) */}
+      <g transform="translate(370, 30)">
+        <rect x="0" y="0" width="130" height="75" rx="10" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
+        <text x="65" y="32" font-size="14" font-weight="bold" fill="#2b59d1" text-anchor="middle">NAND 2</text>
+        <text x="65" y="55" font-size="11" fill="#5c554e" text-anchor="middle">~(A · ~(A·B))</text>
+      </g>
+
+      {/* NAND 3 (Bottom) */}
+      <g transform="translate(370, 175)">
+        <rect x="0" y="0" width="130" height="75" rx="10" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
+        <text x="65" y="32" font-size="14" font-weight="bold" fill="#2b59d1" text-anchor="middle">NAND 3</text>
+        <text x="65" y="55" font-size="11" fill="#5c554e" text-anchor="middle">~(B · ~(A·B))</text>
+      </g>
+
+      {/* NAND 4 (Output) */}
+      <g transform="translate(550, 100)">
+        <rect x="0" y="0" width="130" height="80" rx="10" fill="#2b59d1" fill-opacity="0.08" stroke="#2b59d1" stroke-width="2.5" />
+        <text x="65" y="32" font-size="14" font-weight="bold" fill="#2b59d1" text-anchor="middle">NAND 4</text>
+        <text x="65" y="55" font-size="13" font-weight="bold" fill="#0e7c54" text-anchor="middle">A ⊕ B (XOR)</text>
+      </g>
+
+      {/* Circuit Wires */}
+      {/* A to NAND 2 and NAND 1 */}
+      <path d="M 65 72 L 120 72 L 120 120 L 190 120" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+      <path d="M 120 72 L 370 52" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+      <circle cx="120" cy="72" r="3.5" fill="#2b59d1" />
+
+      {/* B to NAND 3 and NAND 1 */}
+      <path d="M 65 207 L 120 207 L 120 160 L 190 160" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+      <path d="M 120 207 L 370 227" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+      <circle cx="120" cy="207" r="3.5" fill="#2b59d1" />
+
+      {/* NAND 1 Output to NAND 2 and NAND 3 */}
+      <path d="M 320 140 L 345 140 L 345 82 L 370 82" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+      <path d="M 345 140 L 345 197 L 370 197" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+      <circle cx="345" cy="140" r="3.5" fill="#2b59d1" />
+
+      {/* NAND 2 and NAND 3 to NAND 4 */}
+      <path d="M 500 67 L 525 67 L 525 125 L 550 125" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+      <path d="M 500 212 L 525 212 L 525 155 L 550 155" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowXor)" />
+
+      {/* Final Output line */}
+      <path d="M 680 140 L 710 140" fill="none" stroke="#0e7c54" stroke-width="3" marker-end="url(#arrowXor)" />
+    </svg>
+  </div>
+</DiagramFrame>

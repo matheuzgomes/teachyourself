@@ -1,0 +1,43 @@
+---
+interface Row {
+  label: string;
+  cells: (string | null)[];
+}
+
+interface Props {
+  title?: string;
+  columns: string[];
+  rows: Row[];
+  footnote?: string;
+}
+
+const { title, columns, rows, footnote } = Astro.props;
+
+const isStall = (c: string | null) => c !== null && c.endsWith('*');
+const clean = (c: string | null) => (c ?? '').replace(/\*$/, '');
+---
+
+<div class="my-8 overflow-x-auto rounded-2xl border border-ash">
+  {title && <div class="bg-parchment px-4 py-3 font-mono text-xs font-bold text-off-black border-b border-ash">{title}</div>}
+  <table class="w-full text-xs font-mono bg-white">
+    <thead>
+      <tr class="bg-parchment text-graphite text-left">
+        <th class="px-4 py-3 font-medium sticky left-0 bg-parchment" scope="col">Instrução</th>
+        {columns.map((c) => <th class="px-3 py-3 font-medium text-center" scope="col">{c}</th>)}
+      </tr>
+    </thead>
+    <tbody class="text-off-black">
+      {rows.map((r) => (
+        <tr class="border-t border-ash/60">
+          <th class="px-4 py-2.5 text-left font-bold sticky left-0 bg-white" scope="row">{r.label}</th>
+          {r.cells.map((c) => (
+            <td class={`px-3 py-2.5 text-center ${isStall(c) ? 'bg-[#ff9473]/15 text-[#b93815] font-bold' : ''}`}>
+              {clean(c)}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  {footnote && <div class="bg-parchment px-4 py-3 text-xs font-sans text-graphite border-t border-ash">{footnote}</div>}
+</div>

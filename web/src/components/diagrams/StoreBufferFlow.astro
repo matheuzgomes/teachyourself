@@ -1,0 +1,32 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+
+const path = ['Núcleo da CPU', 'Store Buffer', 'Cache L1', 'Memória RAM'];
+---
+
+<DiagramFrame
+  eyebrow="Modelo TSO"
+  title="Escrita Enfileirada, Leitura Atalhada"
+  subtitle="A escrita espera no store buffer. A leitura do próprio núcleo enxerga o valor antes da L1."
+  steps={[
+    '<strong>Passo 1:</strong> siga a escrita do núcleo até a RAM passando pelo store buffer e pela L1.',
+    '<strong>Passo 2:</strong> localize o atalho de leitura: o núcleo lê do próprio store buffer sem esperar a L1.',
+    '<strong>Passo 3:</strong> note a assimetria: o próprio núcleo vê a escrita cedo, os outros núcleos só depois da L1.',
+  ]}
+  conclusion="O store buffer com encaminhamento local explica o TSO: cada núcleo observa as próprias escritas em ordem imediata, enquanto escritas alheias chegam com atraso. Ordem global idêntica para todos não existe."
+>
+  <ol class="flex flex-col gap-2 font-mono text-xs md:text-sm">
+    {path.map((p, i) => (
+      <li class="flex items-stretch gap-2">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-parchment border border-ash text-[10px] font-bold text-smoke">{i + 1}</span>
+        <div class={`flex-1 rounded-xl border px-4 py-2.5 font-bold ${i === 1 ? 'border-2 border-dashed border-lake-blue bg-[#2b59d1]/5 text-lake-blue' : 'border-ash bg-parchment text-off-black'}`}>
+          {p}
+          {i === 1 && <span class="block font-normal text-graphite text-xs mt-0.5">fila de escritas pendentes do núcleo</span>}
+        </div>
+      </li>
+    ))}
+  </ol>
+  <div class="mt-3 rounded-2xl border border-lake-blue bg-[#2b59d1]/5 p-4 font-mono text-xs text-graphite">
+    Atalho de leitura local: o núcleo lê do próprio <span class="font-bold text-off-black">store buffer</span> antes do valor alcançar a L1 (store forwarding local).
+  </div>
+</DiagramFrame>

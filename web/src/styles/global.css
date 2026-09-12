@@ -49,7 +49,7 @@
 
   /* Headings: Locked at weight 400 (never bold) per Monad specification */
   h1, h2, h3, h4 {
-    @apply font-serif font-normal text-off-black tracking-[-0.02em];
+    @apply font-serif font-normal text-off-black tracking-[-0.02em] [text-wrap:balance];
   }
 
   h1 { @apply text-[clamp(2rem,5vw,3rem)] leading-[1.2] mt-10 mb-4; }
@@ -58,10 +58,19 @@
   h4 { @apply text-lg md:text-xl leading-[1.3] mt-6 mb-2 text-graphite; }
 
   /* Paragraphs and Lists with Editorial Breathing Room */
-  p { @apply text-graphite font-sans text-base leading-[1.65] my-5 tracking-[-0.01em]; }
+  p { @apply text-graphite font-sans text-base leading-[1.65] my-5 tracking-[-0.01em] [text-wrap:pretty]; }
   ul { @apply list-disc list-outside pl-6 my-5 space-y-2 text-graphite font-sans text-base leading-[1.65]; }
   ol { @apply list-decimal list-outside pl-6 my-5 space-y-2 text-graphite font-sans text-base leading-[1.65]; }
   li { @apply leading-[1.65]; }
+
+  /* Accessible Interactive Focus & Tactile Active States */
+  button, summary, [role="button"] {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment;
+    transition: transform 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, box-shadow 150ms ease-out;
+  }
+  button:active:not(:disabled), [role="button"]:active {
+    transform: scale(0.98);
+  }
 
   /* Inline Code */
   :not(pre) > code {
@@ -114,5 +123,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  button:active,
+  [role="button"]:active {
+    transform: none !important;
   }
 }

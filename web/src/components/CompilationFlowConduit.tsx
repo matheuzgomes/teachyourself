@@ -193,14 +193,14 @@ export default function CompilationFlowConduit() {
 
                 {/* Linha Condutora Movel entre os Estagios */}
                 {idx < STAGES.length - 1 && (
-                  <div className="relative flex-1 mx-2 h-7 flex items-center min-w-[36px]">
-                    <svg className="w-full h-4 overflow-visible" preserveAspectRatio="none" viewBox="0 0 40 16">
-                      <line x1="0" y1="8" x2="34" y2="8" stroke="#cecac8" strokeWidth="2" strokeLinecap="round" />
+                  <div className="relative flex-1 mx-2 h-7 flex items-center min-w-[56px]">
+                    <svg className="w-full h-4 overflow-visible" preserveAspectRatio="none" viewBox="0 0 50 16">
+                      <line x1="0" y1="8" x2="42" y2="8" stroke="#cecac8" strokeWidth="2" strokeLinecap="round" />
                       {(activeIdx > idx || (isActive && isPlaying)) && (
                         <line
                           x1="0"
                           y1="8"
-                          x2="34"
+                          x2="42"
                           y2="8"
                           stroke="#2b59d1"
                           strokeWidth="2.5"
@@ -212,7 +212,7 @@ export default function CompilationFlowConduit() {
                     </svg>
 
                     {(activeIdx > idx || (isActive && isPlaying)) && (
-                      <span className="absolute left-1/2 -translate-x-1/2 -top-1.5 px-2 py-0.5 rounded-full bg-periwinkle-mist text-off-black border border-lake-blue/40 text-[9px] font-mono font-semibold tracking-tight pointer-events-none">
+                      <span className="absolute left-1/2 -translate-x-1/2 -top-2 px-2 py-0.5 rounded-full bg-periwinkle-mist text-off-black border border-lake-blue/40 text-[10px] font-mono font-semibold tracking-tight pointer-events-none whitespace-nowrap">
                         sinal
                       </span>
                     )}

@@ -1,0 +1,95 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Microarquitetura da ALU"
+  title="Fatiamento de 1 Bit: Inversão XOR e Somador Completo"
+  subtitle="A linha de controle SUB governa a inversão de B e o transporte inicial sem duplicar circuitos."
+  steps={[
+    '<strong>Passo 1 (Inversor XOR):</strong> o bit do operando B entra na porta XOR acompanhado pelo sinal de controle SUB. Se SUB=0, passa B intacto; se SUB=1, inverte para ~B.',
+    '<strong>Passo 2 (Somador Completo):</strong> o bloco Full Adder recebe simultaneamente o bit A, o resultado do XOR e o transporte de entrada Cin.',
+    '<strong>Passo 3 (Geração de Saídas):</strong> o somador entrega o bit de resultado Sum e emite o transporte elétrico Cout para a fatia da esquerda.',
+  ]}
+  conclusion="A CPU não duplica hardware para subtrair. Uma única porta XOR por coluna e o transporte inicial C0 realizam a identidade A + ~B + 1 = A - B com atraso de apenas uma porta lógica adicional."
+>
+  <div class="my-4 overflow-x-auto">
+    <svg viewBox="0 0 720 300" class="w-full h-auto min-w-[580px] select-none font-mono">
+      <defs>
+        <marker id="arrowAlu" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 8 5 L 0 9 z" fill="#2b59d1" />
+        </marker>
+        <marker id="arrowSub" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 8 5 L 0 9 z" fill="#b93815" />
+        </marker>
+      </defs>
+
+      {/* Control line SUB */}
+      <g>
+        <rect x="20" y="20" width="130" height="32" rx="6" fill="#ff9473" fill-opacity="0.15" stroke="#b93815" stroke-width="1.5" />
+        <text x="85" y="41" font-size="12" font-weight="bold" fill="#b93815" text-anchor="middle">Linha SUB (0=ADD, 1=SUB)</text>
+
+        <path d="M 150 36 L 680 36 L 680 230 L 610 230" fill="none" stroke="#b93815" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#arrowSub)" />
+        <text x="645" y="222" font-size="10" font-weight="bold" fill="#b93815" text-anchor="end">C0 = SUB</text>
+      </g>
+
+      {/* Input B and XOR Gate */}
+      <g>
+        <rect x="20" y="90" width="55" height="32" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
+        <text x="47" y="111" font-size="14" font-weight="bold" fill="#2c2825" text-anchor="middle">b_i</text>
+
+        <path d="M 75 106 L 160 106" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowAlu)" />
+        <path d="M 120 36 L 120 86 L 160 86" fill="none" stroke="#b93815" stroke-width="2" marker-end="url(#arrowSub)" />
+        <circle cx="120" cy="36" r="3.5" fill="#b93815" />
+
+        {/* XOR Gate Box */}
+        <rect x="160" y="70" width="90" height="55" rx="8" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
+        <text x="205" y="97" font-size="13" font-weight="bold" fill="#2b59d1" text-anchor="middle">XOR</text>
+        <text x="205" y="114" font-size="10" fill="#5c554e" text-anchor="middle">Inversor</text>
+      </g>
+
+      {/* Input A */}
+      <g>
+        <rect x="20" y="165" width="55" height="32" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
+        <text x="47" y="186" font-size="14" font-weight="bold" fill="#2c2825" text-anchor="middle">a_i</text>
+      </g>
+
+      {/* Carry In */}
+      <g>
+        <rect x="20" y="240" width="85" height="32" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
+        <text x="62" y="261" font-size="13" font-weight="bold" fill="#2c2825" text-anchor="middle">Cin_i</text>
+      </g>
+
+      {/* Full Adder Block */}
+      <g transform="translate(360, 100)">
+        <rect x="0" y="0" width="180" height="150" rx="12" fill="#2b59d1" fill-opacity="0.06" stroke="#2b59d1" stroke-width="2.5" />
+        <text x="90" y="35" font-size="15" font-weight="bold" fill="#2b59d1" text-anchor="middle">Somador Completo</text>
+        <text x="90" y="55" font-size="11" fill="#5c554e" text-anchor="middle">(Full Adder Slice i)</text>
+
+        <text x="18" y="85" font-size="11" font-weight="bold" fill="#2b59d1">Entrada A</text>
+        <text x="18" y="110" font-size="11" font-weight="bold" fill="#2b59d1">Entrada B (inv)</text>
+        <text x="18" y="135" font-size="11" font-weight="bold" fill="#2b59d1">Entrada Cin</text>
+      </g>
+
+      {/* Connection Wires to Full Adder */}
+      <path d="M 250 97 L 310 97 L 310 185 L 360 185" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowAlu)" />
+      <text x="290" y="90" font-size="11" fill="#2b59d1">b_inv</text>
+
+      <path d="M 75 181 L 360 181" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowAlu)" />
+      <path d="M 105 256 L 330 256 L 330 225 L 360 225" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowAlu)" />
+
+      {/* Outputs */}
+      <g>
+        {/* Sum Output */}
+        <path d="M 540 145 L 630 145" fill="none" stroke="#0e7c54" stroke-width="2.5" marker-end="url(#arrowAlu)" />
+        <rect x="630" y="128" width="80" height="35" rx="6" fill="#a7fccd" fill-opacity="0.3" stroke="#0e7c54" stroke-width="1.5" />
+        <text x="670" y="150" font-size="13" font-weight="bold" fill="#0e7c54" text-anchor="middle">Soma (S_i)</text>
+
+        {/* Carry Out Output */}
+        <path d="M 540 200 L 630 200" fill="none" stroke="#2b59d1" stroke-width="2.5" marker-end="url(#arrowAlu)" />
+        <rect x="630" y="183" width="80" height="35" rx="6" fill="#f4efe6" stroke="#2b59d1" stroke-width="1.5" />
+        <text x="670" y="205" font-size="13" font-weight="bold" fill="#2b59d1" text-anchor="middle">Cout_i</text>
+      </g>
+    </svg>
+  </div>
+</DiagramFrame>

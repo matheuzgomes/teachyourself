@@ -145,8 +145,8 @@ export default function CpuFlagsVisualizer() {
           <div className="hidden md:flex relative flex-1 items-center h-4">
             <div className="w-full h-[2px] bg-ash" />
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full h-[2px] bg-gradient-to-r from-lake-blue to-sky-blue animate-pulse" />
-              <div className="absolute h-2 w-2 rounded-full bg-lake-blue shadow-[0_0_8px_#2b59d1] -top-[3px] animate-[ping_1.5s_infinite]" />
+              <div className="w-full h-[2px] bg-lake-blue animate-pulse" />
+              <div className="absolute h-2 w-2 rounded-full bg-lake-blue shadow-sm -top-[3px] animate-[ping_1.5s_infinite]" />
             </div>
             <span className="absolute right-0 text-smoke/60 text-[10px]">▸</span>
           </div>
@@ -161,8 +161,8 @@ export default function CpuFlagsVisualizer() {
           <div className="hidden md:flex relative flex-1 items-center h-4">
             <div className="w-full h-[2px] bg-ash" />
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full h-[2px] bg-gradient-to-r from-sky-blue to-mint animate-pulse" />
-              <div className="absolute h-2 w-2 rounded-full bg-mint shadow-[0_0_8px_#a7fccd] -top-[3px] animate-[ping_1.8s_infinite]" />
+              <div className="w-full h-[2px] bg-lake-blue/70 animate-pulse" />
+              <div className="absolute h-2 w-2 rounded-full bg-mint border border-ash -top-[3px] animate-[ping_1.8s_infinite]" />
             </div>
             <span className="absolute right-0 text-smoke/60 text-[10px]">▸</span>
           </div>

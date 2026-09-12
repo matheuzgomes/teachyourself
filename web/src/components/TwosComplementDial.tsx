@@ -181,14 +181,14 @@ export default function TwosComplementDial() {
               className="animate-[spin_20s_linear_infinite]"
             />
 
-            {/* Fault Line / Discontinuity Indicator between +7 and -8 */}
+            {/* Fault Line / Discontinuity Indicator between +7 and -8 (Radial Perpendicular Notch) */}
             <line
-              x1={cx + r * Math.sin((7.5 * 2 * Math.PI) / 16)}
-              y1={cy - r * Math.cos((7.5 * 2 * Math.PI) / 16) - 14}
-              x2={cx + r * Math.sin((7.5 * 2 * Math.PI) / 16)}
-              y2={cy - r * Math.cos((7.5 * 2 * Math.PI) / 16) + 14}
+              x1={cx + (r - 18) * Math.cos((7.5 * 2 * Math.PI) / 16 - Math.PI / 2)}
+              y1={cy + (r - 18) * Math.sin((7.5 * 2 * Math.PI) / 16 - Math.PI / 2)}
+              x2={cx + (r + 18) * Math.cos((7.5 * 2 * Math.PI) / 16 - Math.PI / 2)}
+              y2={cy + (r + 18) * Math.sin((7.5 * 2 * Math.PI) / 16 - Math.PI / 2)}
               stroke="#ff9473"
-              strokeWidth="3"
+              strokeWidth="3.5"
               strokeLinecap="round"
             />
 
@@ -214,7 +214,7 @@ export default function TwosComplementDial() {
               x={cx}
               y={cy + 22}
               textAnchor="middle"
-              className="font-mono text-[9px] fill-graphite uppercase"
+              className="font-mono text-[10px] fill-graphite uppercase"
             >
               unsigned: {current.unsigned}
             </text>
@@ -321,14 +321,14 @@ export default function TwosComplementDial() {
                       isSel
                         ? 'border-lake-blue bg-lake-blue text-white font-bold shadow-sm'
                         : v.isTMin
-                        ? 'border-[#ff9473] bg-[#ff9473]/10 text-off-black hover:border-off-black'
+                        ? 'border-coral bg-coral/10 text-off-black hover:border-off-black'
                         : 'border-ash bg-parchment/70 text-graphite hover:border-off-black hover:bg-white'
                     }`}
                   >
                     <span className="text-[11px] font-bold">
                       {v.signed > 0 ? `+${v.signed}` : v.signed}
                     </span>
-                    <span className="text-[9px] opacity-70">{v.bin}</span>
+                    <span className="text-[10px] opacity-75">{v.bin}</span>
                   </button>
                 );
               })}

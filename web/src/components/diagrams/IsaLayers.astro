@@ -1,0 +1,34 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+
+const layers = [
+  { box: 'Linguagens de alto nível (C, Rust, Go, Python)', note: null },
+  { box: 'Conceito universal de ISA: o contrato abstrato', note: 'Registradores, endereçamento, controle, pilha' },
+  { box: 'Modelos de arquitetura: filosofias de design', note: 'CISC rico e variável | RISC load-store e fixo' },
+  { box: 'Estudo de caso da trilha', note: 'x86-64 AMD64 sob GNU/Linux com System V ABI' },
+];
+---
+
+<DiagramFrame
+  eyebrow="ISA"
+  title="Do Código-Fonte ao Contrato Abstrato"
+  subtitle="O compilador traduz, a ISA contrata, a trilha estuda um caso concreto."
+  steps={[
+    '<strong>Passo 1:</strong> parta do topo: linguagens de alto nível que humanos escrevem.',
+    '<strong>Passo 2:</strong> desça pelo compilador até o contrato abstrato que toda CPU promete cumprir.',
+    '<strong>Passo 3:</strong> feche no estudo de caso: uma arquitetura real, um sistema real, uma ABI real.',
+  ]}
+  conclusion="A ISA é o contrato que separa software de hardware: compiladores miram o contrato, processadores cumprem o contrato. Esta trilha estuda o contrato x86-64 sob Linux."
+>
+  <ol class="flex flex-col items-stretch gap-1 font-mono text-xs md:text-sm">
+    {layers.map((l, i) => (
+      <li>
+        <div class={`rounded-2xl border px-4 py-3 text-center ${i === 1 ? 'border-2 border-lake-blue bg-[#2b59d1]/5 font-bold text-off-black' : 'border-ash bg-parchment text-graphite'}`}>
+          {l.box}
+          {l.note && <span class="block font-normal text-xs mt-1 text-graphite">{l.note}</span>}
+        </div>
+        {i < layers.length - 1 && <div class="text-center text-lake-blue font-bold py-0.5" aria-hidden="true">↓</div>}
+      </li>
+    ))}
+  </ol>
+</DiagramFrame>

@@ -164,12 +164,17 @@ export default function CarryAdditionVisualizer() {
       <div className="mt-8 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
         {/* Arithmetic Register Stack */}
         <div className="md:col-span-6 rounded-card border border-ash bg-parchment p-6 font-mono text-center relative overflow-hidden">
-          {/* Moving Carry Leap Beacon */}
-          {step === 1 && (
-            <div className="absolute top-4 right-1/4 flex items-center gap-1 rounded-full bg-lake-blue px-2.5 py-0.5 text-[9px] font-bold text-white shadow animate-pulse">
-              <span>Carry 1 &larr; Salta</span>
-            </div>
-          )}
+          {/* Header Bar with Step Indicator & Leap Beacon */}
+          <div className="flex items-center justify-between mb-3 min-h-[24px]">
+            <span className="text-[10px] uppercase tracking-wider text-smoke font-mono font-medium">Registradores da ALU</span>
+            {step === 1 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-lake-blue px-2.5 py-0.5 text-[10px] font-bold text-white shadow animate-pulse">
+                <span>Carry 1 &larr; Salta para as dezenas</span>
+              </span>
+            ) : (
+              <span className="text-[10px] text-smoke font-mono">Coluna ativa: {current.highlightCol ? current.highlightCol.toUpperCase() : 'AGUARDANDO'}</span>
+            )}
+          </div>
 
           {/* Carry Row */}
           <div className="grid grid-cols-4 gap-2 text-xs font-bold text-lake-blue h-7 items-center border-b border-ash/50 pb-1">

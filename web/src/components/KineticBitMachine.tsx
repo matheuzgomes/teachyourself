@@ -385,7 +385,7 @@ export default function KineticBitMachine() {
       <div ref={containerRef} className="relative w-full h-[320px] md:h-[340px] rounded-2xl bg-[#faf8f5] border border-ash/80 p-4 md:p-6 overflow-hidden select-none">
         {/* Marca d'água de fundo dos circuitos */}
         <div className="absolute inset-0 opacity-15 pointer-events-none flex flex-col items-center justify-center">
-          <span className="text-[54px] sm:text-[80px] md:text-[110px] font-mono font-bold tracking-widest text-smoke select-none text-center">
+          <span className="text-[clamp(2.5rem,5.5vw,5rem)] font-mono font-bold tracking-widest text-smoke select-none text-center">
             REGISTRADOR %al
           </span>
           <span className="text-[10px] sm:text-xs font-mono text-smoke uppercase tracking-wider -mt-2">
@@ -400,7 +400,7 @@ export default function KineticBitMachine() {
             <div className="text-[11px] text-graphite">Linha de Dados D0</div>
           </div>
           <div className="relative h-10 w-10 rounded-full border-2 border-lake-blue/40 bg-white flex items-center justify-center shadow-sm">
-            <div className="h-5 w-5 rounded-full bg-gradient-to-br from-sky-blue via-lake-blue to-[#173896] shadow-sm animate-pulse" />
+            <div className="h-5 w-5 rounded-full bg-lake-blue shadow-sm animate-pulse" />
           </div>
         </div>
 
@@ -438,9 +438,9 @@ export default function KineticBitMachine() {
             }}
           >
             <div className="relative">
-              {/* Esfera com iluminação 3D volumétrica */}
-              <div className="h-7 w-7 md:h-8 md:w-8 rounded-full shadow-[0_4px_12px_rgba(43,89,209,0.45)] flex items-center justify-center bg-[radial-gradient(circle_at_35%_35%,#7aa2f7_0%,#2b59d1_60%,#1a3ea3_100%)]">
-                <span className="text-[11px] font-bold text-white leading-none drop-shadow">1</span>
+              {/* Esfera com iluminação volumétrica e contraste editorial */}
+              <div className="h-7 w-7 md:h-8 md:w-8 rounded-full shadow-[0_4px_12px_rgba(43,89,209,0.35)] flex items-center justify-center bg-lake-blue ring-1 ring-lake-blue/40">
+                <span className="text-[11px] font-bold text-white leading-none font-mono">1</span>
               </div>
               {/* Sombra projetada no chão */}
               <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-6 h-1.5 rounded-full bg-black/15 blur-[2px]" />
@@ -463,15 +463,15 @@ export default function KineticBitMachine() {
               }`}
             >
               {carryFlag === 1 ? (
-                <div className="h-7 w-7 rounded-full bg-[radial-gradient(circle_at_35%_35%,#7aa2f7_0%,#2b59d1_60%,#1a3ea3_100%)] shadow-sm flex items-center justify-center text-white text-[11px] font-bold">
+                <div className="h-7 w-7 rounded-full bg-lake-blue shadow-sm flex items-center justify-center text-white text-[11px] font-bold font-mono">
                   1
                 </div>
               ) : (
                 <span className="text-xs text-graphite font-mono font-medium">CF: 0</span>
               )}
-              <span className="text-[8px] font-mono text-graphite font-medium mt-0.5">bit 0 de %eflags</span>
+              <span className="text-[10px] font-mono text-graphite font-medium mt-0.5">bit 0 de %eflags</span>
             </div>
-            <span className="text-[9px] text-smoke mt-1">Overflow</span>
+            <span className="text-[10px] text-smoke mt-1">Overflow</span>
           </div>
 
           <div className="h-10 w-[1px] bg-ash mx-0.5 sm:mx-1" />
@@ -510,8 +510,8 @@ export default function KineticBitMachine() {
                   }`}
                 >
                   {bitVal === 1 ? (
-                    <div className="h-7 w-7 md:h-8 md:w-8 rounded-full shadow-[0_2px_8px_rgba(43,89,209,0.35)] flex items-center justify-center bg-[radial-gradient(circle_at_35%_35%,#7aa2f7_0%,#2b59d1_60%,#1a3ea3_100%)] transition-transform group-hover:scale-105">
-                      <span className="text-[11px] font-bold text-white leading-none drop-shadow font-mono tabular-nums">1</span>
+                    <div className="h-7 w-7 md:h-8 md:w-8 rounded-full shadow-[0_2px_8px_rgba(43,89,209,0.25)] flex items-center justify-center bg-lake-blue transition-transform group-hover:scale-105">
+                      <span className="text-[11px] font-bold text-white leading-none font-mono tabular-nums">1</span>
                     </div>
                   ) : (
                     <div className="h-6 w-6 rounded-full border border-dashed border-ash flex items-center justify-center text-graphite font-mono font-medium text-[11px] tabular-nums">
@@ -521,7 +521,7 @@ export default function KineticBitMachine() {
                 </div>
 
                 {/* Peso Matemático (Potência de 2) */}
-                <div className="text-[9px] font-mono text-smoke mt-1 group-hover:text-off-black transition-colors tabular-nums">
+                <div className="text-[10px] font-mono text-smoke mt-1 group-hover:text-off-black transition-colors tabular-nums">
                   {weight}
                 </div>
               </button>

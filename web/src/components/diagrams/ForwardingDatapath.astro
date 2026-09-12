@@ -1,0 +1,56 @@
+---
+import DiagramFrame from './DiagramFrame.astro';
+---
+
+<DiagramFrame
+  eyebrow="Data forwarding"
+  title="Atalhos da Saída da ALU para a Próxima Entrada"
+  subtitle="Multiplexadores 3:1 antes de cada entrada da ALU escolhem entre banco, EX/MEM e MEM/WB."
+  steps={[
+    '<strong>Passo 1:</strong> localize as duas fontes de atalho: EX/MEM guarda o resultado da ALU anterior, MEM/WB guarda o dado de 2 ciclos atrás.',
+    '<strong>Passo 2:</strong> siga cada fonte até os dois multiplexadores e note que ambas alimentam as entradas A e B.',
+    '<strong>Passo 3:</strong> leia a regra da Forwarding Unit: igualdade entre Rd de EX/MEM e Rs de ID/EX aciona o mux da entrada correspondente.',
+  ]}
+  conclusion="O forwarding elimina a espera pela gravação no banco quando o valor já existe em um registrador de estágio. A unidade de detecção compara registradores e o mux puxa o dado pronto direto para a ALU."
+>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+    <div class="rounded-2xl border border-ash bg-parchment p-4">
+      <div class="font-bold text-off-black text-xs mb-3 uppercase tracking-wider">Fontes do atalho</div>
+      <ul class="space-y-2.5">
+        <li class="rounded-xl bg-white border border-ash p-3">
+          <span class="font-bold text-lake-blue block">EX/MEM</span>
+          <span class="text-graphite">Resultado da ALU anterior</span>
+        </li>
+        <li class="rounded-xl bg-white border border-ash p-3">
+          <span class="font-bold text-lake-blue block">MEM/WB</span>
+          <span class="text-graphite">Dado calculado há 2 ciclos</span>
+        </li>
+        <li class="rounded-xl bg-white border border-ash p-3">
+          <span class="font-bold text-graphite block">ID/EX</span>
+          <span class="text-graphite">Lido do banco (caminho normal)</span>
+        </li>
+      </ul>
+    </div>
+    <div class="rounded-2xl border border-ash bg-parchment p-4">
+      <div class="font-bold text-off-black text-xs mb-3 uppercase tracking-wider">Seletores 3:1</div>
+      <ul class="space-y-2.5">
+        <li class="rounded-xl bg-white border-2 border-lake-blue p-3">
+          <span class="font-bold text-off-black block">Mux entrada A</span>
+          <span class="text-graphite">3 fontes, 1 saída para a ALU</span>
+        </li>
+        <li class="rounded-xl bg-white border-2 border-lake-blue p-3">
+          <span class="font-bold text-off-black block">Mux entrada B</span>
+          <span class="text-graphite">3 fontes, 1 saída para a ALU</span>
+        </li>
+      </ul>
+    </div>
+    <div class="rounded-2xl border border-lake-blue bg-[#2b59d1]/5 p-4">
+      <div class="font-bold text-off-black text-xs mb-3 uppercase tracking-wider">Destino</div>
+      <div class="rounded-xl bg-white border border-ash p-3">
+        <span class="font-bold text-off-black block">ALU</span>
+        <span class="text-graphite">Calcula com operandos já atualizados, sem stall</span>
+      </div>
+      <p class="mt-3 text-graphite leading-relaxed">Forwarding Unit: se <span class="font-bold text-off-black">EX/MEM.Rd == ID/EX.Rs</span>, aciona o mux.</p>
+    </div>
+  </div>
+</DiagramFrame>
