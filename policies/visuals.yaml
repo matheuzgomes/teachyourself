@@ -1,0 +1,29 @@
+# Politica de Engenharia Visual Executavel do TeachYourself (Visuals Policy)
+policy_id: "visuals"
+version: "2.0.0"
+description: "Invariantes executaveis dos Modelos Visuais (Gates V1 a V5) e orcamento visual."
+
+gates:
+  V1_MODEL_BINDING:
+    require_registered_visual_spec: true
+    forbid_orphan_visual_models: true
+    require_state_machine_ontology: true
+
+  V2_STATE_SPACE_INVARIANTS:
+    require_deterministic_transitions: true
+    require_explicit_invalid_states: true
+    require_state_transition_table: true
+
+  V3_CLAIM_PROVENANCE:
+    require_channel_to_claim_binding: true
+    description: "Cada elemento visual ativo (cor, movimento, layout) deve mapear para um Claim verificado."
+
+  V4_MISCONCEPTION_IMMUNITY:
+    require_anti_misconception_visual_guard: true
+    forbid_deceptive_animations: true
+
+  V5_COGNITIVE_BUDGET_ACCESSIBILITY:
+    max_active_visual_variables: 5
+    require_step_by_step_mode: true
+    require_reduced_motion_support: true
+    require_accessible_text_alternative: true

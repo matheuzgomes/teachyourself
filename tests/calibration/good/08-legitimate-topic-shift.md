@@ -1,0 +1,1 @@
+Alem de somar inteiros em complemento de dois, a ALU executa comparacoes e mascaramentos logicos. Para selecionar qual operacao acionar, a unidade de controle envia um codigo binario de 4 bits atraves das linhas de selecao.

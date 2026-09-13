@@ -23,32 +23,32 @@ import DiagramFrame from './DiagramFrame.astro';
 
       {/* Inputs */}
       <g>
-        <rect x="20" y="55" width="45" height="35" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
-        <text x="42" y="78" font-size="16" font-weight="bold" fill="#2c2825" text-anchor="middle">A</text>
+        <rect x="20" y="55" width="45" height="35" rx="6" fill="#f6f3f1" stroke="#cecac8" stroke-width="1.5" />
+        <text x="42" y="78" font-size="16" font-weight="bold" fill="#242424" text-anchor="middle">A</text>
 
-        <rect x="20" y="190" width="45" height="35" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
-        <text x="42" y="213" font-size="16" font-weight="bold" fill="#2c2825" text-anchor="middle">B</text>
+        <rect x="20" y="190" width="45" height="35" rx="6" fill="#f6f3f1" stroke="#cecac8" stroke-width="1.5" />
+        <text x="42" y="213" font-size="16" font-weight="bold" fill="#242424" text-anchor="middle">B</text>
       </g>
 
       {/* NAND 1 (Center) */}
       <g transform="translate(190, 100)">
         <rect x="0" y="0" width="130" height="80" rx="10" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
         <text x="65" y="32" font-size="14" font-weight="bold" fill="#2b59d1" text-anchor="middle">NAND 1</text>
-        <text x="65" y="55" font-size="11" fill="#5c554e" text-anchor="middle">~(A · B)</text>
+        <text x="65" y="55" font-size="11" fill="#4e4d4d" text-anchor="middle">~(A · B)</text>
       </g>
 
       {/* NAND 2 (Top) */}
       <g transform="translate(370, 30)">
         <rect x="0" y="0" width="130" height="75" rx="10" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
         <text x="65" y="32" font-size="14" font-weight="bold" fill="#2b59d1" text-anchor="middle">NAND 2</text>
-        <text x="65" y="55" font-size="11" fill="#5c554e" text-anchor="middle">~(A · ~(A·B))</text>
+        <text x="65" y="55" font-size="11" fill="#4e4d4d" text-anchor="middle">~(A · ~(A·B))</text>
       </g>
 
       {/* NAND 3 (Bottom) */}
       <g transform="translate(370, 175)">
         <rect x="0" y="0" width="130" height="75" rx="10" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
         <text x="65" y="32" font-size="14" font-weight="bold" fill="#2b59d1" text-anchor="middle">NAND 3</text>
-        <text x="65" y="55" font-size="11" fill="#5c554e" text-anchor="middle">~(B · ~(A·B))</text>
+        <text x="65" y="55" font-size="11" fill="#4e4d4d" text-anchor="middle">~(B · ~(A·B))</text>
       </g>
 
       {/* NAND 4 (Output) */}

@@ -364,7 +364,8 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
           <button
             type="button"
             onClick={() => setShowFallback(!showFallback)}
-            className="rounded-full border border-ash bg-white px-3 py-1 text-[11px] font-mono text-graphite hover:text-off-black hover:border-graphite transition-colors min-h-[32px] inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
+            aria-pressed={showFallback}
+            className="rounded-full border border-ash bg-white px-3.5 py-1.5 text-[11px] font-mono text-graphite hover:text-off-black hover:border-graphite transition-colors min-h-[44px] inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
             aria-label="Alternar visualizacao estatica para acessibilidade"
           >
             <HugeiconsIcon icon={Layers01Icon} className="h-3.5 w-3.5" />
@@ -469,7 +470,7 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
                 type="button"
                 onClick={handlePrev}
                 disabled={currentIndex === 0}
-                className="rounded-xl border border-ash bg-white p-2 text-off-black hover:bg-parchment active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all min-h-[40px] min-w-[40px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
+                className="rounded-xl border border-ash bg-white p-2.5 text-off-black hover:bg-parchment active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
                 aria-label="Ciclo Anterior"
               >
                 <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4" />
@@ -478,7 +479,8 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
               <button
                 type="button"
                 onClick={() => setIsPlaying(!isPlaying)}
-                className={`rounded-xl px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider transition-all min-h-[40px] inline-flex items-center gap-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
+                aria-pressed={isPlaying}
+                className={`rounded-xl px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider transition-all min-h-[44px] inline-flex items-center gap-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
                   isPlaying
                     ? 'bg-rust text-white hover:bg-rust/90'
                     : 'bg-off-black text-white hover:bg-black'
@@ -493,7 +495,7 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
                 type="button"
                 onClick={handleNext}
                 disabled={currentIndex === spec.states.length - 1}
-                className="rounded-xl border border-ash bg-white p-2 text-off-black hover:bg-parchment active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all min-h-[40px] min-w-[40px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
+                className="rounded-xl border border-ash bg-white p-2.5 text-off-black hover:bg-parchment active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
                 aria-label="Proximo Ciclo"
               >
                 <HugeiconsIcon icon={ArrowRight01Icon} className="h-4 w-4" />
@@ -502,7 +504,7 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
               <button
                 type="button"
                 onClick={handleReset}
-                className="rounded-xl border border-ash bg-white p-2 text-smoke hover:text-off-black hover:bg-parchment transition-all min-h-[40px] min-w-[40px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
+                className="rounded-xl border border-ash bg-white p-2.5 text-smoke hover:text-off-black hover:bg-parchment transition-all min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
                 aria-label="Reiniciar simulacao"
                 title="Reiniciar"
               >
@@ -511,7 +513,7 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
             </div>
 
             {/* Cycle Jumping Pills */}
-            <div className="flex items-center gap-1 overflow-x-auto py-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1">
               {spec.states.map((state, sIdx) => {
                 const isCurrent = sIdx === currentIndex;
                 const cycleNum = sIdx + 1;
@@ -520,7 +522,8 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
                     key={state.id}
                     type="button"
                     onClick={() => handleJumpToState(sIdx)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-mono font-medium transition-all min-h-[32px] ${
+                    aria-current={isCurrent ? 'step' : undefined}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-mono font-medium transition-all min-h-[44px] min-w-[36px] inline-flex items-center justify-center ${
                       isCurrent
                         ? 'bg-lake-blue text-white shadow-sm font-bold scale-105'
                         : 'bg-white/80 border border-ash text-graphite hover:text-off-black hover:bg-white'
@@ -533,14 +536,15 @@ export default function PipelineSimulator({ spec, className = '', onStateChange 
             </div>
 
             {/* Speed Toggle */}
-            <div className="flex items-center gap-1 text-[11px] font-mono text-smoke">
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-smoke">
               <span>Velocidade:</span>
               {[1, 1.5].map((speed) => (
                 <button
                   key={speed}
                   type="button"
                   onClick={() => setSpeedMultiplier(speed)}
-                  className={`px-2 py-0.5 rounded transition-colors ${
+                  aria-pressed={speedMultiplier === speed}
+                  className={`min-h-[44px] px-2.5 py-1 rounded transition-colors inline-flex items-center justify-center ${
                     speedMultiplier === speed ? 'bg-ash/70 text-off-black font-bold' : 'hover:text-off-black'
                   }`}
                 >

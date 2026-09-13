@@ -123,16 +123,16 @@ Durante as décadas de 1970 e 1980, comitês internacionais de padronização (l
 
 Enquanto a ISO debatia em conferências teóricas, os engenheiros da ARPANET estavam construindo software real que conectava universidades, laboratórios de pesquisa e departamentos de defesa. Em 1982, Michael A. Padlipsky publicou o RFC 871 (*A Perspective on the ARPANET Reference Model*) e o RFC 872 (*TCP-on-a-LAN*), consolidados mais tarde no livro *The Elements of Networking Style* (1985).
 
-Padlipsky apontou que o modelo OSI cometeu o erro capital de ser uma **especificação prescritiva** concebida por comitês antes de qualquer implementação em código, enquanto o modelo da ARPANET (ARM) era uma **especificação descritiva** baseada no que funcionava em sistemas reais heterogêneos (Multics, Unix, TENEX).
+Padlipsky argumentou que o modelo OSI adotou a premissa de ser uma **especificação prescritiva** concebida por comitês antes de qualquer implementação em código, enquanto o modelo da ARPANET (ARM) era uma **especificação descritiva** baseada no que funcionava em sistemas reais heterogêneos (Multics, Unix, TENEX).
 
 ```text
 MODELO ISO / OSI (7 Camadas Teóricas)      MODELO ARPANET / INTERNET (4 Camadas Reais)
 +------------------------------------+    +------------------------------------------+
 | 7. Camada de Aplicação             |    | 4. Camada de Processos / Aplicações      |
 +------------------------------------+    |    (HTTP, DNS, SSH, Telnet, FTP)         |
-| 6. Camada de Apresentação (Inútil) |    +------------------------------------------+
+| 6. Camada de Apresentação (Dispensada) | +------------------------------------------+
 +------------------------------------+    | 3. Camada Host-Host / Transporte         |
-| 5. Camada de Sessão (Redundante)   |    |    (TCP, UDP)                            |
+| 5. Camada de Sessão (Dispensada)   |    |    (TCP, UDP)                            |
 +------------------------------------+    +------------------------------------------+
 | 4. Camada de Transporte            |    | 2. Camada de Internetworking / Rede      |
 +------------------------------------+    |    (IP, ICMP)                            |
@@ -148,7 +148,7 @@ MODELO ISO / OSI (7 Camadas Teóricas)      MODELO ARPANET / INTERNET (4 Camadas
 
 A OSI imaginou que computadores de fabricantes diferentes precisavam de uma camada dedicada inteira (a Camada 6) para traduzir formatos de dados: converter números de ponto flutuante, traduzir EBCDIC da IBM para ASCII, ou reordenar bytes big-endian e little-endian.
 
-Padlipsky demonstrou que essa visão gerava um arranha-céus burocrático. Na prática da ARPANET, essa necessidade foi solucionada de forma incomparavelmente mais simples por meio de uma **Representação Intermediária Comum** (*Common Intermediate Representation - CIR*).
+Padlipsky demonstrou que essa visão sobrecarregava a pilha com camadas intermediárias fixas. Na prática da ARPANET, essa necessidade foi solucionada de forma mais simples e direta por meio de uma **Representação Intermediária Comum** (*Common Intermediate Representation - CIR*).
 
 O exemplo clássico é o protocolo Telnet e seu Terminal Virtual de Rede (*Network Virtual Terminal - NVT*):
 * Em vez de exigir que um computador PDP-10 compreenda a linguagem interna de um computador Multics ou de um mainframe IBM, a rede define um terminal virtual neutro com convenções simples (linhas terminadas em CR-LF, conjunto de caracteres ASCII de 7 bits).
@@ -171,7 +171,7 @@ Padlipsky formalizou então o princípio do **Menor Mecanismo** (*Least Mechanis
 
 > *"Os protocolos de rede devem fornecer apenas o conjunto mínimo de mecanismos indispensáveis para permitir que as aplicações funcionem, concedendo máxima autonomia e flexibilidade aos implementadores dos sistemas terminais."*
 
-Em vez de forçar cada mensagem a subir e descer escadas de sete andares com verificações burocráticas obrigatórias, o modelo da Internet permite que uma aplicação fale diretamente com a camada de transporte, ou até envie datagramas brutos diretamente para a camada de rede se assim desejar.
+Em vez de forçar cada mensagem a atravessar sete camadas pré-definidas com checagens redundantes, o modelo da Internet permite que uma aplicação fale diretamente com a camada de transporte, ou até envie datagramas brutos diretamente para a camada de rede se assim desejar.
 
 ---
 
@@ -217,16 +217,32 @@ Se um comutador intermediário sofresse uma pane, a sua chamada caía imediatame
 
 ---
 
+## Desafios de Reconstrução Ativa
+
+Teste seu modelo mental contra os mecanismos causais estudados. Formule a sua resposta antes de conferir a justificativa de engenharia:
+
+### Desafio 1: Predição de Falha em Roteador
+* **Cenário:** Um pacote TCP trafega de A para B através do Roteador R. Durante a permanência do pacote na fila de memória RAM do Roteador R, ocorre uma falha elétrica transiente que inverte o 14º byte da carga de dados de 0 para 1.
+* **Pergunta de Predição:** A placa de rede Ethernet do Roteador R detectará o erro ao despachar o pacote? Por quê? Onde o erro será finalmente identificado?
+* **Justificativa de Engenharia:** Não, a placa de saída do Roteador R não detectará o erro. Ela recebe o bloco corrompido da RAM e calcula um novo FCS Ethernet perfeitamente compatível com o dado estragado. O pacote trafegará com cabeçalhos locais válidos por toda a rede. O erro só será descoberto quando o pacote atingir a ponta receptora B, onde o checksum da camada de transporte TCP ou o hash da aplicação falharão na comparação com o checksum original emitido por A.
+
+### Desafio 2: Decisão de Arquitetura de Criptografia
+* **Cenário:** Uma empresa decide proteger o tráfego dos seus funcionários implementando criptografia de camada de enlace (hop-by-hop) em todos os roteadores corporativos. Cada roteador descriptografa o pacote ao receber, inspeciona e recriptografa para a porta seguinte.
+* **Pergunta de Contraste:** Essa abordagem respeita o princípio fim a fim? Qual a vulnerabilidade fundamental dessa solução em relação ao TLS 1.3?
+* **Justificativa de Engenharia:** Essa abordagem viola frontalmente o princípio fim a fim. Ao descriptografar a carga útil na memória intermediária de cada roteador, os dados dos usuários ficam expostos em texto claro para qualquer invasor ou software malicioso com acesso administrativo ao comutador. Além disso, as chaves precisam ser distribuídas a dezenas de equipamentos no caminho. O TLS 1.3 respeita o princípio fim a fim cifrando os dados na CPU do emissor com chaves que apenas o receptor possui: os roteadores no meio veem apenas texto cifrado indecifrável e cabeçalhos IP externos de roteamento.
+
+---
+
 ## Síntese de Engenharia e Invariantes Arquiteturais
 
 Feche o módulo contrastando as duas filosofias que disputaram a criação das redes globais:
 
-| Dimensão de Projeto | Abordagem Burocrática (OSI / Hop-by-Hop) | Abordagem Real da Internet (End-to-End / ARM) |
+| Dimensão de Projeto | Modelo em Camadas Rígidas (OSI / Hop-by-Hop) | Abordagem Real da Internet (End-to-End / ARM) |
 | :--- | :--- | :--- |
 | **Garantia de Corretude** | Tenta garantir entrega perfeita e sem erros no meio do caminho | Deixada exclusivamente a cargo dos processos nas extremidades |
 | **Estado nos Roteadores** | Nós intermediários mantêm conexões, sessões e buffers fixos | Roteadores são estritamente sem estado (*stateless best-effort*) |
 | **Sobrevivência a Falhas** | Se um comutador reinicia, a conexão cai por perda de estado | Se um comutador queima, os pacotes contornam pela rota alternativa |
-| **Estrutura de Camadas** | 7 camadas obrigatórias com funções fixas e sobrecarga de dados | 4 camadas modulares com autonomia para as pontas invocarem atalhos |
+| **Estrutura de Camadas** | 7 camadas fixas com sobrecarga de processamento no caminho | 4 camadas modulares com autonomia para as pontas invocarem atalhos |
 | **Tradução de Formatos** | Camada de apresentação dedicada no sistema operacional | Representação Intermediária Comum (CIR) operando no espaço de usuário |
 | **Escalabilidade Global** | Gargalo de memória e CPU em comutadores de núcleo | Roteamento em velocidade de linha em circuitos integrados de aplicação específica |
 

@@ -1,0 +1,476 @@
+{
+  "summary": {
+    "total_cases": 30,
+    "good_cases": 10,
+    "bad_cases": 10,
+    "ambiguous_cases": 10,
+    "false_positives": [],
+    "false_negatives": [],
+    "ambiguous_hard_fails": [],
+    "false_positive_rate_percent": 0.0,
+    "false_negative_rate_percent": 0.0,
+    "ambiguous_hard_fail_rate_percent": 0.0,
+    "exact_finding_accuracy_percent": 100.0,
+    "overall_accuracy_percent": 100.0,
+    "calibration_status": "CALIBRATED"
+  },
+  "confusion_matrix": {
+    "PASS": {
+      "PASS": 10,
+      "FAIL": 0,
+      "REVIEW": 0
+    },
+    "FAIL": {
+      "PASS": 0,
+      "FAIL": 10,
+      "REVIEW": 0
+    },
+    "REVIEW": {
+      "PASS": 0,
+      "FAIL": 0,
+      "REVIEW": 10
+    }
+  },
+  "cases": [
+    {
+      "id": "CAL-GOOD-001",
+      "category": "SEMANTIC_PRECISION",
+      "fixture": "good/01-forwarding-concise.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "As tres frases adicionam informacoes causais distintas sobre o ciclo de dados e o beneficio do forwarding sem nenhuma redundancia."
+    },
+    {
+      "id": "CAL-GOOD-002",
+      "category": "NATURAL_PASSIVE",
+      "fixture": "good/02-natural-passive.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Voz passiva legitima onde o foco ontologico e a entidade fisica do circuito (bit de paridade, sinal de transporte), nao o agente."
+    },
+    {
+      "id": "CAL-GOOD-003",
+      "category": "INTENTIONAL_CONTRAST",
+      "fixture": "good/03-intentional-contrast.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Contraste essencial para a quebra de misconception (RAW continua existindo, mas o stall desaparece via forwarding)."
+    },
+    {
+      "id": "CAL-GOOD-004",
+      "category": "SCOPED_METRIC",
+      "fixture": "good/04-scoped-metric.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Metrica de engenharia devidamente qualificada com processo de fabricacao (Rocket Core, TSMC 28nm, 320 picosegundos)."
+    },
+    {
+      "id": "CAL-GOOD-005",
+      "category": "CLEAN_ANALOGY",
+      "fixture": "good/05-clean-analogy.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Analogia conceitual limpa (catalogo de biblioteca) com correspondencia estrita 1:1 entre endereco virtual e codigo de chamada, sem metaforas teatrais."
+    },
+    {
+      "id": "CAL-GOOD-006",
+      "category": "CAUSAL_TRANSITION",
+      "fixture": "good/06-causal-transition.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Transicao causal estrita (Por consequencia direta) ligando a borda de subida do clock a ausencia de oscilacoes espurias."
+    },
+    {
+      "id": "CAL-GOOD-007",
+      "category": "WORKED_EXAMPLE_TRACE",
+      "fixture": "good/07-worked-example-trace.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Rastreamento mecanico passo a passo de ciclo e estagio (ciclo 3 em EX, ciclo 4 na fiacao) demonstrando o fluxo do dado."
+    },
+    {
+      "id": "CAL-GOOD-008",
+      "category": "LEGITIMATE_TOPIC_SHIFT",
+      "fixture": "good/08-legitimate-topic-shift.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Mudanca legitima de escopo (da funcao da ALU para as linhas de controle que selecionam a operacao)."
+    },
+    {
+      "id": "CAL-GOOD-009",
+      "category": "STACCATO_CADENCE",
+      "fixture": "good/09-staccato-cadence.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Frases curtas sequenciais descrevendo a dinamica temporal de registradores master-slave sem truncamento artificial."
+    },
+    {
+      "id": "CAL-GOOD-010",
+      "category": "MULTI_TERM_GROUNDING",
+      "fixture": "good/10-multi-term-grounding.md",
+      "expected_release": "PASS",
+      "actual_release": "PASS",
+      "expected_findings": [],
+      "actual_findings": [],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Uso simultaneo de multiplos termos de hardware necessarios e conectados funcionalmente (multiplexador, forwarding, rs1, rd)."
+    },
+    {
+      "id": "CAL-BAD-001",
+      "category": "SEMANTIC_REDUNDANCY",
+      "fixture": "bad/01-forwarding-restatement.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "REDUNDANT_RESTATEMENT"
+      ],
+      "actual_findings": [
+        "REDUNDANT_RESTATEMENT"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Repeticao redundante da mesma ideia tres vezes usando apenas parafrase sintatica (Isso significa que... Portanto, ao termino de EX...)."
+    },
+    {
+      "id": "CAL-BAD-002",
+      "category": "THEATRICAL_METAPHOR",
+      "fixture": "bad/02-theatrical-metaphor.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "THEATRICAL_METAPHOR"
+      ],
+      "actual_findings": [
+        "THEATRICAL_METAPHOR"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Metafora vazia e teatral (maestro de uma grande orquestra invisivel, batuta magica) que mascara a mecanica fisica real."
+    },
+    {
+      "id": "CAL-BAD-003",
+      "category": "EMPTY_IMPORTANCE",
+      "fixture": "bad/03-empty-importance.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "EMPTY_IMPORTANCE"
+      ],
+      "actual_findings": [
+        "EMPTY_IMPORTANCE"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Acumulo de adjetivos de importancia vazios (fundamental, crucial, de suma importancia, absolutamente essencial) sem conteudo tecnico."
+    },
+    {
+      "id": "CAL-BAD-004",
+      "category": "SCOPE_LOSS_UNIVERSAL",
+      "fixture": "bad/04-scope-loss-universal.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "SCOPE_LOSS_UNIVERSAL"
+      ],
+      "actual_findings": [
+        "SCOPE_LOSS_UNIVERSAL"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Generalizacao universal falsa (elimina 100% dos stalls em qualquer processador do mundo) ignorando hazards estruturais e load-use."
+    },
+    {
+      "id": "CAL-BAD-005",
+      "category": "VERBOSE_NOMINALIZATION",
+      "fixture": "bad/05-verbose-nominalization.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "VERBOSE_NOMINALIZATION"
+      ],
+      "actual_findings": [
+        "VERBOSE_NOMINALIZATION"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Cadeia de nominalizacoes e verbos burocraticos vazios (realizacao da execucao, efetuada atraves, procedimento de comutacao procedido)."
+    },
+    {
+      "id": "CAL-BAD-006",
+      "category": "SYNONYM_ROULETTE",
+      "fixture": "bad/06-synonym-roulette.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "SYNONYM_ROULETTE"
+      ],
+      "actual_findings": [
+        "SYNONYM_ROULETTE"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Roleta de sinonimos para o mesmo componente (somador, modulo aditivo, dispositivo de operacao aritmetica), violando a estabilidade de termos tecnicos."
+    },
+    {
+      "id": "CAL-BAD-007",
+      "category": "UNNECESSARY_SUMMARY",
+      "fixture": "bad/07-unnecessary-summary.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "UNNECESSARY_SUMMARY"
+      ],
+      "actual_findings": [
+        "UNNECESSARY_SUMMARY"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Signposting prolixo de fechamento sem conteudo novo (Como vimos anteriormente nos detalhes expostos, concluindo tudo o que foi explicado em suma)."
+    },
+    {
+      "id": "CAL-BAD-008",
+      "category": "OVER_EXPLANATION",
+      "fixture": "bad/08-over-explanation.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "OVER_EXPLANATION"
+      ],
+      "actual_findings": [
+        "OVER_EXPLANATION"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Sobrequalificacao tautologica da mesma tabela-verdade (produz 0 apenas quando as duas entradas sao 1. Portanto, quando as duas entradas sao 1, a saida logica produzida sera exatamente 0)."
+    },
+    {
+      "id": "CAL-BAD-009",
+      "category": "DUPLICATE_EXAMPLE",
+      "fixture": "bad/09-duplicate-example.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "DUPLICATE_EXAMPLE"
+      ],
+      "actual_findings": [
+        "DUPLICATE_EXAMPLE"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Exemplo repetido identicamente com os mesmos numeros (1+1 -> soma 0 transporte 1) sem variar a condicao de teste ou generalizar."
+    },
+    {
+      "id": "CAL-BAD-010",
+      "category": "CHATTY_SIGNPOSTING",
+      "fixture": "bad/10-chatty-signposting.md",
+      "expected_release": "FAIL",
+      "actual_release": "FAIL",
+      "expected_findings": [
+        "CHATTY_SIGNPOSTING"
+      ],
+      "actual_findings": [
+        "CHATTY_SIGNPOSTING"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Abertura conversacional cliche e empolgacao artificial de IA (Ola caros leitores!, capitulo fascinante, mergulhar juntos nas profundezas, desvendar os segredos)."
+    },
+    {
+      "id": "CAL-AMB-001",
+      "category": "INTENTIONAL_REPETITION",
+      "fixture": "ambiguous/01-intentional-repetition.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_REPETITION"
+      ],
+      "actual_findings": [
+        "WARN_REPETITION"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Repeticao intencional e extrema de termos para enfase em conceito critico. Deve gerar WARN de concisao, mas nunca HARD_FAIL."
+    },
+    {
+      "id": "CAL-AMB-002",
+      "category": "DOMAIN_PASSIVE",
+      "fixture": "ambiguous/02-domain-passive.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_PASSIVE"
+      ],
+      "actual_findings": [
+        "WARN_PASSIVE"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Passiva aceita no dominio de snooping de coerencia de cache. Pode disparar alerta de voz passiva, mas deve ser mantida como REVIEW."
+    },
+    {
+      "id": "CAL-AMB-003",
+      "category": "CONCISE_CONTRAST",
+      "fixture": "ambiguous/03-concise-contrast.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_PARALLELISM"
+      ],
+      "actual_findings": [
+        "WARN_PARALLELISM"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Estrutura simetrica densa comparando ripple-carry e carry-lookahead. Pode parecer paralelismo rigido, mas carrega densidade tecnica exata."
+    },
+    {
+      "id": "CAL-AMB-004",
+      "category": "DEFENSIVE_QUALIFIER",
+      "fixture": "ambiguous/04-defensive-qualifier.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_QUALIFIER"
+      ],
+      "actual_findings": [
+        "WARN_QUALIFIER"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Qualificacao cautelosa sobre simplificacoes de sala de aula. Pode parecer prolixa, mas evita generalizacao indevida."
+    },
+    {
+      "id": "CAL-AMB-005",
+      "category": "SHORT_TRANSITION",
+      "fixture": "ambiguous/05-short-transition.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_SIGNPOSTING"
+      ],
+      "actual_findings": [
+        "WARN_SIGNPOSTING"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Transicao direta (Vejamos agora como a engenharia contorna esse atraso). Proxima do signposting, porem curta e causal."
+    },
+    {
+      "id": "CAL-AMB-006",
+      "category": "TWO_SHORT_SENTENCES",
+      "fixture": "ambiguous/06-two-short-sentences.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_STACCATO"
+      ],
+      "actual_findings": [
+        "WARN_STACCATO"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Duas frases breves de alta urgencia mecanica. Pode soar fragmentado, mas reflete o comportamento de transbordamento de fila."
+    },
+    {
+      "id": "CAL-AMB-007",
+      "category": "PARTIAL_ANALOGY",
+      "fixture": "ambiguous/07-partial-analogy.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_ANALOGY"
+      ],
+      "actual_findings": [
+        "WARN_ANALOGY"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Analogia mecanica de esteira para registrador de deslocamento. Nao e teatral, mas analogias sempre merecem revisao editorial."
+    },
+    {
+      "id": "CAL-AMB-008",
+      "category": "PERIPHERAL_HARDWARE_TERM",
+      "fixture": "ambiguous/08-peripheral-hardware-term.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_PERIPHERAL_TERM"
+      ],
+      "actual_findings": [
+        "WARN_PERIPHERAL_TERM"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Introducao de termo periferico (metaestabilidade) sem definicao previa longa. E rigoroso, mas pode sobrecarregar se isolado."
+    },
+    {
+      "id": "CAL-AMB-009",
+      "category": "DENSE_COMPRESSION",
+      "fixture": "ambiguous/09-dense-compression.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_DENSE_COMPRESSION"
+      ],
+      "actual_findings": [
+        "WARN_DENSE_COMPRESSION"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Compressao semantica extrema com 4 referencias de hardware em uma unica oracao. Alto valor informativo, mas requer atencao a legibilidade."
+    },
+    {
+      "id": "CAL-AMB-010",
+      "category": "CONVERSATIONAL_RHYTHM",
+      "fixture": "ambiguous/10-conversational-rhythm.md",
+      "expected_release": "REVIEW",
+      "actual_release": "REVIEW",
+      "expected_findings": [
+        "WARN_CONVERSATIONAL_RHYTHM"
+      ],
+      "actual_findings": [
+        "WARN_CONVERSATIONAL_RHYTHM"
+      ],
+      "case_passed": true,
+      "notes": [],
+      "rationale": "Frase com ritmo de fala natural (Pode parecer contra-intuitivo...). Didatica, mas tangencia estilo conversacional."
+    }
+  ]
+}

@@ -50,6 +50,8 @@ Um bit isolado não guarda muita informação: ele só responde perguntas de sim
 
 Essa realidade física impõe a primeira grande lição: **números no computador têm limites estritos de tamanho**. Diferente da matemática do papel, onde os números podem crescer infinitamente, na memória do computador todo valor precisa caber em uma caixinha de largura fixa.
 
+No Módulo 00, vimos como interruptores de silício e portas lógicas constroem somadores e flip-flops capazes de processar sinais binários acionados por clock. Mas há um dilema físico inevitável: esses circuitos elétricos só conhecem dois estados (0 e 1, presença de tensão ou terra). Como representar números negativos se não existe um fio elétrico dedicado para transportar o sinal de menos? E como guardar frações decimais se a caixinha de bits é discreta e finita?
+
 Neste módulo, investigamos como essas caixinhas funcionam, como a máquina representa números negativos sem usar fios especiais, por que certos computadores guardam números de trás para frente na memória <Term id="RAM">RAM</Term> e por que contas decimais aparentemente óbvias produzem pequenas imperfeições quando executadas em circuitos digitais.
 
 ---
@@ -113,7 +115,7 @@ O cartão abaixo responde: o que acontece ao somar 1 no limite?
 3. Leia o novo valor como menos 32768.
 Conclusão em 1 frase: passar do teto dá a volta no mostrador circular.
 
-<ByteInspector client:load />
+<ByteInspector client:visible />
 
 Preste muita atenção neste detalhe que separa o hardware das linguagens de programação:
 * **No circuito digital (<Term id="ALU">ALU</Term>):** A soma física opera estritamente módulo $2^{16}$. O circuito não para a execução e não quebra a máquina; ele simplesmente descarta o bit de transporte excedente e sinaliza a ocorrência ativando a flag de estouro com sinal (*Overflow Flag*, <Term id="OF">OF</Term>) no registrador de estado da <Term id="CPU">CPU</Term>.
@@ -146,7 +148,7 @@ O relatório oficial da comissão de inquérito, presidida pelo professor Jacque
 6. **A Deflexão Máxima:** Sem dados válidos dos computadores inerciais, o computador de bordo principal interpretou os sinais de diagnóstico de erro gravados no barramento MIL-STD-1553B como se fossem dados reais de atitude, ordenando a deflexão de 20 graus nas tubeiras dos motores. O foguete curvou-se abruptamente a mais de 3.000 km/h e rompeu-se sob forças aerodinâmicas violentas.
 </HistoricalIncident>
 
-<ArianeCrashVisualizer client:load />
+<ArianeCrashVisualizer client:visible />
 
 ---
 
@@ -216,7 +218,7 @@ O mostrador abaixo responde: como andar para trás andando para frente?
 3. Gire 256 passos em 8 bits e volte ao zero.
 Conclusão em 1 frase: em anel fechado, subtrair é somar o complemento.
 
-<TwosComplementDial client:load />
+<TwosComplementDial client:visible />
 
 Na memória do computador, uma variável de 8 bits comporta 256 combinações possíveis ($2^8$). Quando um contador atinge 255 e soma 1, ele transborda e volta a marcar 0.
 
@@ -244,6 +246,13 @@ Vejamos como transformar o número $+5$ em $-5$ em uma gaveta de 8 bits:
    $$1111\ 1010_2 + 0000\ 0001_2 = \mathbf{1111\ 1011_2}$$
 
 Esse padrão `1111 1011` é exatamente a representação do número $-5$ na memória do processador.
+
+> [!TIP]
+> **Pausa Reflexiva Ativa: Teste o mecanismo antes de rolar a página**
+> Se você somar $+5$ (`0000 0101`) com $-5$ (`1111 1011`) usando as regras de transporte do somador que você conheceu no Módulo 00, o que acontece na caixinha de 8 bits?
+> Faça o cálculo mental coluna por coluna: na primeira coluna da direita, $1 + 1 = 0$ com vai-um. O vai-um viaja propagando transporte elétrico por todas as posições até alcançar a oitava coluna.
+> O resultado da soma dá `1 0000 0000` (o dígito 1 seguido de oito zeros). Mas como a caixinha física possui exatamente 8 bits de largura, o 9º bit transborda e é descartado pelo circuito.
+> O que sobra dentro da gaveta? Exatamente `0000 0000`, o zero absoluto. É por essa razão que o Complemento de Dois funciona: somar $-5$ cancela $+5$ sem precisar de nenhum circuito subtrator separado.
 
 ---
 
@@ -323,44 +332,40 @@ Esse arranjo em linha é chamado de **Cascata de Transporte (Ripple-Carry Chain)
 
 Agora observe com atenção a primeira coluna da direita: o **Bit 0** (as unidades).
 
-Na primeira coluna de qualquer conta, nunca existe uma coluna anterior. Em uma soma convencional, não há nenhum vai-um vindo de lugar algum. Um projetista desatento poderia pensar: *"Podemos economizar transistores usando um simples Meio Somador no Bit 0, já que ele não precisa receber transporte anterior!"*
+Em uma soma comum, a primeira coluna da direita nunca recebe transporte vindo de trás. Poderíamos cogitar usar um simples Meio Somador no Bit 0 para economizar algumas portas lógicas. No entanto, se fizéssemos isso, esse estágio não teria como receber nenhum sinal vindo de fora. Ao utilizar um Somador Completo também na primeira coluna, os projetistas deixam uma entrada física exposta e controlável: o pino inicial **$C_0$ (o Carry-In inicial do Bit 0)**.
 
-Fazer isso seria um desastre de projeto. Os arquitetos de processadores colocam um **Somador Completo também no Bit 0**.
-
-Por que fazer isso? Porque isso deixa um pino físico de entrada, batizado de **$C_0$ (o Carry-In inicial do Bit 0)**, exposto e controlável pela <Term id="CPU">CPU</Term>:
-* Quando a <Term id="CPU">CPU</Term> quer executar uma **Adição ordinária ($A + B$)**, ela conecta esse fio ao terra: **$C_0 = 0$**. A soma começa limpa.
+Esse pino exposto pode ser controlado pelo sinal da operação:
+* Quando a <Term id="CPU">CPU</Term> quer executar uma **Adição ($A + B$)**, ela conecta esse fio ao nível lógico baixo: **$C_0 = 0$**. A soma começa limpa.
 * Quando a <Term id="CPU">CPU</Term> quer executar uma **Subtração ($A - B$)**, ela ativa esse fio com nível lógico alto: **$C_0 = 1$**.
 
-Esse pino $C_0 = 1$ é a chave que destrava o complemento de dois em hardware.
+Esse pino $C_0 = 1$ é a chave que destrava o complemento de dois em hardware: ele fornece exatamente o $+1$ exigido pela transformação $\sim B + 1$.
 
 > [!IMPORTANT]
-> **REGRA CENTRAL (Core Principle):** A CPU não possui circuito subtrator dedicado. A subtração $A - B$ é executada pelo mesmo circuito somador digital que realiza adições: uma linha de controle inverte todos os bits de $B$ através de portas XOR e injeta simultaneamente o valor 1 no pino de transporte inicial $C_0$ do somador, computando $A + \sim B + 1 = A - B$ sem custo de transistores adicionais nem ciclos extras de clock.
+> **REGRA CENTRAL (Core Principle):** A CPU não possui circuito subtrator dedicado. Na implementação didática apresentada, portas XOR controlam a inversão dos bits de $B$, e o mesmo sinal de controle mestre `SUB` fornece o transporte inicial $C_0 = 1$ ao somador digital. O circuito reaproveita o somador existente na ALU para calcular $A + \sim B + 1 = A - B$, em vez de exigir uma unidade subtratora separada com lógica independente de empréstimo.
 
 #### O Inversor Controlado por Portas XOR e a Linha SUB
 
-Se a <Term id="CPU">CPU</Term> precisasse de um circuito específico para subtrair, ela precisaria construir um "Subtrator Completo", com portas lógicas dedicadas a calcular empréstimos (*Borrow-in* e *Borrow-out*). Isso exigiria dobrar a quantidade de transistores dedicados à aritmética na <Term id="ALU">ALU</Term> e instalar chaves multiplexadoras na saída, inserindo atrasos de propagação no caminho crítico de tempo do processador.
+Se a <Term id="CPU">CPU</Term> precisasse de um circuito específico para subtrair, ela precisaria construir um subtrator com portas lógicas dedicadas a calcular empréstimos (*borrow*), duplicando circuitos na <Term id="ALU">ALU</Term> e inserindo chaves seletoras na saída.
 
-A <Term id="CPU">CPU</Term> resolve essa restrição utilizando a porta lógica <Term id="XOR">XOR</Term> (OU-Exclusivo) como um inversor programável:
+Para evitar essa duplicação, o circuito utiliza a porta lógica <Term id="XOR">XOR</Term> (OU-Exclusivo) como um inversor programável:
 * $b \oplus 0 = b$ (se a segunda entrada for 0, o sinal passa inalterado);
 * $b \oplus 1 = \sim b$ (se a segunda entrada for 1, o sinal é invertido).
 
-A <Term id="CPU">CPU</Term> coloca uma porta XOR na entrada de cada bit do segundo operando ($B$) e conecta a segunda entrada de todas essas portas XOR a um único fio mestre de controle chamado **`SUB`**:
+Coloca-se uma porta XOR na entrada de cada bit do segundo operando ($B$) e conecta-se a segunda entrada de todas essas portas a um único fio de controle chamado **`SUB`**:
 
 <AluBitSliceDiagram />
 
-A sincronia do circuito combinacional opera em perfeita harmonia:
+A sincronia do circuito combinacional opera em duas etapas diretas:
 
 1. **Modo Adição (`SUB = 0`):**
    * As portas XOR recebem 0: cada bit de $B$ passa intacto ($b_i \oplus 0 = b_i$).
-   * O mesmo fio `SUB` leva 0 ao pino inicial de transporte do Bit 0 ($C_0 = 0$).
+   * O fio `SUB` leva 0 ao pino inicial de transporte ($C_0 = 0$).
    * O somador calcula: $A + B + 0 = \mathbf{A + B}$.
 
 2. **Modo Subtração (`SUB = 1`):**
-   * As portas XOR recebem 1: todos os bits de $B$ são instantaneamente invertidos ($b_i \oplus 1 = \sim b_i$).
-   * O mesmo fio `SUB` leva 1 ao pino inicial de transporte do Bit 0 ($C_0 = 1$).
+   * As portas XOR recebem 1: todos os bits de $B$ são invertidos ($b_i \oplus 1 = \sim b_i$).
+   * O fio `SUB` leva 1 ao pino inicial de transporte ($C_0 = 1$).
    * O somador calcula: $A + \sim B + 1 = \mathbf{A - B}$.
-
-O $+1$ exigido pelo complemento de dois entra **de graça** pelo pino $C_0$ que estaria ocioso na primeira coluna. Nenhum somador adicional é necessário. Nenhum ciclo de clock a mais é consumido.
 
 > [!NOTE]
 > **Aprofundamento de Engenharia: A Dedução Formal no Anel Modular**
@@ -384,7 +389,7 @@ O $+1$ exigido pelo complemento de dois entra **de graça** pelo pino $C_0$ que 
 >
 > Isso prova com rigor absoluto: **calcular $A - B$ é rigorosamente idêntico a somar $A$ com o inverso de $B$ e adicionar 1 ao resultado.**
 
-<AluCircuitVisualizer client:load />
+<AluCircuitVisualizer client:visible />
 
 <ObservationMission
   title="Missão de Observação: Inspecionando o Fio SUB, Cin e as Flags da ALU"
@@ -396,30 +401,38 @@ O $+1$ exigido pelo complemento de dois entra **de graça** pelo pino $C_0$ que 
 
 Imagine, de forma simplificada, que a CPU possui uma <Term id="ALU">ALU</Term> de 4 bits (cujos números inteiros com sinal cobrem a faixa de $-8$ a $+7$). Vamos acompanhar o fluxo elétrico em 4 situações fundamentais:
 
-##### Caso 1: Subtração Direta Positiva ($7 - 3 = +4$)
-* Entradas: $A = 7 = 0111_2$, $B = 3 = 0011_2$, `SUB = 1`.
+##### Caso 1: Subtração Direta Positiva ($5 - 3 = +2$)
+* Entradas: $A = 5 = 0101_2$, $B = 3 = 0011_2$, `SUB = 1`.
 * Inversão XOR de $B$: $B \oplus 1 = \sim(0011_2) = 1100_2$.
 * Carry-in inicial: $Cin_0 = SUB = 1$.
 * Propagação coluna a coluna:
   * **Bit 0:** $A_0(1) + \text{XOR}_0(0) + Cin_0(1) = 2 \implies S_0 = 0$, gera $Cout_0 = 1$.
-  * **Bit 1:** $A_1(1) + \text{XOR}_1(0) + Cin_1(1) = 2 \implies S_1 = 0$, gera $Cout_1 = 1$.
-  * **Bit 2:** $A_2(1) + \text{XOR}_2(1) + Cin_2(1) = 3 \implies S_2 = 1$, gera $Cout_2 = 1$.
+  * **Bit 1:** $A_1(0) + \text{XOR}_1(0) + Cin_1(1) = 1 \implies S_1 = 1$, gera $Cout_1 = 0$.
+  * **Bit 2:** $A_2(1) + \text{XOR}_2(1) + Cin_2(0) = 2 \implies S_2 = 0$, gera $Cout_2 = 1$.
   * **Bit 3:** $A_3(0) + \text{XOR}_3(1) + Cin_3(1) = 2 \implies S_3 = 0$, gera $Cout_3 = 1$.
-* Resultado final: Barramento de saída $S = 0100_2$, que em decimal vale exatamente **$+4$**.
-* Observe o transporte que saiu do último somador ($Cout_3 = 1$): houve transporte final para fora da palavra.
+* Resultado final: Barramento de saída $S = 0010_2$, que em decimal vale exatamente **$+2$**.
+* Observe o transporte que saiu do último somador ($Cout_3 = 1$): houve transporte final para fora da palavra de 4 bits, sendo descartado pelo registrador.
 
-##### Caso 2: Subtração com Resultado Negativo ($3 - 7 = -4$)
-* Entradas: $A = 3 = 0011_2$, $B = 7 = 0111_2$, `SUB = 1`.
-* Inversão XOR de $B$: $B \oplus 1 = \sim(0111_2) = 1000_2$.
+> [!TIP]
+> **Previsão Ativa: O papel indispensável do Carry Inicial**
+> Se as portas XOR invertessem $B$, mas mantivéssemos o carry inicial em zero ($Cin_0 = 0$), o resultado ainda seria $A - B$?
+> Sem o carry inicial, a conta somaria apenas $A + \sim B$. Para $5 - 3$, teríamos $0101_2 + 1100_2 + 0 = 10001_2$, restando `0001` ($+1$) na saída de 4 bits. O resultado ficaria uma unidade abaixo da resposta correta ($+2$), revelando que o $+1$ injetado pelo pino $C_0$ é indispensável para completar a regra do complemento de dois.
+
+##### Caso 2: Subtração com Resultado Negativo ($3 - 5 = -2$)
+* Entradas: $A = 3 = 0011_2$, $B = 5 = 0101_2$, `SUB = 1`.
+* Inversão XOR de $B$: $B \oplus 1 = \sim(0101_2) = 1010_2$.
 * Carry-in inicial: $Cin_0 = 1$.
 * Propagação coluna a coluna:
   * **Bit 0:** $A_0(1) + \text{XOR}_0(0) + Cin_0(1) = 2 \implies S_0 = 0$, gera $Cout_0 = 1$.
-  * **Bit 1:** $A_1(1) + \text{XOR}_1(0) + Cin_1(1) = 2 \implies S_1 = 0$, gera $Cout_1 = 1$.
+  * **Bit 1:** $A_1(1) + \text{XOR}_1(1) + Cin_1(1) = 3 \implies S_1 = 1$, gera $Cout_1 = 1$.
   * **Bit 2:** $A_2(0) + \text{XOR}_2(0) + Cin_2(1) = 1 \implies S_2 = 1$, gera $Cout_2 = 0$.
   * **Bit 3:** $A_3(0) + \text{XOR}_3(1) + Cin_3(0) = 1 \implies S_3 = 1$, gera $Cout_3 = 0$.
-* Resultado final: Barramento de saída $S = 1100_2$.
-* Decodificando $1100_2$ em complemento de dois: $-8 \times 1 + 4 \times 1 + 0 + 0 = -8 + 4 = \mathbf{-4}$. A conta fecha perfeitamente!
-* Observe o transporte final: $Cout_3 = 0$. Não houve transporte para fora.
+* Resultado final: Barramento de saída $S = 1110_2$.
+* Decodificando $1110_2$ em complemento de dois:
+  $$1110_2 = (1 \times -8) + (1 \times 4) + (1 \times 2) + (0 \times 1) = -8 + 6 = \mathbf{-2}$$
+* Observe dois detalhes conceituais importantes:
+  1. O bit mais significativo com valor 1 **faz parte do próprio valor** (possui peso posicional negativo de $-8$), e não é um sinal adicionado a posteriori pelo circuito.
+  2. A ausência de transporte final ($Cout_3 = 0$) **não é o critério para identificar um resultado negativo**. Em processadores reais, o sinal negativo é detectado pela flag de sinal ($SF = 1$). A conta fecha com precisão absoluta.
 
 ##### Caso 3: Negativo Menos Positivo ($(-5) - (+2) = -7$)
 * Entradas: $A = -5 = 1011_2$, $B = +2 = 0010_2$, `SUB = 1`.
@@ -460,7 +473,7 @@ Para consolidar o modelo mental da máquina nocional, rastreamos o comportamento
 
 O somador digital realiza exatamente a mesma operação elétrica sobre os bits, independentemente de representarem grandezas com sinal ou sem sinal. Quem traduz o resultado elétrico para a lógica do software é o **Registrador de Flags de Condição** da <Term id="CPU">CPU</Term> (como o registrador EFLAGS/RFLAGS na arquitetura x86):
 
-<CpuFlagsVisualizer client:load />
+<CpuFlagsVisualizer client:visible />
 
 1. **Zero Flag (ZF):** É ativada (`ZF = 1`) se todos os bits de saída da Soma forem zero ($S = 0000_2$). É detectada em hardware por uma simples porta NOR conectada a todos os fios de saída.
 2. **Sign Flag (SF):** É uma cópia direta do bit mais significativo ($S_{w-1}$, o bit de sinal). Se $SF = 1$, o resultado é formalmente negativo na interpretação com sinal.
@@ -541,7 +554,7 @@ A fita abaixo responde: onde mora cada byte?
 3. Confira que cada casa guarda exatamente 2 dígitos hex.
 Conclusão em 1 frase: endereço é posição, byte é conteúdo.
 
-<MemoryRibbon client:load />
+<MemoryRibbon client:visible />
 
 > **Ponto de Quebra da Analogia:**
 > Uma fita métrica real é contínua e feita de tecido flexível. Na máquina real, a fita é uma abstração lógica: a memória física dinâmica (<Term id="DRAM">DRAM</Term>) é organizada internamente em canais, bancos matriciais, linhas e colunas. O controlador de memória gerencia essas coordenadas elétricas e apresenta para o processador a ilusão de um espaço linear contínuo, onde cada célula de 8 bits é acessada individualmente por meio de barramentos elétricos de endereçamento.
@@ -568,7 +581,7 @@ O cartão abaixo responde: quantos bits cabem em 1 dígito?
 3. Monte 1 byte e confira 2 dígitos hex.
 Conclusão em 1 frase: 4 bits viram 1 hex, 8 bits viram 2 hex.
 
-<NibbleVisualizer client:load />
+<NibbleVisualizer client:visible />
 
 Um grupo de 4 bits é chamado de **nibble**. Como 1 byte possui 8 bits:
 
@@ -629,7 +642,7 @@ O inspetor abaixo responde: qual porta o roteador lê?
 3. Inverta a ordem e confira os 2 bytes trocados.
 Conclusão em 1 frase: sem conversão, o primeiro byte vira o mais pesado no destino.
 
-<EndiannessNetworkInspector client:load />
+<EndiannessNetworkInspector client:visible />
 
 Imagine que seu navegador deseja se conectar a um servidor web na porta de rede **80** (que em hexadecimal de 16 bits vale `0x0050`):
 
@@ -660,7 +673,7 @@ O visual abaixo responde: por que começar pelo byte leve?
 3. Compare com a ordem inversa exigindo espera.
 Conclusão em 1 frase: começar pelo leve permite calcular em fluxo contínuo.
 
-<CarryAdditionVisualizer client:load />
+<CarryAdditionVisualizer client:visible />
 
 **2. A Vantagem de Endereçamento em Processadores Modernos (Narrowing Cast):**
 Em processadores modernos de 32 e 64 bits, os barramentos de memória e os somadores da <Term id="ALU">ALU</Term> trabalham em paralelo sobre palavras completas em um único ciclo de clock. No entanto, o formato Little Endian preserva uma propriedade de projeto indispensável para compiladores e sistemas operacionais: **a conversão de ponteiros para tipos menores (*narrowing cast*) sem alteração de endereço base**.
@@ -698,7 +711,7 @@ O visual abaixo responde: por que menos 1 vira gigante?
 3. Compare com 0 e veja o teste inverter.
 Conclusão em 1 frase: o bit de sinal vira peso positivo gigante.
 
-<CastingTrapVisualizer client:load />
+<CastingTrapVisualizer client:visible />
 
 Leia o par mínimo. Você não precisa compilar.
 
@@ -760,7 +773,10 @@ Para acelerar essas operações, o processador emprega um recurso elétrico inst
 
 Para números negativos em Complemento de Dois, o deslocamento para a direita não pode simplesmente preencher as vagas liberadas com zeros, pois isso converteria o número imediatamente em um valor positivo.
 
-Utiliza-se o **deslocamento aritmético**, que replica o bit de sinal mais à esquerda para preencher as casas abertas.
+Utiliza-se o **deslocamento aritmético**, que replica o bit de sinal mais à esquerda para preencher as casas abertas:
+* Considere o número $-4_{10}$, codificado em 8 bits como `1111 1100`.
+* No **deslocamento aritmético à direita** de 1 posição, a vaga aberta à esquerda é preenchida com `1`: o resultado torna-se `1111 1110`, que corresponde exatamente a $\mathbf{-2_{10}}$. O sinal e o valor foram preservados.
+* Se o circuito utilizasse o **deslocamento lógico** e preenchesse a vaga com `0`, o padrão se tornaria `0111 1110`, que vale $+126_{10}$, corrompendo completamente o cálculo.
 
 O visual abaixo responde: por que empurrar negativo arredonda para baixo?
 1. Desloque menos 7 e veja menos 4.
@@ -768,7 +784,7 @@ O visual abaixo responde: por que empurrar negativo arredonda para baixo?
 3. Confira menos 3 conforme a norma C.
 Conclusão em 1 frase: o viés corrige o arredondamento antes do shift.
 
-<BitShiftVisualizer client:load />
+<BitShiftVisualizer client:visible />
 
 Contudo, surge uma divergência matemática sutil:
 * A norma ISO C11 exige que a divisão inteira trunque o resultado **em direção a zero**: $-7 / 2$ deve produzir obrigatoriamente **$-3$**.
@@ -824,7 +840,7 @@ O inspetor abaixo responde: onde mora cada parte do decimal?
 3. Mude a precisão e veja a fração truncar.
 Conclusão em 1 frase: sinal mais escala com viés mais fração definem o valor.
 
-<Float754Inspector client:load />
+<Float754Inspector client:visible />
 
 Um número de ponto flutuante é dividido em três campos físicos de bits:
 
@@ -899,11 +915,15 @@ O padrão <Term id="IEEE">IEEE</Term> 754 resolveu esse problema criando o regim
 
 ### 6.3 Cancelamento Catastrófico e o Lema de Sterbenz
 
-A maior armadilha de precisão numérica em ponto flutuante ocorre quando subtraímos dois números muito próximos entre si que já sofreram pequenas imprecisões de arredondamento em etapas anteriores do programa.
+A principal causa de perda de precisão numérica em ponto flutuante ocorre quando subtraímos dois números muito próximos entre si que já sofreram pequenas imprecisões de arredondamento em etapas anteriores do programa.
 
 Quando os dois valores são subtraídos, os dígitos significativos mais à esquerda (que coincidiam) cancelam-se mutuamente e tornam-se zero. A máquina é obrigada a deslocar os bits restantes para a esquerda para renormalizar o número.
 
 Ao fazer isso, os pequenos resíduos de arredondamento prévios que estavam escondidos nas casas menos significativas da mantissa são promovidos para as posições principais. Esse fenômeno é denominado **Cancelamento Catastrófico**.
+
+> [!NOTE]
+> **Estrada Principal e Aprofundamento de Engenharia:**
+> O modelo mental que você precisa levar para a vida prática é simples: quando você subtrai dois números de ponto flutuante muito parecidos, os dígitos significativos da frente se anulam e sobram apenas os pequenos ruídos de arredondamento herdados de contas anteriores (o cancelamento catastrófico). O Lema de Sterbenz a seguir é a prova formal de engenharia que demonstra quando a subtração em si não introduz nenhum erro novo. É uma garantia vital para projetistas de bibliotecas numéricas, mas você não precisa memorizar a demonstração para entender a arquitetura do computador.
 
 A operação de subtração em si não cria erro novo. Pelo contrário, ela é exata sob condições bem definidas, como estabelece o teorema clássico de Sterbenz:
 

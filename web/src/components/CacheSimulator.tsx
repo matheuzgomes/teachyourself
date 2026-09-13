@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   CpuIcon,
@@ -17,11 +17,10 @@ interface CacheLine {
 
 const SETS_COUNT = 4;
 const WAYS_COUNT = 2;
-const BLOCK_SIZE = 64; // 64 bytes
-const OFFSET_BITS = 6; // 2^6 = 64
-const SET_BITS = 2;    // 2^2 = 4
 
 export default function CacheSimulator() {
+  const scenarioTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   // Endereço físico de 64 bits em hex
   const [addressInput, setAddressInput] = useState<string>('0x00000040');
   const [accessMode, setAccessMode] = useState<'read' | 'write'>('read');
@@ -109,7 +108,6 @@ export default function CacheSimulator() {
       return;
     }
 
-    const offset = Number(val & 0x3fn);
     const setIndex = Number((val >> 6n) & 0x3n);
     const tag = val >> 8n;
 
@@ -212,8 +210,20 @@ export default function CacheSimulator() {
     });
   };
 
+  const clearScenarioTimers = () => {
+    scenarioTimersRef.current.forEach((t) => clearTimeout(t));
+    scenarioTimersRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => {
+      clearScenarioTimers();
+    };
+  }, []);
+
   // Reset do simulador
   const handleReset = () => {
+    clearScenarioTimers();
     setCache(
       Array.from({ length: SETS_COUNT }, () =>
         Array.from({ length: WAYS_COUNT }, () => ({
@@ -246,25 +256,29 @@ export default function CacheSimulator() {
   // Cenário: Varredura Linear em Vetor (Row-Major)
   const runSequentialScenario = () => {
     handleReset();
+    clearScenarioTimers();
     const addresses = ['0x00000040', '0x00000044', '0x00000050', '0x00000078', '0x00000080'];
     addresses.forEach((addr, idx) => {
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
         setAddressInput(addr);
         handleAccess(addr, 'read');
       }, idx * 300);
+      scenarioTimersRef.current.push(timerId);
     });
   };
 
   // Cenário: Conflito de Conjunto (Thrashing no Set 0)
   const runConflictScenario = () => {
     handleReset();
+    clearScenarioTimers();
     // Três endereços distintos com mesmo Set Index 00: 0x000, 0x100, 0x200
     const addresses = ['0x00000000', '0x00000100', '0x00000200', '0x00000000'];
     addresses.forEach((addr, idx) => {
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
         setAddressInput(addr);
         handleAccess(addr, 'read');
       }, idx * 350);
+      scenarioTimersRef.current.push(timerId);
     });
   };
 
@@ -295,8 +309,10 @@ export default function CacheSimulator() {
 
         {/* Botão de Reset */}
         <button
+          type="button"
           onClick={handleReset}
-          className="flex items-center gap-1.5 rounded-full border border-ash bg-parchment px-3.5 py-2 text-xs font-mono font-medium text-graphite hover:text-off-black hover:border-off-black transition-all min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black"
+          aria-label="Reiniciar simulador de cache"
+          className="flex items-center gap-1.5 rounded-full border border-ash bg-parchment px-4 py-2 text-xs font-mono font-medium text-graphite hover:text-off-black hover:border-off-black transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black"
         >
           <HugeiconsIcon icon={RotateCcwIcon} className="h-3.5 w-3.5 text-smoke" />
           <span>Reiniciar</span>
@@ -322,6 +338,7 @@ export default function CacheSimulator() {
               <button
                 type="button"
                 onClick={() => setAccessMode('read')}
+                aria-pressed={accessMode === 'read'}
                 className={`rounded-lg px-3 py-2 min-h-[44px] inline-flex items-center text-xs font-mono font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 ${
                   accessMode === 'read' ? 'bg-white text-off-black shadow-sm' : 'text-smoke hover:text-off-black'
                 }`}
@@ -331,6 +348,7 @@ export default function CacheSimulator() {
               <button
                 type="button"
                 onClick={() => setAccessMode('write')}
+                aria-pressed={accessMode === 'write'}
                 className={`rounded-lg px-3 py-2 min-h-[44px] inline-flex items-center text-xs font-mono font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 ${
                   accessMode === 'write' ? 'bg-white text-off-black shadow-sm' : 'text-smoke hover:text-off-black'
                 }`}
@@ -376,7 +394,7 @@ export default function CacheSimulator() {
           </div>
           <div className="flex justify-between items-center border-b border-ash/50 pb-2">
             <span className="text-smoke">Taxa de Acerto (Hit Rate):</span>
-            <span className={`font-bold ${Number(hitRate) > 70 ? 'text-mint' : 'text-coral'}`}>
+            <span className={`font-bold ${Number(hitRate) > 70 ? 'text-emerald-800' : 'text-crimson'}`}>
               {hitRate}% ({stats.hits} hits / {stats.misses} misses)
             </span>
           </div>
@@ -416,7 +434,7 @@ export default function CacheSimulator() {
 
           {/* Set Index */}
           <div className="sm:col-span-3 md:col-span-2 rounded-xl border border-gold/40 bg-gold/10 p-3">
-            <span className="block text-[10px] text-gold font-bold uppercase tracking-wider">
+            <span className="block text-[10px] text-amber-800 font-bold uppercase tracking-wider">
               Set (2 bits: [7:6])
             </span>
             <span className="block text-sm font-bold text-off-black mt-1">
@@ -427,10 +445,10 @@ export default function CacheSimulator() {
 
           {/* Offset */}
           <div className="sm:col-span-3 md:col-span-2 rounded-xl border border-coral/40 bg-coral/10 p-3">
-            <span className="block text-[10px] text-coral font-bold uppercase tracking-wider">
+            <span className="block text-[10px] text-crimson font-bold uppercase tracking-wider">
               Offset (6 bits: [5:0])
             </span>
-            <span className="block text-sm font-bold text-coral mt-1">
+            <span className="block text-sm font-bold text-crimson mt-1">
               Byte {parsedAddress.offset}
             </span>
             <span className="block text-[10px] text-smoke mt-0.5">Na Linha de 64B</span>
@@ -450,7 +468,7 @@ export default function CacheSimulator() {
           <div className="mt-0.5">
             <HugeiconsIcon
               icon={lastResult.type === 'HIT' ? CheckmarkCircle01Icon : Cancel01Icon}
-              className={`h-5 w-5 ${lastResult.type === 'HIT' ? 'text-mint' : 'text-coral'}`}
+              className={`h-5 w-5 ${lastResult.type === 'HIT' ? 'text-emerald-800' : 'text-crimson'}`}
             />
           </div>
           <div className="text-xs font-mono space-y-0.5">
@@ -524,7 +542,7 @@ export default function CacheSimulator() {
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                line.valid ? 'bg-mint/20 text-mint' : 'bg-ash text-smoke'
+                                line.valid ? 'bg-mint/30 text-emerald-800' : 'bg-ash text-smoke'
                               }`}
                             >
                               {line.valid ? 'Válido' : 'Vazio'}
@@ -532,7 +550,7 @@ export default function CacheSimulator() {
                             {line.valid && (
                               <span
                                 className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                  line.dirty ? 'bg-coral/20 text-coral' : 'bg-ash text-graphite'
+                                  line.dirty ? 'bg-coral/20 text-crimson' : 'bg-ash text-graphite'
                                 }`}
                               >
                                 {line.dirty ? 'Sujo (Dirty)' : 'Limpo'}

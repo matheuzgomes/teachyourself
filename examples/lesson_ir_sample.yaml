@@ -1,0 +1,81 @@
+id: "00-circuitos-somadores-e-aritmetica"
+track: "01-hardware-and-os"
+title: "Circuitos Aritmeticos e o Desafio do Transporte de Bits"
+
+policy_version:
+  pedagogy: "3.0.0"
+  epistemic: "4.2.0"
+  prose: "2.1.0"
+  visuals: "2.0.0"
+  assessment: "1.1.0"
+
+learner_state:
+  known_concepts:
+    - "concept:circuits:transistor-cmos"
+    - "concept:circuits:portas-logicas-nand"
+  target_concept: "concept:circuits:somadores-ripple-carry"
+  prohibited_leaks:
+    - "carry_lookahead_tree"
+    - "brent_kung_adder"
+
+explanation_ladder:
+  entry_point:
+    type: "CONCRETE_TRACE"
+    description: "Ao somar 1 + 1 em binario, o resultado e 10 (dois em decimal), gerando uma saida de soma 0 e um bit de transporte 1."
+    code: "1 + 1 = 10 (Soma = 0, Carry = 1)"
+  problem:
+    mechanism: "CARRY_PROPAGATION"
+    impact: "Uma porta logica simples nao consegue produzir dois bits de saida simultaneamente sem duplicar a fiação."
+  core_mechanism:
+    circuit_or_protocol: "HALF_ADDER_AND_FULL_ADDER"
+    causal_steps:
+      - "A porta XOR calcula a soma do bit menos significativo (A ^ B)."
+      - "A porta AND detecta a ocorrencia simultanea de dois bits 1 gerando o carry out (A & B)."
+      - "O somador completo incorpora o carry in do estagio anterior usando dois meios somadores e uma porta OR."
+  boundary_condition:
+    exception: "RIPPLE_CARRY_DELAY"
+    reason: "O bit mais significativo nao pode estabilizar sua saida antes que o sinal eletrico atravesse todos os somadores anteriores."
+
+paragraphs:
+  - id: "P1"
+    role: "PROBLEM"
+    given_anchor: "A operacao de adicao entre dois bits isolados"
+    new_info: "Necessidade de dois bits de saida distintos para soma e transporte"
+    claims_cited:
+      - "CLAIM-CIRC-003"
+    prose: "A soma aritmetica de dois bits binarios ultrapassa a capacidade de uma unica saida logica quando ambos os operandos sao iguais a 1. Nesse caso, o valor numerico resultante e dois, representado em binario pelo par de bits 10. O circuito combinacional precisa gerar dois sinais eletricos independentes: o digito da posicao atual (soma) e o bit de transporte para a posicao seguinte (carry)."
+
+  - id: "P2"
+    role: "MECHANISM"
+    given_anchor: "A separacao entre o resultado da soma e o bit de transporte"
+    new_info: "Composicao funcional atraves de portas XOR e AND no meio somador"
+    claims_cited:
+      - "CLAIM-CIRC-003"
+    prose: "O meio somador resolve essa divisao combinando duas portas em paralelo. A porta XOR avalia a paridade dos bits de entrada, produzindo nivel alto apenas quando os operandos diferem entre si. Em paralelo, uma porta AND detecta a presenca simultanea de nivel alto em ambas as entradas, ativando a linha de transporte apenas quando a soma transborda a primeira posicao."
+
+  - id: "P3"
+    role: "TRACE"
+    given_anchor: "O sinal de transporte gerado pelo estagio de soma inicial"
+    new_info: "Integracao do carry in no circuito do somador completo"
+    claims_cited:
+      - "CLAIM-CIRC-003"
+    prose: "Quando precisamos somar palavras com mais de um bit, o estagio seguinte precisa acolher o transporte vindo da coluna anterior. O somador completo cumpre essa funcao recebendo tres entradas: os dois bits da palavra e o carry de entrada. Esse arranjo encadeia dois meios somadores e consolida os transportes intermediarios atraves de uma porta OR final."
+
+  - id: "P4"
+    role: "QUALIFICATION"
+    given_anchor: "O encadeamento serial de multiplos somadores completos"
+    new_info: "Atraso linear proporcional ao numero de bits da palavra (Ripple Carry)"
+    claims_cited:
+      - "CLAIM-CIRC-003"
+    prose: "A simplicidade da cascata ripple-carry cobra um preco direto no tempo de propagacao do sinal. O ultimo somador completo precisa aguardar que as tensoes eletricas de transporte estabilizem em cada estagio precedente antes de emitir o valor definitivo da soma. Em palavras de 64 bits, essa fila combinacional delimita a frequencia maxima de operacao de todo o bloco aritmetico."
+
+active_learning:
+  inspection_type: "CIRCUIT_SIGNAL_TRACING"
+  target_simulation: "VIS-05-ARITHMETIC-ADDERS"
+  trace_focus: "Propagacao do transporte eletrico C0 e inversao XOR em A=1, B=1 gerando Soma=0 e Carry=1"
+  transfer_probe:
+    prompt: "Se invertermos as entradas para A = 0 e B = 1 em um somador completo com Carry_in = 1, a saida de Soma sera 0 ou 1?"
+    correct_answer: false
+    explanation_anchor: "Com duas entradas em nivel alto (B e Carry_in), o resultado binario e 10: Soma = 0 e Carry_out = 1."
+
+visual_spec_ref: "VIS-05-ARITHMETIC-ADDERS"

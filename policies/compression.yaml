@@ -1,0 +1,91 @@
+# Politica Normativa de Compressao Semantica do TeachYourself
+# Policy as Code: Semantic Compression Pass Policy
+version: "1.0.0"
+policy_id: "POL-COMPRESSION-V1"
+updated_at: "2026-09-12T17:20:00Z"
+
+axiom: "Compress without reducing the learner model."
+
+target_metrics:
+  semantic_redundancy: 0
+  orphan_sentences: 0
+  unnecessary_restatements: 0
+  protected_claim_loss: 0
+  empty_importance_claims: 0
+  prohibited_dashes: 0
+
+gates:
+  c1_required_claim_preservation:
+    description: "100% dos claims obrigatorios vinculados aos paragrafos devem permanecer citados e substanciados."
+    severity: "HARD_FAIL"
+    threshold: 1.0
+
+  c2_scope_preservation:
+    description: "Qualificadores de hardware, microarquitetura, frequencia e compilador sao estritamente imunes a corte."
+    severity: "HARD_FAIL"
+    loss_tolerance: 0
+
+  c3_causal_preservation:
+    description: "Nenhum elo da cadeia de causa e efeito fisico ou logico pode ser suprimido."
+    severity: "HARD_FAIL"
+
+  c4_qualifier_preservation:
+    description: "Condicoes de contorno, excecoes (ex: load-use stall) e premissas de modelo sao preservadas."
+    severity: "HARD_FAIL"
+
+  c5_redundancy_elimination:
+    description: "Eliminacao de parafrases contiguas e sentencas com sobreposicao semantica substancial sem novo contraste."
+    severity: "SOFT_FAIL"
+
+  c6_sentence_utility:
+    description: "Toda sentenca deve ter pelo menos uma dimensao positiva de utilidade (introduz claim, explica mecanismo, estabelece causalidade, etc.). Sentencas com utility 0 devem ser deletadas."
+    severity: "HARD_FAIL"
+
+  c7_inference_trust:
+    description: "Proibido explicar deducoes triviais imediatas que o estudante necessariamente infere das premissas expostas."
+    severity: "SOFT_FAIL"
+
+  c8_pedagogical_repetition_protection:
+    description: "Traces concretos, worked examples e scaffolds rotulados com pedagogical_value sao imunes a corte por brevidade."
+    severity: "HARD_FAIL"
+
+  c9_no_new_claims:
+    description: "O compressor nao pode introduzir claims novos ou alucinados que nao constavam na versao original."
+    severity: "HARD_FAIL"
+
+  c10_learner_model_round_trip:
+    description: "O modelo mental reconstruivel a partir da prosa comprimida deve ser conceitualmente equivalente ao modelo da versao original."
+    severity: "HARD_FAIL"
+
+sentence_roles:
+  - "CLAIM"
+  - "MECHANISM"
+  - "CAUSE"
+  - "CONSEQUENCE"
+  - "EXAMPLE"
+  - "QUALIFICATION"
+  - "TRANSITION"
+  - "DEFINITION"
+  - "SUMMARY"
+  - "PEDAGOGICAL_SUPPORT"
+
+bloat_patterns:
+  - id: "REDUNDANT_RESTATEMENT"
+    description: "Sentenca repete com outras palavras o conteudo proposicional da sentenca anterior."
+  - id: "UNNECESSARY_SUMMARY"
+    description: "Conclusao de paragrafo que apenas reconta o que a demonstracao acabou de evidenciar."
+  - id: "EMPTY_IMPORTANCE"
+    description: "Afirmacao vazia de relevancia (ex: 'isso e fundamental') sem fato ou consequencia nova."
+  - id: "OVER_EXPLANATION"
+    description: "Explicacao minuciosa de inferencia trivial direta."
+  - id: "DUPLICATE_EXAMPLE"
+    description: "Multiplos exemplos ilustrando o mesmo ponto sem contraste conceitual."
+  - id: "VERBOSE_NOMINALIZATION"
+    description: "Construcoes perifrasticas e nominalizacoes corporativas em vez de verbos de acao direta."
+
+allowed_operations:
+  - "KEEP"
+  - "DELETE"
+  - "MERGE"
+  - "REWRITE_SHORTER"
+  - "MOVE"

@@ -1,35 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useSimulationPlayback, SimulationToolbar } from './simulation';
 
 // Icones SVG inline puros sem dependencias externas
 const CircleDotIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" />
     <circle cx="12" cy="12" r="3" />
-  </svg>
-);
-
-const ChevronLeftIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-);
-
-const ChevronRightIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-);
-
-const PlayIcon = ({ className = "h-3.5 w-3.5" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="5 3 19 12 5 21 5 3" />
-  </svg>
-);
-
-const PauseIcon = ({ className = "h-3.5 w-3.5" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <rect x="6" y="4" width="4" height="16" rx="1" />
-    <rect x="14" y="4" width="4" height="16" rx="1" />
   </svg>
 );
 
@@ -41,55 +16,38 @@ interface RingNode {
   isTMin?: boolean;
 }
 
+const RING_VALUES: RingNode[] = [
+  { bin: '0000', signed: 0, unsigned: 0 },
+  { bin: '0001', signed: 1, unsigned: 1 },
+  { bin: '0010', signed: 2, unsigned: 2 },
+  { bin: '0011', signed: 3, unsigned: 3 },
+  { bin: '0100', signed: 4, unsigned: 4 },
+  { bin: '0101', signed: 5, unsigned: 5 },
+  { bin: '0110', signed: 6, unsigned: 6 },
+  { bin: '0111', signed: 7, unsigned: 7, isTMax: true },
+  { bin: '1000', signed: -8, unsigned: 8, isTMin: true },
+  { bin: '1001', signed: -7, unsigned: 9 },
+  { bin: '1010', signed: -6, unsigned: 10 },
+  { bin: '1011', signed: -5, unsigned: 11 },
+  { bin: '1100', signed: -4, unsigned: 12 },
+  { bin: '1101', signed: -3, unsigned: 13 },
+  { bin: '1110', signed: -2, unsigned: 14 },
+  { bin: '1111', signed: -1, unsigned: 15 },
+];
+
 export default function TwosComplementDial() {
-  const [selectedNum, setSelectedNum] = useState<number>(3);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const playback = useSimulationPlayback({
+    totalSteps: RING_VALUES.length,
+    initialStep: 3,
+    stepIntervalMs: 1200,
+    loop: true,
+  });
 
-  const ringValues: RingNode[] = [
-    { bin: '0000', signed: 0, unsigned: 0 },
-    { bin: '0001', signed: 1, unsigned: 1 },
-    { bin: '0010', signed: 2, unsigned: 2 },
-    { bin: '0011', signed: 3, unsigned: 3 },
-    { bin: '0100', signed: 4, unsigned: 4 },
-    { bin: '0101', signed: 5, unsigned: 5 },
-    { bin: '0110', signed: 6, unsigned: 6 },
-    { bin: '0111', signed: 7, unsigned: 7, isTMax: true },
-    { bin: '1000', signed: -8, unsigned: 8, isTMin: true },
-    { bin: '1001', signed: -7, unsigned: 9 },
-    { bin: '1010', signed: -6, unsigned: 10 },
-    { bin: '1011', signed: -5, unsigned: 11 },
-    { bin: '1100', signed: -4, unsigned: 12 },
-    { bin: '1101', signed: -3, unsigned: 13 },
-    { bin: '1110', signed: -2, unsigned: 14 },
-    { bin: '1111', signed: -1, unsigned: 15 },
-  ];
-
-  const currentIdx = ringValues.findIndex((v) => v.signed === selectedNum);
-  const current = ringValues[currentIdx >= 0 ? currentIdx : 0];
+  const ringValues = RING_VALUES;
+  const current = ringValues[playback.currentStep];
+  const selectedNum = current.signed;
   const negatedSigned = selectedNum === -8 ? -8 : -selectedNum;
   const negated = ringValues.find((v) => v.signed === negatedSigned);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-    const timer = setInterval(() => {
-      setSelectedNum((prev) => {
-        const idx = ringValues.findIndex((v) => v.signed === prev);
-        const nextIdx = (idx + 1) % ringValues.length;
-        return ringValues[nextIdx].signed;
-      });
-    }, 1200);
-    return () => clearInterval(timer);
-  }, [isPlaying]);
-
-  const stepForward = () => {
-    const nextIdx = (currentIdx + 1) % ringValues.length;
-    setSelectedNum(ringValues[nextIdx].signed);
-  };
-
-  const stepBackward = () => {
-    const prevIdx = (currentIdx - 1 + ringValues.length) % ringValues.length;
-    setSelectedNum(ringValues[prevIdx].signed);
-  };
 
   const cx = 170;
   const cy = 170;
@@ -100,7 +58,7 @@ export default function TwosComplementDial() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ash pb-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2b59d1]/10 text-lake-blue">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-periwinkle-mist/40 text-lake-blue">
             <CircleDotIcon className="h-5 w-5" />
           </div>
           <div>
@@ -116,41 +74,14 @@ export default function TwosComplementDial() {
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={stepBackward}
-            aria-label="Passo anterior (-1)"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-ash bg-parchment text-off-black hover:border-lake-blue hover:bg-white focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none transition-all"
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="flex min-h-[44px] items-center gap-2 rounded-full border border-lake-blue bg-lake-blue px-4 py-2 text-xs font-mono font-medium text-white hover:bg-lake-blue/90 focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none shadow-sm transition-all"
-          >
-            {isPlaying ? (
-              <>
-                <PauseIcon className="h-3.5 w-3.5" /> Pausar Fluxo
-              </>
-            ) : (
-              <>
-                <PlayIcon className="h-3.5 w-3.5" /> Animar Fluxo (+1)
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={stepForward}
-            aria-label="Proximo passo (+1)"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-ash bg-parchment text-off-black hover:border-lake-blue hover:bg-white focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none transition-all"
-          >
-            <ChevronRightIcon className="h-4 w-4" />
-          </button>
-        </div>
+      {/* Controles Padronizados com Teclado e Pílulas */}
+      <div className="mt-6">
+        <SimulationToolbar
+          playback={playback}
+          stepLabels={ringValues.map((v) => `${v.signed >= 0 ? '+' : ''}${v.signed}`)}
+        />
       </div>
 
       {/* Main Interactive Stage */}
@@ -230,7 +161,7 @@ export default function TwosComplementDial() {
               return (
                 <g
                   key={v.bin}
-                  onClick={() => setSelectedNum(v.signed)}
+                  onClick={() => playback.jumpTo(i)}
                   className="cursor-pointer transition-all duration-300"
                 >
                   {/* Moving beacon halo for active node */}
@@ -310,13 +241,14 @@ export default function TwosComplementDial() {
               Selecione o estado no registrador:
             </div>
             <div className="grid grid-cols-4 gap-1.5 font-mono text-xs">
-              {ringValues.map((v) => {
+              {ringValues.map((v, i) => {
                 const isSel = v.signed === selectedNum;
                 return (
                   <button
                     key={v.bin}
                     type="button"
-                    onClick={() => setSelectedNum(v.signed)}
+                    onClick={() => playback.jumpTo(i)}
+                    aria-pressed={isSel}
                     className={`min-h-[44px] rounded-full border text-center transition-all flex flex-col items-center justify-center focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
                       isSel
                         ? 'border-lake-blue bg-lake-blue text-white font-bold shadow-sm'

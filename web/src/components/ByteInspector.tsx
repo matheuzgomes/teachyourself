@@ -103,8 +103,10 @@ export default function ByteInspector({
         {/* Toggle Endianness */}
         <div className="flex rounded-full border border-ash bg-parchment p-1">
           <button
+            type="button"
             onClick={() => setIsLittleEndian(true)}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-mono font-medium transition-all min-h-[38px] ${
+            aria-pressed={isLittleEndian}
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-mono font-medium transition-all min-h-[44px] ${
               isLittleEndian
                 ? 'bg-lake-blue text-white shadow-sm'
                 : 'text-smoke hover:text-off-black'
@@ -113,8 +115,10 @@ export default function ByteInspector({
             Little Endian (x86 / ARM)
           </button>
           <button
+            type="button"
             onClick={() => setIsLittleEndian(false)}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-mono font-medium transition-all min-h-[38px] ${
+            aria-pressed={!isLittleEndian}
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-mono font-medium transition-all min-h-[44px] ${
               !isLittleEndian
                 ? 'bg-lake-blue text-white shadow-sm'
                 : 'text-smoke hover:text-off-black'

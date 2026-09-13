@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://teachyourself.dev/schemas/claim.schema.json",
+  "title": "AtomicClaim",
+  "description": "Schema formal para claims atomicos verificaveis no Knowledge Base",
+  "type": "object",
+  "required": ["id", "statement", "type", "source_id", "locator", "authority_level"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^CLAIM-[A-Z0-9_-]+$"
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 10
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "CANONICAL",
+        "DERIVED",
+        "PEDAGOGICAL_ANALOGY",
+        "CONCRETE_EXAMPLE",
+        "DISCOURSE_TRANSITION"
+      ]
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "locator": {
+      "type": "string"
+    },
+    "authority_level": {
+      "type": "string",
+      "enum": [
+        "NORMATIVE",
+        "CANONICAL_ACADEMIC",
+        "REFERENCE_IMPLEMENTATION",
+        "SECONDARY_SYNTHESIS"
+      ]
+    },
+    "hardware_scope": {
+      "type": "string"
+    },
+    "derived_from": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

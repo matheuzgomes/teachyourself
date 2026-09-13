@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://teachyourself.dev/schemas/visual_spec.schema.json",
+  "title": "VisualModelSpecification",
+  "description": "Schema formal para especificacoes de modelos visuais interativos (Gates V1 a V5)",
+  "type": "object",
+  "required": [
+    "id",
+    "concept_id",
+    "claims_bound",
+    "state_space",
+    "transitions",
+    "anti_misconceptions",
+    "accessibility"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^VIS-[0-9]{2}-[A-Z0-9_-]+$"
+    },
+    "concept_id": {
+      "type": "string"
+    },
+    "claims_bound": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "state_space": {
+      "type": "object",
+      "required": ["variables", "valid_states", "invalid_states"],
+      "properties": {
+        "variables": { "type": "array", "items": { "type": "string" }, "maxItems": 5 },
+        "valid_states": { "type": "array", "items": { "type": "string" } },
+        "invalid_states": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "trigger", "to"],
+        "properties": {
+          "from": { "type": "string" },
+          "trigger": { "type": "string" },
+          "to": { "type": "string" }
+        }
+      }
+    },
+    "anti_misconceptions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "accessibility": {
+      "type": "object",
+      "required": ["reduced_motion", "step_mode", "text_alternative"],
+      "properties": {
+        "reduced_motion": { "type": "boolean" },
+        "step_mode": { "type": "boolean" },
+        "text_alternative": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

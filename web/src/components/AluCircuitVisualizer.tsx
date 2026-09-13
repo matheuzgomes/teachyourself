@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNumericInput } from './simulation/useNumericInput';
 
 const CpuIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -29,6 +30,28 @@ export default function AluCircuitVisualizer() {
   const [valB, setValB] = useState<number>(3);
   const [activeStage, setActiveStage] = useState<number>(4); // 0..3 for bits, 4 for complete
   const [isPropagating, setIsPropagating] = useState<boolean>(false);
+
+  const inputA = useNumericInput({
+    value: valA,
+    onChange: (v) => {
+      setValA(v);
+      setIsPropagating(true);
+    },
+    min: -8,
+    max: 7,
+    allowNegative: true,
+  });
+
+  const inputB = useNumericInput({
+    value: valB,
+    onChange: (v) => {
+      setValB(v);
+      setIsPropagating(true);
+    },
+    min: -8,
+    max: 7,
+    allowNegative: true,
+  });
 
   const circuit = useMemo(() => {
     const a3 = (valA >>> 3) & 1;
@@ -145,7 +168,8 @@ export default function AluCircuitVisualizer() {
                 setIsSub(false);
                 setIsPropagating(true);
               }}
-              className={`min-h-[38px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
+              aria-pressed={!isSub}
+              className={`min-h-[44px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
                 !isSub
                   ? 'bg-lake-blue text-white shadow-sm'
                   : 'text-graphite hover:text-off-black'
@@ -159,7 +183,8 @@ export default function AluCircuitVisualizer() {
                 setIsSub(true);
                 setIsPropagating(true);
               }}
-              className={`min-h-[38px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
+              aria-pressed={isSub}
+              className={`min-h-[44px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
                 isSub
                   ? 'bg-lake-blue text-white shadow-sm'
                   : 'text-graphite hover:text-off-black'
@@ -180,17 +205,56 @@ export default function AluCircuitVisualizer() {
         </div>
       </div>
 
-      {/* Inputs Operands Stage */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+      {/* Presets Didáticos */}
+      <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-mono">
+        <span className="text-smoke text-[11px]">Casos Didáticos:</span>
+        {[
+          { label: '5 - 3 (Positivo)', a: 5, b: 3, sub: true },
+          { label: '3 - 5 (Negativo)', a: 3, b: 5, sub: true },
+          { label: '7 + 1 (Estouro OF=1)', a: 7, b: 1, sub: false },
+          { label: '-8 - 1 (Estouro OF=1)', a: -8, b: 1, sub: true },
+          { label: '5 - 5 (Zero ZF=1)', a: 5, b: 5, sub: true },
+        ].map((preset, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => {
+              setIsSub(preset.sub);
+              setValA(preset.a);
+              setValB(preset.b);
+              setIsPropagating(true);
+            }}
+            aria-pressed={valA === preset.a && valB === preset.b && isSub === preset.sub}
+            className={`flex min-h-[44px] items-center rounded-full border px-3.5 py-1.5 text-[11px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
+              valA === preset.a && valB === preset.b && isSub === preset.sub
+                ? 'bg-lake-blue text-white border-lake-blue shadow-2xs font-bold'
+                : 'bg-white text-graphite border-ash hover:border-off-black hover:text-off-black'
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Inputs Operands Stage com Acessibilidade e Resiliência */}
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
         <div className="rounded-card border border-ash bg-parchment p-4 flex items-center justify-between">
-          <span className="text-graphite font-medium">Operando A:</span>
+          <div>
+            <label htmlFor="alu-val-a" className="text-graphite font-bold block">
+              Operando A (-8 a +7):
+            </label>
+            <span className="text-[10px] text-smoke">4 bits em complemento de dois</span>
+          </div>
           <div className="flex items-center gap-3">
             <input
-              type="number"
-              min={-8}
-              max={7}
-              value={valA}
-              onChange={(e) => setValA(parseInt(e.target.value) || 0)}
+              id="alu-val-a"
+              type="text"
+              inputMode="numeric"
+              value={inputA.value}
+              onChange={inputA.onChange}
+              onBlur={inputA.onBlur}
+              onKeyDown={inputA.onKeyDown}
+              aria-label="Operando A da ALU em decimal (-8 a 7)"
               className="w-16 rounded-full border border-ash bg-white px-3 py-1.5 text-center font-mono font-bold text-off-black focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none"
             />
             <span className="rounded-full bg-white border border-ash px-2.5 py-1 font-bold text-lake-blue">
@@ -200,14 +264,22 @@ export default function AluCircuitVisualizer() {
         </div>
 
         <div className="rounded-card border border-ash bg-parchment p-4 flex items-center justify-between">
-          <span className="text-graphite font-medium">Operando B:</span>
+          <div>
+            <label htmlFor="alu-val-b" className="text-graphite font-bold block">
+              Operando B (-8 a +7):
+            </label>
+            <span className="text-[10px] text-smoke">4 bits em complemento de dois</span>
+          </div>
           <div className="flex items-center gap-3">
             <input
-              type="number"
-              min={-8}
-              max={7}
-              value={valB}
-              onChange={(e) => setValB(parseInt(e.target.value) || 0)}
+              id="alu-val-b"
+              type="text"
+              inputMode="numeric"
+              value={inputB.value}
+              onChange={inputB.onChange}
+              onBlur={inputB.onBlur}
+              onKeyDown={inputB.onKeyDown}
+              aria-label="Operando B da ALU em decimal (-8 a 7)"
               className="w-16 rounded-full border border-ash bg-white px-3 py-1.5 text-center font-mono font-bold text-off-black focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none"
             />
             <span className="rounded-full bg-white border border-ash px-2.5 py-1 font-bold text-off-black">

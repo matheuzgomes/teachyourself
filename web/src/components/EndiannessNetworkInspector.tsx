@@ -86,9 +86,10 @@ export default function EndiannessNetworkInspector() {
           <button
             type="button"
             onClick={() => setUseHtons(false)}
-            className={`min-h-[38px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
+            aria-pressed={!useHtons}
+            className={`min-h-[44px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
               !useHtons
-                ? 'bg-[#ff9473] text-white shadow-sm'
+                ? 'bg-crimson text-white shadow-sm'
                 : 'text-graphite hover:text-off-black'
             }`}
           >
@@ -97,7 +98,8 @@ export default function EndiannessNetworkInspector() {
           <button
             type="button"
             onClick={() => setUseHtons(true)}
-            className={`min-h-[38px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
+            aria-pressed={useHtons}
+            className={`min-h-[44px] px-4 rounded-full font-mono text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
               useHtons
                 ? 'bg-lake-blue text-white shadow-sm'
                 : 'text-graphite hover:text-off-black'
@@ -116,6 +118,7 @@ export default function EndiannessNetworkInspector() {
             key={p.port}
             type="button"
             onClick={() => setSelectedPort(p.port)}
+            aria-pressed={selectedPort === p.port}
             className={`min-h-[44px] px-4 rounded-full border transition-all ${
               selectedPort === p.port
                 ? 'bg-lake-blue text-white border-lake-blue font-bold shadow-sm'

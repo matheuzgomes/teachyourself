@@ -114,7 +114,7 @@ A transformação de uma função até um executável segue uma esteira de quatr
 | **3. Objeto Relocável** | `soma.o` | Montador | Codificação em binário <Term id="ELF">ELF</Term> (Formato Executável e Ligável) |
 | **4. Executável <Term id="ELF">ELF</Term>** | `programa` | Linker | Amarração final de endereços |
 
-<BuildPipelineVisualizer client:load />
+<BuildPipelineVisualizer client:visible />
 
 O diagrama acima é fallback em texto logo abaixo: cada fase recebe o produto da anterior até o executável. Roteiro: 1. Localize a função em texto. 2. Veja as ordens geradas. 3. Confira o binário amarrado. Conclusão em 1 frase: texto vira ordens, ordens viram bytes executáveis.
 
@@ -176,6 +176,8 @@ Se a <Term id="CPU">CPU</Term> dependesse da memória para cada conta simples, e
 
 Para trabalhar a 1 cálculo por pulso, o processador tem uma bancada ultrarrápida dentro do núcleo: os **16 Registradores de Propósito Geral de 64 bits**.
 
+Aqui ocorre a primeira conexão causal fundamental com o início do curso: o que é fisicamente uma dessas gavetas? No Módulo 00, você construiu um registrador de 1 bit usando um flip-flop D mestre-escravo acionado por pulso de clock. Uma gaveta de 64 bits como `%rax` nada mais é do que 64 flip-flops alinhados lado a lado no circuito integrado, compartilhando uma mesma linha de permissão de escrita (*Write Enable*). Quando a CPU precisa guardar um valor em `%rax`, ela ativa essa linha elétrica e, na borda de subida do clock, os 64 bits são capturados simultaneamente em menos de 1 nanossegundo.
+
 Registradores são células construídas com flip-flops velozes a micrômetros da <Term id="ALU">ALU</Term>. Leitura e escrita levem de zero a um ciclo.
 
 <ObservationMission
@@ -183,7 +185,7 @@ Registradores são células construídas com flip-flops velozes a micrômetros d
   action="Clique nos botões dos registradores (como %rax, %rdi, %rsp) para inspecionar suas fatias de 32, 16 e 8 bits e seu papel na convenção de chamada."
   takeaway="A CPU x86-64 possui 16 registradores de 64 bits. Cada um deles pode ser acessado em fatias menores para manter compatibilidade histórica com programas de 32 e 16 bits."
 >
-  <RegisterInspector client:load />
+  <RegisterInspector client:visible />
 </ObservationMission>
 
 Roteiro: 1. Abra `%rax` e veja as fatias de 32, 16 e 8 bits. 2. Confira `%rdi` marcado como 1º argumento. 3. Confira `%rsp` marcado como topo da pilha. Conclusão em 1 frase: nome diz o tamanho, papel diz o uso na chamada.
@@ -313,7 +315,7 @@ Note como esses quatro números coincidem com o tamanho dos tipos primitivos:
   action="Alterne entre os modos 'movq' e 'leaq' e ajuste o índice e a escala para ver a Unidade de Geração de Endereços calculando o valor em tempo real."
   takeaway="O comando movq busca o dado gravado naquele endereço na RAM. O comando leaq usa o mesmo somador apenas para fazer matemática rápida, sem tocar na memória!"
 >
-  <AddressingModeVisualizer client:load />
+  <AddressingModeVisualizer client:visible />
 </ObservationMission>
 
 Roteiro: 1. Monte base mais índice vezes escala e confira o endereço. 2. Troque para `leaq` e veja o mesmo cálculo sem leitura. 3. Multiplique por 5 com 1 ordem e confira. Conclusão em 1 frase: o somador de endereços calcula sem buscar.
@@ -371,7 +373,7 @@ A tomada de decisão na CPU x86-64 é executada deterministicamente em **duas fa
 | **`OF`** | Overflow Flag | Acende (`OF = 1`) se houve estouro com sinal (sinal invertido). |
 | **`CF`** | Carry Flag | Acende (`CF = 1`) se houve transporte para fora do último bit. |
 
-<CpuFlagsVisualizer client:load />
+<CpuFlagsVisualizer client:visible />
 
 Roteiro: 1. Some 5 mais 5 e veja nenhuma lâmpada de zero. 2. Subtraia iguais e veja `ZF` acender. 3. Estoure o sinal e veja `OF` acender. Conclusão em 1 frase: conta acende lâmpada, pulo lê lâmpada.
 
@@ -411,6 +413,8 @@ jg destino           # Pula se %rdi > 10
 
 > **REGRA CENTRAL (Core Principle):** Instruções de comparação como `cmpq S2, S1` executam a subtração interna S1 - S2 na ALU, descartam o resultado numérico e atualizam exclusivamente as flags de condição (`ZF`, `SF`, `OF`, `CF`). Instruções de salto condicional como `je` e `jl` inspecionam o estado elétrico dessas flags para determinar se o ponteiro `%rip` deve desviar o fluxo ou continuar sequencialmente.
 
+Perceba aqui a unificação física com o Módulo 01: como a <Term id="ALU">ALU</Term> calcula a diferença $S1 - S2$ na instrução `cmpq` ou em uma subtração `subq`? O processador não possui nenhum circuito subtrator dedicado. A linha de controle elétrica ativa portas XOR para inverter os bits do segundo valor e injeta o transporte inicial $C_0 = 1$ no pino de entrada do somador. A matemática do Complemento de Dois transforma a subtração em uma soma direta no mesmo circuito somador de bits, atualizando as flags elétricas em tempo real.
+
 ---
 
 ### 5.3 Tabelas de Salto: Como a Escolha Vira Tempo Constante
@@ -428,9 +432,11 @@ No entanto, com valores inteiros próximos (por exemplo: casos de 0 a 6), o comp
 
 Como o computador sabe exatamente para onde voltar quando uma função conclui a sua execução?
 
-A resposta reside na **Pilha de Execução** (*Call Stack*). No x86-64, a pilha possui três invariantes fundamentais de arquitetura:
+A resposta reside na **Pilha de Execução** (*Call Stack*). Imagine que a execução funciona como uma pilha de pratos: cada função empilha seu prato com anotações de trabalho antes de começar e retira o prato quando termina.
 
-1. **A Pilha Cresce Para Baixo:** diferente de pratos empilhados, a pilha na memória cresce em direção a endereços menores.
+No entanto, no mapa de memória linear dos computadores x86-64, essa pilha é invertida: ela começa no topo da memória (endereços altos) e cresce para baixo, em direção aos endereços menores. No x86-64, a pilha possui três invariantes fundamentais de arquitetura:
+
+1. **A Pilha Cresce Para Baixo:** diferente de pratos empilhados na mesa, a pilha na memória cresce em direção a endereços menores.
 2. **O Registrador `%rsp` Marca o Topo:** o `%rsp` guarda o endereço do byte mais baixo atualmente alocado.
 3. **Alocação é Subtração:** Alocar espaço na pilha significa simplesmente subtrair de `%rsp` (`subq $32, %rsp`). Liberar memória alocada significa somar a `%rsp` (`addq $32, %rsp`).
 
@@ -457,7 +463,7 @@ O fluxo de chamada e retorno entre funções funciona como uma coreografia mecâ
   action="Clique nos botões para acompanhar passo a passo a passagem de argumentos, a instrução call empilhando o retorno e a instrução ret desempilhando o endereço de volta para o %rip."
   takeaway="A instrução call empilha o endereço de retorno e diminui %rsp em 8 bytes. A instrução retq desempilha esse endereço para o %rip e incrementa %rsp em 8 bytes, retomando o chamador."
 >
-  <StackFrameVisualizer client:load />
+  <StackFrameVisualizer client:visible />
 </ObservationMission>
 
 Roteiro: 1. Passe os valores e veja as gavetas ocupadas. 2. Execute `call` e veja o retorno empilhado com `%rsp` menor. 3. Execute `ret` e veja o `%rip` retomar o chamador. Conclusão em 1 frase: chamar guarda onde voltar, retornar volta.
@@ -552,7 +558,7 @@ O vetor principal explorava o serviço `fingerd` do Unix:
 6. **O Controle Total:** o verme abriu terminal com privilégios e se espalhou, infectando cerca de 10% da Internet da época (por volta de 6.000 servidores).
 
 <HistoricalIncident
-  title="O Primeiro Desastre de Segurança da Internet: O Morris Worm"
+  title="O Primeiro Grande Incidente de Segurança da Internet: O Morris Worm"
   date="2 de novembro de 1988"
   system="Serviço fingerd no Unix / leitura sem limite"
   impact="Paralisia de 10% da Internet da época, por volta de 6.000 servidores"
@@ -565,7 +571,7 @@ O vetor principal explorava o serviço `fingerd` do Unix:
   action="Digite caracteres na caixa de texto até ultrapassar 8 bytes. Observe os bytes excedentes invadindo a célula do Stack Canary e esmagando o endereço de retorno da função."
   takeaway="Quando uma string transborda o buffer local, ela avança fisicamente pela memória RAM e sobrescreve o endereço de retorno. Ao executar retq, a CPU pula para o código fornecido pelo invasor."
 >
-  <BufferOverflowPlayground client:load />
+  <BufferOverflowPlayground client:visible />
 </ObservationMission>
 
 Roteiro: 1. Digite até 8 e veja o buffer cheio e íntegro. 2. Passe de 8 e veja a sentinela corrompida. 3. Alcance o retorno e veja o destino sequestrado. Conclusão em 1 frase: sem limite, o excedente reescreve para onde voltar.

@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://teachyourself.dev/schemas/release_manifest.schema.json",
+  "title": "ReleaseManifest",
+  "description": "Schema para o manifesto formal de liberacao de conteudo no TeachYourself",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "timestamp",
+    "policy_manifest_hash",
+    "policy_versions",
+    "gates",
+    "sha256_checksum",
+    "release_decision"
+  ],
+  "properties": {
+    "artifact_id": { "type": "string" },
+    "commit_hash": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "policy_manifest_hash": { "type": "string" },
+    "policy_versions": { "type": "object" },
+    "gates": {
+      "type": "object",
+      "required": [
+        "schema_validation",
+        "epistemic_provenance",
+        "causal_integrity",
+        "prerequisite_closure",
+        "explanation_ladder",
+        "inference_trust",
+        "semantic_density",
+        "discourse_naturalness",
+        "anti_slop_clean",
+        "compression_pass",
+        "visual_invariants",
+        "astro_web_build"
+      ],
+      "properties": {
+        "schema_validation": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "epistemic_provenance": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "causal_integrity": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "prerequisite_closure": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "explanation_ladder": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "inference_trust": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "semantic_density": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "discourse_naturalness": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "anti_slop_clean": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "compression_pass": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "visual_invariants": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "astro_web_build": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "sha256_checksum": { "type": "string" },
+    "release_decision": {
+      "type": "string",
+      "enum": ["APPROVED", "REJECTED"]
+    }
+  },
+  "additionalProperties": false
+}

@@ -35,8 +35,8 @@ import DiagramFrame from './DiagramFrame.astro';
 
       {/* Input B and XOR Gate */}
       <g>
-        <rect x="20" y="90" width="55" height="32" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
-        <text x="47" y="111" font-size="14" font-weight="bold" fill="#2c2825" text-anchor="middle">b_i</text>
+        <rect x="20" y="90" width="55" height="32" rx="6" fill="#f6f3f1" stroke="#cecac8" stroke-width="1.5" />
+        <text x="47" y="111" font-size="14" font-weight="bold" fill="#242424" text-anchor="middle">b_i</text>
 
         <path d="M 75 106 L 160 106" fill="none" stroke="#2b59d1" stroke-width="2" marker-end="url(#arrowAlu)" />
         <path d="M 120 36 L 120 86 L 160 86" fill="none" stroke="#b93815" stroke-width="2" marker-end="url(#arrowSub)" />
@@ -45,26 +45,26 @@ import DiagramFrame from './DiagramFrame.astro';
         {/* XOR Gate Box */}
         <rect x="160" y="70" width="90" height="55" rx="8" fill="#ffffff" stroke="#2b59d1" stroke-width="2" />
         <text x="205" y="97" font-size="13" font-weight="bold" fill="#2b59d1" text-anchor="middle">XOR</text>
-        <text x="205" y="114" font-size="10" fill="#5c554e" text-anchor="middle">Inversor</text>
+        <text x="205" y="114" font-size="10" fill="#4e4d4d" text-anchor="middle">Inversor</text>
       </g>
 
       {/* Input A */}
       <g>
-        <rect x="20" y="165" width="55" height="32" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
-        <text x="47" y="186" font-size="14" font-weight="bold" fill="#2c2825" text-anchor="middle">a_i</text>
+        <rect x="20" y="165" width="55" height="32" rx="6" fill="#f6f3f1" stroke="#cecac8" stroke-width="1.5" />
+        <text x="47" y="186" font-size="14" font-weight="bold" fill="#242424" text-anchor="middle">a_i</text>
       </g>
 
       {/* Carry In */}
       <g>
-        <rect x="20" y="240" width="85" height="32" rx="6" fill="#f4efe6" stroke="#c4b5a0" stroke-width="1.5" />
-        <text x="62" y="261" font-size="13" font-weight="bold" fill="#2c2825" text-anchor="middle">Cin_i</text>
+        <rect x="20" y="240" width="85" height="32" rx="6" fill="#f6f3f1" stroke="#cecac8" stroke-width="1.5" />
+        <text x="62" y="261" font-size="13" font-weight="bold" fill="#242424" text-anchor="middle">Cin_i</text>
       </g>
 
       {/* Full Adder Block */}
       <g transform="translate(360, 100)">
         <rect x="0" y="0" width="180" height="150" rx="12" fill="#2b59d1" fill-opacity="0.06" stroke="#2b59d1" stroke-width="2.5" />
         <text x="90" y="35" font-size="15" font-weight="bold" fill="#2b59d1" text-anchor="middle">Somador Completo</text>
-        <text x="90" y="55" font-size="11" fill="#5c554e" text-anchor="middle">(Full Adder Slice i)</text>
+        <text x="90" y="55" font-size="11" fill="#4e4d4d" text-anchor="middle">(Full Adder Slice i)</text>
 
         <text x="18" y="85" font-size="11" font-weight="bold" fill="#2b59d1">Entrada A</text>
         <text x="18" y="110" font-size="11" font-weight="bold" fill="#2b59d1">Entrada B (inv)</text>
@@ -87,7 +87,7 @@ import DiagramFrame from './DiagramFrame.astro';
 
         {/* Carry Out Output */}
         <path d="M 540 200 L 630 200" fill="none" stroke="#2b59d1" stroke-width="2.5" marker-end="url(#arrowAlu)" />
-        <rect x="630" y="183" width="80" height="35" rx="6" fill="#f4efe6" stroke="#2b59d1" stroke-width="1.5" />
+        <rect x="630" y="183" width="80" height="35" rx="6" fill="#f6f3f1" stroke="#2b59d1" stroke-width="1.5" />
         <text x="670" y="205" font-size="13" font-weight="bold" fill="#2b59d1" text-anchor="middle">Cout_i</text>
       </g>
     </svg>

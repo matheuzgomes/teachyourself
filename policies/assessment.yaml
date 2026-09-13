@@ -1,0 +1,84 @@
+# Politica de Aprendizagem Ativa e Rastreamento Mecanico do TeachYourself (Assessment Policy)
+policy_id: "assessment"
+version: "2.0.0"
+description: "Diretrizes para aprendizagem ativa intrinseca, rastreamento de sinais e proibicao absoluta de questionarios escolares."
+
+principles:
+  core_rule: "Nao avaliamos o aluno por questionarios. Fazemos o aluno raciocinar durante o proprio conteudo."
+  golden_rule: "Uma interacao pedagogica so existe se fizer parte do mecanismo que esta sendo explicado. Nunca adicionar perguntas apenas para testar se o leitor estava prestando atencao."
+
+traditional_questionnaires:
+  forbidden: true
+  rationale: "Questionarios escolares, listas de perguntas e testes de memorizacao quebram a imersao e sao estritamente proibidos."
+
+multiple_choice_quizzes:
+  forbidden: true
+  allow_options_abcd: false
+  allow_prediction_challenge_component: false
+  rationale: "Alternativas de multipla escolha e cartoes escolares de teste sao banidos."
+
+blocking_knowledge_checks:
+  forbidden: true
+  rationale: "O leitor nunca e obrigado a responder ou interagir para continuar lendo; a autonomia e soberana."
+
+grading:
+  forbidden: true
+  allow_scores: false
+  allow_percentages: false
+  allow_rankings: false
+  allow_result_screens: false
+
+allowed_learning_interactions:
+  - id: "PREDICTION"
+    description: "Predicao integrada nao-bloqueante antes da revelacao de um resultado ou trace."
+  - id: "MANIPULATION"
+    description: "Manipulacao de parametros no sistema (endereco, registradores, flags, relogio) com reacao observavel imediata."
+  - id: "TRACE"
+    description: "Rastreamento mecanico passo a passo de sinais, ciclos de clock, pacotes ou fluxo de dados."
+  - id: "RECONSTRUCTION"
+    description: "Reconstrucao opcional de partes de circuitos, pipelines ou codigo."
+  - id: "CONTRAST"
+    description: "Contraste minimo entre dois estados ou codigos quase identicos com desfechos divergentes."
+  - id: "SIMULATION"
+    description: "Ambiente executavel manipulavel em tempo real."
+  - id: "REVEAL"
+    description: "Revelacao opcional sob demanda sem conferencia ou validacao externa de acerto/erro."
+
+content_type_policies:
+  article:
+    assessment_required: false
+    questionnaires_allowed: false
+  tutorial:
+    embedded_interaction: "optional"
+    blocking_questions: false
+    questionnaires_allowed: false
+  course_lesson:
+    embedded_interaction: "required"
+    prediction: "recommended"
+    simulation: "when_useful"
+    reconstruction: "when_useful"
+    blocking_questions: false
+    questionnaires_allowed: false
+
+terminology:
+  banned_terms:
+    - "QUIZ"
+    - "ASSESSMENT QUESTION"
+    - "KNOWLEDGE CHECK"
+    - "QUESTIONNAIRE"
+    - "DESAFIO DE PREVISAO"
+    - "VERIFICAR HIPOTESE"
+    - "GRAU DE CERTEZA"
+    - "NOTA"
+    - "PONTUACAO"
+    - "ACERTOU"
+    - "ERROU"
+  preferred_terms:
+    - "Predict"
+    - "Try"
+    - "Inspect"
+    - "Change"
+    - "Run"
+    - "Compare"
+    - "Reveal"
+    - "Trace"

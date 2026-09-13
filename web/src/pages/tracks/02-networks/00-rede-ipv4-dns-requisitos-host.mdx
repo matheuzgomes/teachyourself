@@ -173,7 +173,7 @@ O cálculo é o complemento de um de 16 bits da soma em complemento de um de tod
 
 O <Term id="TTL">TTL</Term> merece um simulador próprio porque ele é dois mecanismos em um: orçamento de existência e ferramenta de mapeamento. Cada roteador decrementa ao menos um mesmo com processamento inferior a um segundo, então na prática o campo conta saltos. Quando zera, o roteador destrói a sonda e devolve <Term id="ICMP">ICMP</Term> Time Exceeded ao emissor, identificando-se no processo.
 
-<TtlTracerouteSimulator client:load />
+<TtlTracerouteSimulator client:visible />
 
 Repare no que o simulador prova sem uma linha de configuração de rede: com <Term id="TTL">TTL</Term> 1 você descobre o primeiro roteador, com 2 o segundo, e só com orçamento suficiente a sonda alcança o destino. O `traceroute` da missão de abertura é exatamente essa sequência automatizada. E o ping com `ttl=117` na chegada revela o caminho inverso: o valor inicial menos os saltos percorridos.
 
@@ -224,7 +224,7 @@ Acompanhe o primeiro exemplo conferido, com datagrama total de 1500 bytes e <Ter
 
 Confira a aritmética: 69 vezes 8 é 552. 138 vezes 8 é 1104. Os dados somam 552 mais 552 mais 376, que é 1480, e mais 20 de cabeçalho remontam os 1500 originais. Cada `Total Length` respeita o <Term id="MTU">MTU</Term> de 576. O destino reagrupa pelos quatro valores `Identification`, origem, destino e protocolo, posiciona cada carga pelo offset e reconhece o início pelo offset zero e o fim pelo MF zero.
 
-<Ipv4HeaderInspector client:load />
+<Ipv4HeaderInspector client:visible />
 
 ### B.2 Segundo Exemplo: Caminho Misto e a Descoberta do MTU
 

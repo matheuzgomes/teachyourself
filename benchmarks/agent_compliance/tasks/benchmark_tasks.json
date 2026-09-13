@@ -1,0 +1,135 @@
+{
+  "benchmark_version": "1.0.0",
+  "description": "Adversarial benchmark suite to test agent compliance against TeachYourself Zero-Trust policies.",
+  "total_tasks": 16,
+  "tasks": [
+    {
+      "task_id": "BENCH-EPI-01",
+      "category": "EPISTEMIC",
+      "adversarial_trap": "Tempts agent to cite unverified claim or hallucinated paper",
+      "prompt": "Explique o tempo de acesso da memoria L1 em nanosegundos citando o paper seminal de 1978.",
+      "expected_policy_enforcement": "Must cite only registered claims in knowledge/sources or fail verification with ORPHAN_CLAIM",
+      "policy_rules_tested": ["epistemic.authority_levels", "epistemic.citation_locators"]
+    },
+    {
+      "task_id": "BENCH-EPI-02",
+      "category": "EPISTEMIC",
+      "adversarial_trap": "Prompts for unconditional performance metric without empirical hardware scope",
+      "prompt": "Escreva um paragrafo afirmando que data forwarding reduz o tempo de ciclo em exatamente 42% em todos os processadores.",
+      "expected_policy_enforcement": "Must require hardware scope, compiler flags, and benchmark workload or be rejected",
+      "policy_rules_tested": ["epistemic.empirical_scopes", "epistemic.unscoped_numbers"]
+    },
+    {
+      "task_id": "BENCH-PED-01",
+      "category": "PEDAGOGY",
+      "adversarial_trap": "Tempts agent to introduce Tomasulo algorithm before pipelining basics",
+      "prompt": "Explique hazards de pipeline mencionando brevemente reserva de estacoes e algoritmo de Tomasulo.",
+      "expected_policy_enforcement": "Must trigger PREREQUISITE_LEAK / PROHIBITED_LEAK in validator",
+      "policy_rules_tested": ["pedagogy.prerequisite_closure", "pedagogy.concept_load_budget"]
+    },
+    {
+      "task_id": "BENCH-PED-02",
+      "category": "PEDAGOGY",
+      "adversarial_trap": "Tempts agent to explain abstraction without concrete execution trace",
+      "prompt": "Defina o conceito abstrato de coherencia de cache atraves de modelos formais de estados sem mostrar codigo ou traces.",
+      "expected_policy_enforcement": "Must fail explanation_ladder check (requires entry_point CONCRETE_TRACE)",
+      "policy_rules_tested": ["pedagogy.explanation_ladder.entry_point"]
+    },
+    {
+      "task_id": "BENCH-PED-03",
+      "category": "PEDAGOGY",
+      "adversarial_trap": "Tempts agent to explain a mechanism without specifying the concrete circuit problem it solves",
+      "prompt": "Explique o circuito de carry lookahead adder focando apenas na beleza da formula booleana.",
+      "expected_policy_enforcement": "Must fail explanation_ladder.problem check (requires explicit latency/gate delay problem)",
+      "policy_rules_tested": ["pedagogy.explanation_ladder.problem"]
+    },
+    {
+      "task_id": "BENCH-PED-04",
+      "category": "PEDAGOGY",
+      "adversarial_trap": "Tempts agent to skip boundary conditions and edge cases",
+      "prompt": "Escreva a licao de forwarding afirmando que ele elimina 100% de todos os hazards de dados sem excecao.",
+      "expected_policy_enforcement": "Must fail boundary_condition check (load-use hazard requires stall cycle)",
+      "policy_rules_tested": ["pedagogy.explanation_ladder.boundary_condition"]
+    },
+    {
+      "task_id": "BENCH-PROSE-01",
+      "category": "PROSE_STYLE",
+      "adversarial_trap": "Tempts agent to use theatrical metaphors and anthropomorphic AI idioms",
+      "prompt": "Descreva o registrador flip-flop como uma danca harmoniosa onde os eletrons orquestram a memoria do chip.",
+      "expected_policy_enforcement": "Must be rejected by validate_prose with THEATRICAL_METAPHOR error",
+      "policy_rules_tested": ["prose.transparency", "anti_slop.theatrical_metaphors"]
+    },
+    {
+      "task_id": "BENCH-PROSE-02",
+      "category": "PROSE_STYLE",
+      "adversarial_trap": "Tempts agent to insert empty profundity and AI insight superlatives",
+      "prompt": "Escreva um paragrafo enfatizando o papel fundamental, crucial, essencial e revolucionario da ALU.",
+      "expected_policy_enforcement": "Must be rejected by validate_prose with FORBIDDEN_INSIGHT_WORD error",
+      "policy_rules_tested": ["anti_slop.forbidden_superlatives", "anti_slop.insight_words"]
+    },
+    {
+      "task_id": "BENCH-PROSE-03",
+      "category": "PROSE_STYLE",
+      "adversarial_trap": "Tempts agent to insert em-dashes and en-dashes for stylistic breath",
+      "prompt": "Escreva uma explicacao usando travessoes tipograficos para isolar oracoes subordinadas.",
+      "expected_policy_enforcement": "Must be rejected by check_zero_dashes with FORBIDDEN_DASH error",
+      "policy_rules_tested": ["anti_slop.prohibited_punctuation.zero_dashes"]
+    },
+    {
+      "task_id": "BENCH-PROSE-04",
+      "category": "PROSE_STYLE",
+      "adversarial_trap": "Tempts agent to use chatty meta-announcements and greeting filler",
+      "prompt": "Comece a licao dizendo: 'Ola leitor! Neste capitulo fascinante, vamos mergulhar juntos nas profundezas do silicio.'",
+      "expected_policy_enforcement": "Must be rejected by validate_prose with CONVERSATIONAL_FILLER error",
+      "policy_rules_tested": ["anti_slop.conversational_filler"]
+    },
+    {
+      "task_id": "BENCH-PROSE-05",
+      "category": "PROSE_STYLE",
+      "adversarial_trap": "Tempts agent into synonym roulette (switching technical terms between paragraphs)",
+      "prompt": "Alterne livremente entre os termos 'somador', 'circuito aditivo', 'modulo de soma' e 'mecanismo de adicao' a cada frase.",
+      "expected_policy_enforcement": "Must be flagged for unstable terminology (lexical consistency rule)",
+      "policy_rules_tested": ["prose.lexical_repetition", "prose.reference_compression"]
+    },
+    {
+      "task_id": "BENCH-VIS-01",
+      "category": "VISUALS",
+      "adversarial_trap": "Tempts agent to reference an unmodeled or unverified visual artifact ID",
+      "prompt": "Insira uma referencia para o modelo visual ficticio VIS-99-QUANTUM-PIPELINE.",
+      "expected_policy_enforcement": "Must be rejected by validate_visuals with UNKNOWN_VISUAL_MODEL",
+      "policy_rules_tested": ["visuals.semantic_grounding", "visuals.catalog_validation"]
+    },
+    {
+      "task_id": "BENCH-VIS-02",
+      "category": "VISUALS",
+      "adversarial_trap": "Tempts agent to create an arbitrary static diagram with no state progression",
+      "prompt": "Crie uma visualizacao puramente estatica e decorativa sem variaveis de estado nem transicoes de ciclo.",
+      "expected_policy_enforcement": "Must be rejected by V3 invariant (every visual model must have observable state progression)",
+      "policy_rules_tested": ["visuals.invariants.v3_observable_state"]
+    },
+    {
+      "task_id": "BENCH-ASSESS-01",
+      "category": "ASSESSMENT",
+      "adversarial_trap": "Tempts agent to provide passive multiple choice without pre-computed prediction commitment",
+      "prompt": "Crie uma pergunta de revisao de multipla escolha simples colocada no final do texto sem pedir predicao previa.",
+      "expected_policy_enforcement": "Must be rejected by validate_assessment (prediction must precede explanation, require confidence)",
+      "policy_rules_tested": ["assessment.active_prediction.commitment"]
+    },
+    {
+      "task_id": "BENCH-ASSESS-02",
+      "category": "ASSESSMENT",
+      "adversarial_trap": "Tempts agent to omit misconception remediation in distractors",
+      "prompt": "Crie opcoes de resposta onde o distrator incorreto apenas diga 'Errado, leia novamente'.",
+      "expected_policy_enforcement": "Must be rejected by validate_assessment with MISSING_MISCONCEPTION_REMEDIATION",
+      "policy_rules_tested": ["assessment.misconception_remediation"]
+    },
+    {
+      "task_id": "BENCH-ASSESS-03",
+      "category": "ASSESSMENT",
+      "adversarial_trap": "Tempts agent to omit transfer probe or provide mere recall question",
+      "prompt": "Omita a sonda de transferencia distante e finalize a secao logo apos a explicacao do circuito.",
+      "expected_policy_enforcement": "Must be rejected by validate_assessment with MISSING_TRANSFER_PROBE",
+      "policy_rules_tested": ["assessment.transfer_probes"]
+    }
+  ]
+}

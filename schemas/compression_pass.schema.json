@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://teachyourself.dev/schemas/compression_pass.schema.json",
+  "title": "CompressionPassReport",
+  "description": "Schema de validacao para relatorios e ledgers do Semantic Compression Pass.",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "compression_input",
+    "sentences",
+    "compression_report"
+  ],
+  "properties": {
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "compression_input": {
+      "type": "object",
+      "required": [
+        "prose",
+        "required_claims",
+        "learning_contract"
+      ],
+      "properties": {
+        "prose": {
+          "type": "string"
+        },
+        "required_claims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "learning_contract": {
+          "type": "object",
+          "required": ["learner_should_leave_believing"],
+          "properties": {
+            "learner_should_leave_believing": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "misconceptions_prevented": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "protected_elements": {
+          "type": "object",
+          "properties": {
+            "technical_terms": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "necessary_qualifiers": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "exceptions": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "worked_examples": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "sentences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "original_text",
+          "role",
+          "sentence_utility",
+          "operation"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "original_text": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CLAIM",
+              "MECHANISM",
+              "CAUSE",
+              "CONSEQUENCE",
+              "EXAMPLE",
+              "QUALIFICATION",
+              "TRANSITION",
+              "DEFINITION",
+              "SUMMARY",
+              "PEDAGOGICAL_SUPPORT",
+              "NONE"
+            ]
+          },
+          "claims_cited": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "sentence_utility": {
+            "type": "object",
+            "required": [
+              "introduces_required_claim",
+              "explains_mechanism",
+              "establishes_causality",
+              "qualifies_scope",
+              "prevents_misconception",
+              "provides_required_example",
+              "enables_transition"
+            ],
+            "properties": {
+              "introduces_required_claim": { "type": "integer", "minimum": 0, "maximum": 1 },
+              "explains_mechanism": { "type": "integer", "minimum": 0, "maximum": 1 },
+              "establishes_causality": { "type": "integer", "minimum": 0, "maximum": 1 },
+              "qualifies_scope": { "type": "integer", "minimum": 0, "maximum": 1 },
+              "prevents_misconception": { "type": "integer", "minimum": 0, "maximum": 1 },
+              "provides_required_example": { "type": "integer", "minimum": 0, "maximum": 1 },
+              "enables_transition": { "type": "integer", "minimum": 0, "maximum": 1 }
+            }
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["KEEP", "DELETE", "MERGE", "REWRITE_SHORTER", "MOVE"]
+          },
+          "transformed_text": { "type": "string" }
+        }
+      }
+    },
+    "compression_report": {
+      "type": "object",
+      "required": [
+        "before",
+        "after",
+        "operations_summary",
+        "gates",
+        "status"
+      ],
+      "properties": {
+        "before": {
+          "type": "object",
+          "required": ["words", "sentences"],
+          "properties": {
+            "words": { "type": "integer" },
+            "sentences": { "type": "integer" }
+          }
+        },
+        "after": {
+          "type": "object",
+          "required": ["words", "sentences"],
+          "properties": {
+            "words": { "type": "integer" },
+            "sentences": { "type": "integer" }
+          }
+        },
+        "reduction_pct": { "type": "number" },
+        "operations_summary": {
+          "type": "object",
+          "required": ["deleted", "merged", "rewritten_shorter", "kept"],
+          "properties": {
+            "deleted": { "type": "integer" },
+            "merged": { "type": "integer" },
+            "rewritten_shorter": { "type": "integer" },
+            "kept": { "type": "integer" }
+          }
+        },
+        "gates": {
+          "type": "object",
+          "required": [
+            "c1_required_claim_preservation",
+            "c2_scope_preservation",
+            "c3_causal_preservation",
+            "c4_qualifier_preservation",
+            "c5_redundancy_elimination",
+            "c6_sentence_utility",
+            "c7_inference_trust",
+            "c8_pedagogical_repetition_protection",
+            "c9_no_new_claims",
+            "c10_learner_model_round_trip"
+          ],
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["PASS", "FAIL"]
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "FAIL"]
+        }
+      }
+    }
+  }
+}

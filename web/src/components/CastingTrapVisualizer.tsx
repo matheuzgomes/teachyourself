@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNumericInput } from './simulation/useNumericInput';
 
 const ShieldAlertIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -19,6 +20,19 @@ const OctagonAlertIcon = ({ className = "h-4 w-4" }: { className?: string }) => 
 export default function CastingTrapVisualizer() {
   const [signedVal, setSignedVal] = useState<number>(-1);
   const [unsignedVal, setUnsignedVal] = useState<number>(0);
+
+  const signedInput = useNumericInput({
+    value: signedVal,
+    onChange: setSignedVal,
+    allowNegative: true,
+  });
+
+  const unsignedInput = useNumericInput({
+    value: unsignedVal,
+    onChange: setUnsignedVal,
+    min: 0,
+    allowNegative: false,
+  });
 
   const evaluation = useMemo(() => {
     const u32_promoted = signedVal >>> 0;
@@ -41,13 +55,13 @@ export default function CastingTrapVisualizer() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ash pb-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ff9473]/15 text-[#b93815]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/15 text-crimson">
             <ShieldAlertIcon className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-full bg-[#b93815] animate-pulse" />
-              <span className="font-mono text-xs uppercase tracking-widest text-[#b93815]">Segurança em Hardware</span>
+              <span className="inline-block h-2 w-2 rounded-full bg-crimson animate-pulse" />
+              <span className="font-mono text-xs uppercase tracking-widest text-crimson">Segurança em Hardware</span>
             </div>
             <h4 className="font-serif text-xl md:text-2xl font-normal text-off-black">
               A Armadilha da Promocao Implicita em C (Signed vs Unsigned)
@@ -58,22 +72,55 @@ export default function CastingTrapVisualizer() {
           </div>
         </div>
 
-        <div className="font-mono text-xs font-semibold text-[#b93815] bg-[#ff9473]/15 px-3 py-1.5 rounded-full border border-[#ff9473]/60">
+        <div className="font-mono text-xs font-semibold text-crimson bg-coral/15 px-3 py-1.5 rounded-full border border-coral/40">
           CERT C: INT31-C
         </div>
       </div>
 
+      {/* Presets Didáticos Rápidos */}
+      <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-mono">
+        <span className="text-smoke text-[11px]">Casos de Teste:</span>
+        {[
+          { label: '-1 vs 0 (Armadilha Clássica)', s: -1, u: 0 },
+          { label: '-5 vs 10 (Inversão Crítica)', s: -5, u: 10 },
+          { label: '5 vs 10 (Sem Inversão)', s: 5, u: 10 },
+          { label: '-2147483648 vs 0 (INT_MIN)', s: -2147483648, u: 0 },
+        ].map((preset, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => {
+              setSignedVal(preset.s);
+              setUnsignedVal(preset.u);
+            }}
+            aria-pressed={signedVal === preset.s && unsignedVal === preset.u}
+            className={`flex min-h-[44px] items-center rounded-full border px-3.5 py-1.5 text-[11px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
+              signedVal === preset.s && unsignedVal === preset.u
+                ? 'bg-lake-blue text-white border-lake-blue shadow-2xs font-bold'
+                : 'bg-white text-graphite border-ash hover:border-off-black hover:text-off-black'
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
       {/* Input Controls */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
         <div className="rounded-card border border-ash bg-parchment p-5 space-y-2">
-          <label className="text-graphite font-medium block">
+          <label htmlFor="signed-input-x" className="text-graphite font-medium block">
             Operando com Sinal (signed int x):
           </label>
           <div className="flex items-center gap-3">
             <input
-              type="number"
-              value={signedVal}
-              onChange={(e) => setSignedVal(parseInt(e.target.value) || 0)}
+              id="signed-input-x"
+              type="text"
+              inputMode="numeric"
+              value={signedInput.value}
+              onChange={signedInput.onChange}
+              onBlur={signedInput.onBlur}
+              onKeyDown={signedInput.onKeyDown}
+              aria-label="Operando com sinal x em decimal"
               className="min-h-[44px] w-full rounded-full border border-ash bg-white px-4 font-mono text-sm font-bold text-off-black focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none"
             />
             <span className="font-mono font-bold text-lake-blue whitespace-nowrap bg-white border border-ash px-3 py-2 rounded-full">
@@ -83,15 +130,19 @@ export default function CastingTrapVisualizer() {
         </div>
 
         <div className="rounded-card border border-ash bg-parchment p-5 space-y-2">
-          <label className="text-graphite font-medium block">
+          <label htmlFor="unsigned-input-y" className="text-graphite font-medium block">
             Operando sem Sinal (unsigned int y):
           </label>
           <div className="flex items-center gap-3">
             <input
-              type="number"
-              min={0}
-              value={unsignedVal}
-              onChange={(e) => setUnsignedVal(Math.max(0, parseInt(e.target.value) || 0))}
+              id="unsigned-input-y"
+              type="text"
+              inputMode="numeric"
+              value={unsignedInput.value}
+              onChange={unsignedInput.onChange}
+              onBlur={unsignedInput.onBlur}
+              onKeyDown={unsignedInput.onKeyDown}
+              aria-label="Operando sem sinal y em decimal"
               className="min-h-[44px] w-full rounded-full border border-ash bg-white px-4 font-mono text-sm font-bold text-off-black focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none"
             />
             <span className="font-mono font-bold text-off-black whitespace-nowrap bg-white border border-ash px-3 py-2 rounded-full">
@@ -123,7 +174,7 @@ export default function CastingTrapVisualizer() {
           </div>
 
           {/* Converter Gate */}
-          <div className="rounded-card border border-lake-blue/40 bg-[#2b59d1]/5 p-4 space-y-1.5 relative">
+          <div className="rounded-card border border-lake-blue/40 bg-lake-blue/5 p-4 space-y-1.5 relative">
             <span className="inline-block h-2 w-2 rounded-full bg-lake-blue animate-pulse absolute top-2 right-2" />
             <div className="text-[10px] text-lake-blue uppercase font-bold">2. Conversao Implicita</div>
             <div className="text-xs text-off-black font-semibold">Regra da Linguagem C:</div>
@@ -133,7 +184,7 @@ export default function CastingTrapVisualizer() {
 
           {/* Reinterpreted Target */}
           <div className={`rounded-card border p-4 space-y-1 ${
-            evaluation.isBypass ? 'border-[#ff9473] bg-[#ff9473]/10' : 'border-ash bg-white'
+            evaluation.isBypass ? 'border-coral bg-coral/10' : 'border-ash bg-white'
           }`}>
             <div className="text-[10px] text-graphite uppercase font-bold">3. Reinterpretacao</div>
             <div className="text-lg font-serif font-normal text-off-black">
@@ -153,7 +204,7 @@ export default function CastingTrapVisualizer() {
           </div>
           <div className="text-base text-off-black font-serif pt-1">
             {signedVal} &lt; {unsignedVal} &rarr;{' '}
-            <strong className={evaluation.isSmallerSigned ? 'text-[#0e7c54] font-bold' : 'text-[#b93815] font-bold'}>
+            <strong className={evaluation.isSmallerSigned ? 'text-emerald-700 font-bold' : 'text-crimson font-bold'}>
               {evaluation.isSmallerSigned ? 'VERDADEIRO' : 'FALSO'}
             </strong>
           </div>
@@ -165,23 +216,23 @@ export default function CastingTrapVisualizer() {
         {/* Real Hardware Execution */}
         <div className={`rounded-card border p-5 space-y-2 ${
           evaluation.isBypass
-            ? 'border-[#ff9473] bg-[#ff9473]/10'
+            ? 'border-coral bg-coral/10'
             : 'border-ash bg-parchment'
         }`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-[#b93815] font-bold flex items-center gap-1.5">
-              <OctagonAlertIcon className="h-4 w-4 text-[#b93815]" />
+            <span className="text-xs uppercase tracking-wider text-crimson font-bold flex items-center gap-1.5">
+              <OctagonAlertIcon className="h-4 w-4 text-crimson" />
               2. Execucao Real no Processador:
             </span>
             {evaluation.isBypass && (
-              <span className="rounded-full bg-[#ff9473] px-2.5 py-0.5 text-[10px] font-bold text-white shadow animate-pulse">
+              <span className="rounded-full bg-coral px-2.5 py-0.5 text-[10px] font-bold text-white shadow animate-pulse">
                 Bypass Ativo
               </span>
             )}
           </div>
           <div className="text-base text-off-black font-serif pt-1">
             {evaluation.u32_promoted.toLocaleString('pt-BR')}U &lt; {unsignedVal}U &rarr;{' '}
-            <strong className={evaluation.isSmallerUnsigned ? 'text-[#0e7c54] font-bold' : 'text-[#b93815] font-bold'}>
+            <strong className={evaluation.isSmallerUnsigned ? 'text-emerald-700 font-bold' : 'text-crimson font-bold'}>
               {evaluation.isSmallerUnsigned ? 'VERDADEIRO' : 'FALSO'}
             </strong>
           </div>

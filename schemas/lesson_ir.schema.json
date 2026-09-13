@@ -1,0 +1,200 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://teachyourself.dev/schemas/lesson_ir.schema.json",
+  "title": "LessonIR",
+  "description": "Schema da Representacao Intermediaria de Licao (LessonIR). O agente deve produzir este formato estruturado.",
+  "type": "object",
+  "required": [
+    "id",
+    "track",
+    "title",
+    "policy_version",
+    "learner_state",
+    "explanation_ladder",
+    "paragraphs",
+    "active_learning",
+    "visual_spec_ref"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9]{2}-[a-z0-9-]+$"
+    },
+    "track": {
+      "type": "string",
+      "enum": ["01-hardware-and-os", "02-networks", "03-compilers", "04-distributed"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5
+    },
+    "policy_version": {
+      "type": "object",
+      "required": ["pedagogy", "epistemic", "prose"],
+      "properties": {
+        "pedagogy": { "type": "string" },
+        "epistemic": { "type": "string" },
+        "prose": { "type": "string" },
+        "visuals": { "type": "string" },
+        "assessment": { "type": "string" }
+      }
+    },
+    "learner_state": {
+      "type": "object",
+      "required": ["known_concepts", "target_concept", "prohibited_leaks"],
+      "properties": {
+        "known_concepts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "target_concept": { "type": "string" },
+        "prohibited_leaks": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "explanation_ladder": {
+      "type": "object",
+      "required": [
+        "entry_point",
+        "problem",
+        "core_mechanism",
+        "boundary_condition"
+      ],
+      "properties": {
+        "entry_point": {
+          "type": "object",
+          "required": ["type", "description"],
+          "properties": {
+            "type": { "type": "string", "enum": ["CONCRETE_TRACE", "PHYSICAL_CONSTRAINT", "CODE_SNIPPET"] },
+            "description": { "type": "string" },
+            "code": { "type": "string" }
+          }
+        },
+        "problem": {
+          "type": "object",
+          "required": ["mechanism", "impact"],
+          "properties": {
+            "mechanism": { "type": "string" },
+            "impact": { "type": "string" }
+          }
+        },
+        "intuitive_model": {
+          "type": "object",
+          "properties": {
+            "analogy": { "type": "string" },
+            "limits": { "type": "string" }
+          }
+        },
+        "core_mechanism": {
+          "type": "object",
+          "required": ["circuit_or_protocol", "causal_steps"],
+          "properties": {
+            "circuit_or_protocol": { "type": "string" },
+            "causal_steps": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            }
+          }
+        },
+        "formal_invariants": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "system_reality": {
+          "type": "object",
+          "properties": {
+            "implementation_target": { "type": "string" },
+            "measured_cost": { "type": "string" }
+          }
+        },
+        "boundary_condition": {
+          "type": "object",
+          "required": ["exception", "reason"],
+          "properties": {
+            "exception": { "type": "string" },
+            "reason": { "type": "string" }
+          }
+        }
+      }
+    },
+    "paragraphs": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "given_anchor", "new_info", "claims_cited", "prose"],
+        "properties": {
+          "id": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": [
+              "PROBLEM",
+              "TRACE",
+              "MECHANISM",
+              "QUALIFICATION",
+              "TRANSITION",
+              "INVARIANT",
+              "EXAMPLE",
+              "DEFINITION"
+            ]
+          },
+          "given_anchor": { "type": "string" },
+          "new_info": { "type": "string" },
+          "claims_cited": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "prose": {
+            "type": "string",
+            "minLength": 20
+          }
+        }
+      }
+    },
+    "active_learning": {
+      "type": "object",
+      "required": ["inspection_type"],
+      "properties": {
+        "inspection_type": {
+          "type": "string",
+          "enum": [
+            "CIRCUIT_SIGNAL_TRACING",
+            "CODE_TRACING",
+            "INTERACTIVE_SIMULATION",
+            "MINIMAL_CONTRAST",
+            "PREDICTION_REVEAL"
+          ]
+        },
+        "target_simulation": { "type": "string" },
+        "trace_focus": { "type": "string" },
+        "require_transfer_probe": { "type": "boolean" },
+        "transfer_probe": {
+          "type": "object",
+          "required": ["prompt", "explanation_anchor"],
+          "properties": {
+            "prompt": { "type": "string" },
+            "correct_answer": { "type": ["boolean", "string", "number"] },
+            "explanation_anchor": { "type": "string" }
+          }
+        },
+        "parsons_puzzle": {
+          "type": "object",
+          "properties": {
+            "prompt": { "type": "string" },
+            "blocks": { "type": "array", "items": { "type": "string" } },
+            "distractors": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "visual_spec_ref": {
+      "type": "string",
+      "pattern": "^VIS-[0-9]{2}-[A-Z0-9_-]+$"
+    }
+  },
+  "additionalProperties": false
+}

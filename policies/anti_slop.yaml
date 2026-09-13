@@ -1,0 +1,58 @@
+# Politica Anti-Slop e Higiene Editorial do TeachYourself (Anti-Slop Policy)
+policy_id: "anti_slop"
+version: "2.0.0"
+description: "Padroes lexicais proibidos, prevencao de cacoetes de IA e higiene de pontuacao."
+
+punctuation_rules:
+  prohibit_em_dash: true
+  prohibit_en_dash: true
+  allowed_dashes: ["ASCII_HYPHEN"]
+  severity: "WARN_IN_LINTER_BLOCK_IN_KB_GATE"
+
+hard_fail_patterns:
+  canonical_without_allowlist:
+    pattern: "\\bcan[oô]nic\\w*"
+    allowlist_contexts:
+      - "x86_64_canonical_address"
+      - "canonical_hole"
+      - "posix_canonical_mode"
+      - "boolean_canonical_form"
+      - "internal_claim_type"
+  unqualified_historical_superlatives:
+    - "primeir[oa]\\s+a\\s+inventar"
+    - "primeir[oa]\\s+da\\s+hist[oó]ria"
+    - "inventou\\s+o\\s+conceito"
+    - "first\\s+ever"
+    - "padr[aã]o\\s+absoluto\\s+da\\s+ind[uú]stria"
+  theatrical_metaphors:
+    - "\\borquestra\\b"
+    - "\\bmaestro\\b"
+    - "\\bsinfonia\\b"
+    - "\\btape[çc]aria\\b"
+    - "abismo\\s+intranspon[ií]vel"
+    - "tirania\\s+da"
+  false_profundity:
+    - "em\\s+sua\\s+ess[êe]ncia"
+    - "no\\s+seu\\s+cerne"
+    - "no\\s+n[ií]vel\\s+mais\\s+elementar\\s+da\\s+mat[eé]ria"
+    - "serve\\s+como\\s+(um\\s+)?testamento"
+
+soft_fail_patterns:
+  self_praise:
+    - "ess[ae]\\s+(poderos[ao]|fascinante|engenhoso|engenhosa|impressionante|brilhante)\\s+(t[eé]cnica|solu[cç][aã]o|mecanismo)"
+    - "elegante\\s+solu[cç][aã]o"
+    - "poderos[ao]\\s+(recurso|mecanismo|t[eé]cnica)"
+    - "fascinante\\s+mecanismo"
+  insight_inflation:
+    - "essa\\s+distin[cç][aã]o\\s+[eé]\\s+(fundamental|crucial|vital|muito importante)"
+    - "[eé]\\s+(fundamental|crucial|vital)\\s+compreender"
+  summary_boilerplate:
+    - "(em\\s+resumo|portanto),\\s+podemos\\s+perceber\\s+a\\s+import[aâ]ncia"
+    - "(em\\s+resumo|em\\s+conclus[aã]o),\\s+vimos\\s+como\\s+[eé]\\s+fascinante"
+  zombie_nouns_weak_verbs:
+    - "(foi|foram|sendo|ser)\\s+(realizada?s?|efetuada?s?|feita?s?)\\s+(a|as|o|os)?\\s*([a-zá-ú]+(?:[cç][aãõ]o|[cç][aãõ]es|mento|mentos))"
+    - "(proceder|procede(?:u|ram)?)\\s+([aà]|ao|[aà]s|aos)\\s*([a-zá-ú]+(?:[cç][aãõ]o|[cç][aãõ]es|mento|mentos))"
+    - "(efetuar|efetuou|efetuaram)\\s+(a|as|o|os|ao|à)\\s*([a-zá-ú]+(?:[cç][aãõ]o|[cç][aãõ]es|mento|mentos))"
+  semantic_slop_unqualified_virtue:
+    - "(melhora[rm]?|otimiza[rm]?|aumenta[rm]?)\\s+(a\\s+|o\\s+)?(performance|desempenho|efici[êe]ncia|velocidade)"
+    - "(garante|traz|entrega)\\s+(maior\\s+)?(efici[êe]ncia|escalabilidade|robustez|performance)"

@@ -1,0 +1,59 @@
+# Politica Pedagogica do TeachYourself (Pedagogy Policy)
+policy_id: "pedagogy"
+version: "3.0.0"
+description: "Diretrizes executaveis para a Escada da Explicacao, carga cognitiva e aprendizagem ativa."
+
+explanation_ladder:
+  enforce_strict_order: true
+  stages:
+    - id: "CONCRETE_ENTRY_POINT"
+      required: true
+      description: "Ponto de entrada concreto, traço de execução ou restrição física observável."
+    - id: "PROBLEM_FORMULATION"
+      required: true
+      description: "A dor mecanica, colisão física ou problema insolúvel do modelo anterior."
+    - id: "INTUITIVE_MODEL"
+      required: true
+      description: "Modelo mental simples que resolve a dor imediata."
+    - id: "CORE_MECHANISM"
+      required: true
+      description: "Circuito, protocolo ou algoritmo real que implementa o modelo."
+    - id: "FORMAL_INVARIANTS"
+      required: true
+      description: "Formalizacao matematica, semantica e garantias inviolaveis."
+    - id: "SYSTEM_REALITY"
+      required: true
+      description: "Implementacao real no Linux, GCC, x86-64 ou silicio moderno."
+    - id: "BOUNDARY_CONDITIONS"
+      required: true
+      description: "Casos de borda, exceções e limites de aplicabilidade."
+
+cognitive_load_budget:
+  max_central_concepts_per_block: 1
+  max_auxiliary_concepts_per_block: 3
+  working_memory_chunks_limit: 4
+
+prerequisite_closure:
+  enforce_closure: true
+  leak_severity: "HARD_FAIL"
+  rules:
+    - "Todo conceito utilizado deve constar em learner_state.known_concepts ou ser o target_concept."
+    - "Termos proibidos em prohibited_leaks causam rejeicao imediata da licao."
+
+active_learning:
+  interactive_simulation_required: true
+  circuit_tracing_required: true
+  traditional_questionnaires_banned: true
+  multiple_choice_quizzes_banned: true
+  blocking_checks_banned: true
+  grading_banned: true
+  golden_rule: "Uma interacao pedagogica so existe se fizer parte do mecanismo que esta sendo explicado. Nunca adicionar perguntas apenas para testar se o leitor estava prestando atencao."
+  allowed_modalities:
+    - "PREDICTION"
+    - "MANIPULATION"
+    - "TRACE"
+    - "RECONSTRUCTION"
+    - "CONTRAST"
+    - "SIMULATION"
+    - "REVEAL"
+  misconception_remediation_in_prose: true

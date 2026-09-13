@@ -1,0 +1,1 @@
+A memoria virtual atua como um catalogo de biblioteca: o endereco virtual representa o codigo de chamada do livro, enquanto a tabela de paginas mapeia esse codigo para a estante fisica onde o dado reside na RAM.

@@ -20,24 +20,6 @@ export default {
         graphite: '#4e4d4d',
         smoke: '#615e5d',
         ash: '#cecac8',
-
-        // Backward compatibility for existing widgets
-        bg: {
-          dark: '#0d1117',
-          card: '#161b22',
-          subtle: '#21262d',
-        },
-        border: {
-          dark: '#30363d',
-        },
-        accent: {
-          cyan: '#38bdf8',
-          blue: '#58a6ff',
-          green: '#3fb950',
-          amber: '#d29922',
-          purple: '#bc8cff',
-          red: '#f85149',
-        },
       },
       fontFamily: {
         serif: ['Newsreader', 'Untitled Serif', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],

@@ -245,8 +245,10 @@ export default function VirtualMemoryVisualizer() {
         </div>
 
         <button
+          type="button"
           onClick={handleReset}
-          className="flex items-center gap-1.5 rounded-full border border-ash bg-parchment px-3.5 py-2 text-xs font-mono font-medium text-graphite hover:text-off-black hover:border-off-black transition-all min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black self-start md:self-auto"
+          aria-label="Reiniciar simulador de paginação"
+          className="flex items-center gap-1.5 rounded-full border border-ash bg-parchment px-4 py-2 text-xs font-mono font-medium text-graphite hover:text-off-black hover:border-off-black transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black self-start md:self-auto"
         >
           <HugeiconsIcon icon={RotateCcwIcon} className="h-3.5 w-3.5 text-smoke" />
           <span>Reiniciar</span>
@@ -262,8 +264,10 @@ export default function VirtualMemoryVisualizer() {
           {SCENARIOS.map((sc) => (
             <button
               key={sc.id}
+              type="button"
               onClick={() => selectScenario(sc)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-mono transition-all border min-h-[36px] ${
+              aria-pressed={addressInput.toLowerCase() === sc.address.toLowerCase()}
+              className={`flex items-center rounded-full px-4 py-2 text-xs font-mono transition-all border min-h-[44px] ${
                 addressInput.toLowerCase() === sc.address.toLowerCase()
                   ? 'border-lake-blue bg-lake-blue/10 text-lake-blue font-bold shadow-sm'
                   : 'border-ash bg-parchment text-graphite hover:text-off-black hover:border-off-black'
@@ -293,11 +297,12 @@ export default function VirtualMemoryVisualizer() {
               placeholder="Ex: 0x00007ffdc3a18040"
             />
             <button
+              type="button"
               onClick={() => {
                 setActiveMode('page_walk');
                 setCurrentWalkStep(0);
               }}
-              className="flex items-center gap-1.5 rounded-xl bg-off-black text-white hover:bg-black px-4 py-2.5 text-xs font-mono font-medium transition-all shadow-sm active:scale-[0.98] min-h-[40px]"
+              className="flex items-center gap-1.5 rounded-xl bg-off-black text-white hover:bg-black px-4 py-2.5 text-xs font-mono font-medium transition-all shadow-sm active:scale-[0.98] min-h-[44px]"
             >
               <HugeiconsIcon icon={PlayIcon} className="h-3.5 w-3.5" />
               <span>Page Walk</span>
@@ -310,14 +315,14 @@ export default function VirtualMemoryVisualizer() {
           <div className="flex items-center justify-between">
             <span className="text-smoke">Espaço Canônico:</span>
             {parsed.isCanonical ? (
-              <span className="inline-flex items-center gap-1 font-bold text-mint">
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-800">
                 <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5" />
                 Válido (48 bits)
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 font-bold text-coral">
+              <span className="inline-flex items-center gap-1 font-bold text-crimson">
                 <HugeiconsIcon icon={Cancel01Icon} className="h-3.5 w-3.5" />
-                Buraco Não-Canônico
+                Não Canônico (GPF)
               </span>
             )}
           </div>
@@ -344,7 +349,7 @@ export default function VirtualMemoryVisualizer() {
         <div className="grid grid-cols-12 gap-2 text-center font-mono text-xs">
           {/* Extensão de Sinal [63:48] */}
           <div className={`col-span-12 sm:col-span-2 rounded-xl border p-2.5 ${
-            parsed.isCanonical ? 'border-ash bg-parchment/80' : 'border-coral/50 bg-coral/10 text-coral'
+            parsed.isCanonical ? 'border-ash bg-parchment/80' : 'border-coral/50 bg-coral/10 text-crimson'
           }`}>
             <span className="block text-[10px] text-smoke font-bold uppercase tracking-wider">
               Sinal [63:48]
@@ -370,7 +375,7 @@ export default function VirtualMemoryVisualizer() {
 
           {/* PDPT Index [38:30] */}
           <div className="col-span-6 sm:col-span-2 rounded-xl border border-gold/40 bg-gold/10 p-2.5">
-            <span className="block text-[10px] text-gold font-bold uppercase tracking-wider">
+            <span className="block text-[10px] text-amber-800 font-bold uppercase tracking-wider">
               PDPT [38:30]
             </span>
             <span className="block text-sm font-bold text-off-black mt-1">
@@ -381,7 +386,7 @@ export default function VirtualMemoryVisualizer() {
 
           {/* PD Index [29:21] */}
           <div className="col-span-6 sm:col-span-2 rounded-xl border border-mint/40 bg-mint/10 p-2.5">
-            <span className="block text-[10px] text-mint font-bold uppercase tracking-wider">
+            <span className="block text-[10px] text-emerald-800 font-bold uppercase tracking-wider">
               PD [29:21]
             </span>
             <span className="block text-sm font-bold text-off-black mt-1">
@@ -392,10 +397,10 @@ export default function VirtualMemoryVisualizer() {
 
           {/* PT Index [20:12] */}
           <div className="col-span-6 sm:col-span-2 rounded-xl border border-coral/40 bg-coral/10 p-2.5">
-            <span className="block text-[10px] text-coral font-bold uppercase tracking-wider">
+            <span className="block text-[10px] text-crimson font-bold uppercase tracking-wider">
               PT [20:12]
             </span>
-            <span className="block text-sm font-bold text-coral mt-1">
+            <span className="block text-sm font-bold text-crimson mt-1">
               Índice {parsed.ptIndex}
             </span>
             <span className="block text-[10px] text-smoke mt-0.5">9 bits (0 a 511)</span>
@@ -429,7 +434,7 @@ export default function VirtualMemoryVisualizer() {
           {/* Bit P (Present) */}
           <div className={`rounded-xl border p-2.5 ${pteFlags.p === 1 ? 'border-mint/50 bg-mint/10' : 'border-coral/50 bg-coral/10'}`}>
             <span className="block text-[10px] text-smoke font-bold">Bit 0: P (Present)</span>
-            <span className={`block text-base font-bold mt-0.5 ${pteFlags.p === 1 ? 'text-mint' : 'text-coral'}`}>
+            <span className={`block text-base font-bold mt-0.5 ${pteFlags.p === 1 ? 'text-emerald-800' : 'text-crimson'}`}>
               {pteFlags.p}
             </span>
             <span className="block text-[10px] text-smoke">{pteFlags.p === 1 ? 'Em RAM Física' : 'Desmapeada / Swap'}</span>
@@ -493,9 +498,10 @@ export default function VirtualMemoryVisualizer() {
           </div>
           <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={() => setCurrentWalkStep((s) => Math.max(0, s - 1))}
               disabled={currentWalkStep <= 0}
-              className="rounded-lg border border-ash bg-parchment px-2 py-1 text-xs font-mono text-graphite disabled:opacity-40"
+              className="rounded-lg border border-ash bg-parchment px-3.5 py-2 min-h-[44px] text-xs font-mono text-graphite disabled:opacity-40 inline-flex items-center"
             >
               &larr; Anterior
             </button>
@@ -503,9 +509,10 @@ export default function VirtualMemoryVisualizer() {
               Passo {currentWalkStep + 1} de 5
             </span>
             <button
+              type="button"
               onClick={() => setCurrentWalkStep((s) => Math.min(4, s + 1))}
               disabled={currentWalkStep >= 4}
-              className="rounded-lg border border-ash bg-parchment px-2 py-1 text-xs font-mono text-graphite disabled:opacity-40"
+              className="rounded-lg border border-ash bg-parchment px-3.5 py-2 min-h-[44px] text-xs font-mono text-graphite disabled:opacity-40 inline-flex items-center"
             >
               Próximo &rarr;
             </button>
@@ -543,7 +550,7 @@ export default function VirtualMemoryVisualizer() {
 
         {activeMode === 'tlb_hit' && (
           <div className="rounded-xl border border-mint/50 bg-mint/10 p-4 text-graphite space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-mint">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-800">
               <HugeiconsIcon icon={ShieldCheckIcon} className="h-4 w-4" />
               <span>ACERTO DE TLB (TLB Hit) &bull; Latência: ~1 ciclo de clock (~0,3 ns)</span>
             </div>
@@ -571,7 +578,7 @@ export default function VirtualMemoryVisualizer() {
 
         {activeMode === 'demand_paging' && (
           <div className="rounded-xl border border-gold/50 bg-gold/10 p-4 text-graphite space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-gold">
+            <div className="flex items-center gap-1.5 font-bold text-amber-800">
               <HugeiconsIcon icon={ShieldAlertIcon} className="h-4 w-4" />
               <span>FALTA MENOR: Alocação Sob Demanda (Demand Paging) &bull; Latência: ~2 µs</span>
             </div>
@@ -585,7 +592,7 @@ export default function VirtualMemoryVisualizer() {
 
         {activeMode === 'cow' && (
           <div className="rounded-xl border border-gold/50 bg-gold/10 p-4 text-graphite space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-gold">
+            <div className="flex items-center gap-1.5 font-bold text-amber-800">
               <HugeiconsIcon icon={ShieldAlertIcon} className="h-4 w-4" />
               <span>FALTA DE PROTEÇÃO: Copy-on-Write (COW) &bull; Latência: ~3 µs</span>
             </div>
@@ -599,7 +606,7 @@ export default function VirtualMemoryVisualizer() {
 
         {activeMode === 'sigsegv' && (
           <div className="rounded-xl border border-coral/50 bg-coral/10 p-4 text-graphite space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-coral">
+            <div className="flex items-center gap-1.5 font-bold text-crimson">
               <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
               <span>VIOLAÇÃO FATAL DE SEGURANÇA: Segmentation Fault (SIGSEGV) / #GP</span>
             </div>

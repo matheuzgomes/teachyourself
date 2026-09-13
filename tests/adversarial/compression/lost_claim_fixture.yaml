@@ -1,0 +1,53 @@
+# Fixture Adversarial: Perda de Claim Obrigatorio durante a Compressao
+# Deve ser sumariamente rejeitada pelo Gate C1 (C1_REQUIRED_CLAIM_LOSS)
+artifact_id: "adv-comp-lost-claim"
+compression_input:
+  prose: "O forwarding envia o dado diretamente para a entrada da ALU. Isso elimina stalls entre instrucoes ALU consecutivas."
+  required_claims:
+    - "CLAIM-CIRC-003"
+    - "CLAIM-FWD-MISSING-99"
+  learning_contract:
+    learner_should_leave_believing:
+      - "forwarding elimina stalls"
+    misconceptions_prevented: []
+  protected_elements:
+    technical_terms: ["forwarding"]
+    necessary_qualifiers: ["entrada da ALU"]
+    exceptions: []
+    worked_examples: []
+
+sentences:
+  - id: "S01"
+    original_text: "O forwarding envia o dado diretamente para a entrada da ALU."
+    role: "MECHANISM"
+    claims_cited: ["CLAIM-CIRC-003"]
+    sentence_utility:
+      introduces_required_claim: 1
+      explains_mechanism: 1
+      establishes_causality: 0
+      qualifies_scope: 1
+      prevents_misconception: 0
+      provides_required_example: 0
+      enables_transition: 0
+    operation: "KEEP"
+  - id: "S02"
+    original_text: "Isso elimina stalls entre instrucoes ALU consecutivas."
+    role: "CAUSE"
+    claims_cited: []
+    sentence_utility:
+      introduces_required_claim: 0
+      explains_mechanism: 0
+      establishes_causality: 1
+      qualifies_scope: 0
+      prevents_misconception: 0
+      provides_required_example: 0
+      enables_transition: 0
+    operation: "KEEP"
+
+compression_report:
+  before: { words: 17, sentences: 2 }
+  after: { words: 17, sentences: 2 }
+  reduction_pct: 0.0
+  operations_summary: { deleted: 0, merged: 0, rewritten_shorter: 0, kept: 2 }
+  gates: {}
+  status: "PASS"

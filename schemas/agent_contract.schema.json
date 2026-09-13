@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://teachyourself.dev/schemas/agent_contract.schema.json",
+  "title": "AgentContract",
+  "description": "Contrato padronizado e universal de entrada e saida para qualquer agente no TeachYourself",
+  "type": "object",
+  "required": ["agent_input", "agent_output"],
+  "properties": {
+    "agent_input": {
+      "type": "object",
+      "required": ["task_id", "learner_state", "concept_cards", "allowed_claims", "policy_version"],
+      "properties": {
+        "task_id": { "type": "string" },
+        "learner_state": { "type": "object" },
+        "concept_cards": { "type": "array", "items": { "type": "string" } },
+        "allowed_claims": { "type": "array", "items": { "type": "string" } },
+        "policy_version": { "type": "object" }
+      }
+    },
+    "agent_output": {
+      "type": "object",
+      "required": [
+        "artifact_type",
+        "schema_version",
+        "claims_used",
+        "assumptions",
+        "generated_content",
+        "unresolved_questions",
+        "validation_requests"
+      ],
+      "properties": {
+        "artifact_type": {
+          "type": "string",
+          "enum": ["LESSON_IR", "RESEARCH_DOSSIER", "SEMANTIC_REVIEW", "PROSE_REVIEW"]
+        },
+        "schema_version": { "type": "string" },
+        "claims_used": { "type": "array", "items": { "type": "string" } },
+        "assumptions": { "type": "array", "items": { "type": "string" } },
+        "generated_content": { "type": ["object", "string"] },
+        "unresolved_questions": { "type": "array", "items": { "type": "string" } },
+        "validation_requests": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "additionalProperties": false
+}

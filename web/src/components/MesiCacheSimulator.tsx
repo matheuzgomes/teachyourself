@@ -253,17 +253,22 @@ export default function MesiCacheSimulator() {
     }
   };
 
+  const stepRef = useRef(stepFalseSharing);
   useEffect(() => {
-    let timer: any = null;
+    stepRef.current = stepFalseSharing;
+  });
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
     if (autoRunning) {
       timer = setInterval(() => {
-        stepFalseSharing();
+        stepRef.current();
       }, 350);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [autoRunning, isPadded, fsCore0LineState, fsCore1LineState]);
+  }, [autoRunning]);
 
   // Função auxiliar de cor de estado MESI
   const getBadgeStyle = (state: MesiState) => {
@@ -300,6 +305,7 @@ export default function MesiCacheSimulator() {
         {/* Seleção de Abas */}
         <div className="flex items-center gap-1 bg-parchment p-1 rounded-lg border border-stone/20" role="tablist">
           <button
+            type="button"
             role="tab"
             aria-selected={activeTab === 'mesi'}
             onClick={() => setActiveTab('mesi')}
@@ -312,6 +318,7 @@ export default function MesiCacheSimulator() {
             1. Protocolo MESI
           </button>
           <button
+            type="button"
             role="tab"
             aria-selected={activeTab === 'false_sharing'}
             onClick={() => setActiveTab('false_sharing')}
@@ -360,6 +367,7 @@ export default function MesiCacheSimulator() {
                       </div>
                       <div className="flex items-center gap-2 pt-1">
                         <button
+                          type="button"
                           onClick={() => handleMesiRead(0, addr)}
                           className="flex-1 py-1.5 px-2 bg-[#f3efe8] hover:bg-[#e9e3da] text-off-black text-xs font-mono font-medium rounded border border-stone/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
                           aria-label={`Core 0: Ler endereço ${addr}`}
@@ -367,8 +375,9 @@ export default function MesiCacheSimulator() {
                           Ler ({addr})
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleMesiWrite(0, addr)}
-                          className="flex-1 py-1.5 px-2 bg-coral/10 hover:bg-coral/20 text-coral text-xs font-mono font-bold rounded border border-coral/30 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
+                          className="flex-1 py-1.5 px-2 bg-coral/10 hover:bg-coral/20 text-crimson text-xs font-mono font-bold rounded border border-coral/30 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
                           aria-label={`Core 0: Escrever no endereço ${addr}`}
                         >
                           Escrever ({addr})
@@ -410,6 +419,7 @@ export default function MesiCacheSimulator() {
                       </div>
                       <div className="flex items-center gap-2 pt-1">
                         <button
+                          type="button"
                           onClick={() => handleMesiRead(1, addr)}
                           className="flex-1 py-1.5 px-2 bg-[#f3efe8] hover:bg-[#e9e3da] text-off-black text-xs font-mono font-medium rounded border border-stone/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
                           aria-label={`Core 1: Ler endereço ${addr}`}
@@ -417,8 +427,9 @@ export default function MesiCacheSimulator() {
                           Ler ({addr})
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleMesiWrite(1, addr)}
-                          className="flex-1 py-1.5 px-2 bg-coral/10 hover:bg-coral/20 text-coral text-xs font-mono font-bold rounded border border-coral/30 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
+                          className="flex-1 py-1.5 px-2 bg-coral/10 hover:bg-coral/20 text-crimson text-xs font-mono font-bold rounded border border-coral/30 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
                           aria-label={`Core 1: Escrever no endereço ${addr}`}
                         >
                           Escrever ({addr})
@@ -439,10 +450,11 @@ export default function MesiCacheSimulator() {
                   BARRAMENTO DE SNOOPING
                 </span>
                 <span className="text-xs text-graphite font-mono">
-                  Última Transação: <strong className="text-coral">{busMessage.type}</strong> por {busMessage.initiator}
+                  Última Transação: <strong className="text-crimson">{busMessage.type}</strong> por {busMessage.initiator}
                 </span>
               </div>
               <button
+                type="button"
                 onClick={resetMesi}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f3efe8] hover:bg-[#e9e3da] text-off-black text-xs font-mono font-medium rounded border border-stone/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
                 aria-label="Reinicializar simulador MESI"
@@ -467,10 +479,10 @@ export default function MesiCacheSimulator() {
             </div>
             <div className="flex items-center gap-4 font-mono text-xs">
               <span className="px-3 py-1 bg-white rounded border border-stone/20 text-off-black">
-                Endereço 0x1000: <strong className="text-coral">{ramMemory['0x1000']}</strong>
+                Endereço 0x1000: <strong className="text-crimson">{ramMemory['0x1000']}</strong>
               </span>
               <span className="px-3 py-1 bg-white rounded border border-stone/20 text-off-black">
-                Endereço 0x1040: <strong className="text-coral">{ramMemory['0x1040']}</strong>
+                Endereço 0x1040: <strong className="text-crimson">{ramMemory['0x1040']}</strong>
               </span>
             </div>
           </div>
@@ -505,10 +517,12 @@ export default function MesiCacheSimulator() {
             </div>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => { setIsPadded(false); resetFalseSharing(); }}
+                aria-pressed={!isPadded}
                 className={`px-3 py-2 text-xs font-mono font-medium rounded-md border transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral ${
                   !isPadded
-                    ? 'bg-coral/15 text-coral border-coral font-bold shadow-xs'
+                    ? 'bg-coral/15 text-crimson border-coral font-bold shadow-xs'
                     : 'bg-[#f3efe8] text-graphite border-stone/20'
                 }`}
                 aria-label="Selecionar modo sem preenchimento"
@@ -516,7 +530,9 @@ export default function MesiCacheSimulator() {
                 Mesma Linha (Vulnerável)
               </button>
               <button
+                type="button"
                 onClick={() => { setIsPadded(true); resetFalseSharing(); }}
+                aria-pressed={isPadded}
                 className={`px-3 py-2 text-xs font-mono font-medium rounded-md border transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral ${
                   isPadded
                     ? 'bg-moss/20 text-moss border-moss font-bold shadow-xs'
@@ -631,6 +647,7 @@ export default function MesiCacheSimulator() {
           <div className="p-4 bg-[#f3efe8] rounded-lg border border-stone/20 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={stepFalseSharing}
                 className="flex items-center gap-1.5 px-4 py-2 bg-parchment hover:bg-[#e9e3da] text-off-black text-xs font-mono font-semibold rounded-md border border-stone/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
                 aria-label="Executar um ciclo de escrita"
@@ -639,6 +656,7 @@ export default function MesiCacheSimulator() {
                 Executar 1 Passo
               </button>
               <button
+                type="button"
                 onClick={() => {
                   for (let i = 0; i < 10; i++) stepFalseSharing();
                 }}
@@ -649,7 +667,9 @@ export default function MesiCacheSimulator() {
                 Executar 10 Passos
               </button>
               <button
+                type="button"
                 onClick={() => setAutoRunning((prev) => !prev)}
+                aria-pressed={autoRunning}
                 className={`flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold rounded-md border transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral ${
                   autoRunning
                     ? 'bg-amber-600 text-white border-amber-700'
@@ -663,6 +683,7 @@ export default function MesiCacheSimulator() {
             </div>
 
             <button
+              type="button"
               onClick={resetFalseSharing}
               className="flex items-center gap-1.5 px-3 py-2 bg-parchment hover:bg-[#e9e3da] text-graphite hover:text-off-black text-xs font-mono font-medium rounded-md border border-stone/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-coral"
               aria-label="Zerar contadores de falso compartilhamento"

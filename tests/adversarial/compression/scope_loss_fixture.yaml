@@ -1,0 +1,41 @@
+# Fixture Adversarial: Perda de Qualificador de Escopo de Hardware
+# Deve ser sumariamente rejeitada pelo Gate C2 (C2_SCOPE_LOSS)
+artifact_id: "adv-comp-scope-loss"
+compression_input:
+  prose: "No pipeline MIPS de 5 estagios, o hazard RAW pode ser resolvido sem bolhas atraves de forwarding."
+  required_claims:
+    - "CLAIM-CIRC-003"
+  learning_contract:
+    learner_should_leave_believing:
+      - "hazard RAW resolvido sem bolhas"
+    misconceptions_prevented: []
+  protected_elements:
+    technical_terms: ["forwarding", "RAW"]
+    necessary_qualifiers:
+      - "pipeline MIPS de 5 estagios"
+    exceptions: []
+    worked_examples: []
+
+sentences:
+  - id: "S01"
+    original_text: "No pipeline MIPS de 5 estagios, o hazard RAW pode ser resolvido sem bolhas atraves de forwarding."
+    transformed_text: "O hazard RAW e resolvido sem bolhas atraves de forwarding."
+    role: "MECHANISM"
+    claims_cited: ["CLAIM-CIRC-003"]
+    sentence_utility:
+      introduces_required_claim: 1
+      explains_mechanism: 1
+      establishes_causality: 1
+      qualifies_scope: 0
+      prevents_misconception: 0
+      provides_required_example: 0
+      enables_transition: 0
+    operation: "REWRITE_SHORTER"
+
+compression_report:
+  before: { words: 16, sentences: 1 }
+  after: { words: 10, sentences: 1 }
+  reduction_pct: 37.5
+  operations_summary: { deleted: 0, merged: 0, rewritten_shorter: 1, kept: 0 }
+  gates: {}
+  status: "PASS"

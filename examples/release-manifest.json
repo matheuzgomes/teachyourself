@@ -1,0 +1,31 @@
+{
+  "artifact_id": "lesson_ir_sample",
+  "commit_hash": "a19fdf8",
+  "timestamp": "2026-09-12T17:22:44.335729+00:00",
+  "policy_manifest_hash": "9ae6dccaeb4ae0cb4b593255e4e18711f6a92e8f32dbe4707d9111b5c090cc6d",
+  "policy_versions": {
+    "epistemic": "4.2.0",
+    "pedagogy": "3.0.0",
+    "prose": "2.1.0",
+    "anti_slop": "2.0.0",
+    "visuals": "2.0.0",
+    "assessment": "1.1.0",
+    "compression": "1.0.0"
+  },
+  "gates": {
+    "schema_validation": "PASS",
+    "epistemic_provenance": "PASS",
+    "causal_integrity": "PASS",
+    "prerequisite_closure": "PASS",
+    "explanation_ladder": "PASS",
+    "inference_trust": "PASS",
+    "semantic_density": "PASS",
+    "discourse_naturalness": "PASS",
+    "anti_slop_clean": "PASS",
+    "compression_pass": "PASS",
+    "visual_invariants": "PASS",
+    "astro_web_build": "PASS"
+  },
+  "sha256_checksum": "6b0467d94c7ccd19d94be7bffdaf9a493f88967b1b000e66ffea7208df836bc2",
+  "release_decision": "APPROVED"
+}

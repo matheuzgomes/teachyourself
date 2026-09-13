@@ -1,0 +1,56 @@
+# Fixture Adversarial: Ausencia de Sonda de Transferencia (Deve falhar com TRANSFER_PROBE)
+id: "00-test-missing-transfer"
+track: "01-hardware-and-os"
+title: "Teste Adversarial de Sonda Ausente"
+
+policy_version:
+  pedagogy: "3.0.0"
+  epistemic: "4.2.0"
+  prose: "2.1.0"
+  visuals: "2.0.0"
+  assessment: "1.1.0"
+
+learner_state:
+  known_concepts: ["concept:circuits:transistor-cmos"]
+  target_concept: "concept:circuits:somadores-ripple-carry"
+  prohibited_leaks: []
+
+explanation_ladder:
+  entry_point:
+    type: "CONCRETE_TRACE"
+    description: "Trace de adicao simples de bits."
+  problem:
+    mechanism: "CARRY_PROPAGATION"
+    impact: "Atraso no circuito."
+  core_mechanism:
+    circuit_or_protocol: "ADDER"
+    causal_steps: ["Passo de teste."]
+  boundary_condition:
+    exception: "DELAY"
+    reason: "Propagacao em serie."
+
+paragraphs:
+  - id: "P1"
+    role: "PROBLEM"
+    given_anchor: "A operacao basica de adicao binaria"
+    new_info: "Necessidade de transporte entre estagios"
+    claims_cited:
+      - "CLAIM-CIRC-003"
+    prose: "A adicao de dois bits binarios resulta em soma e transporte conforme o circuito basico."
+
+  - id: "P2"
+    role: "MECHANISM"
+    given_anchor: "O transporte gerado no estagio inicial"
+    new_info: "Propagacao para a coluna seguinte"
+    claims_cited:
+      - "CLAIM-CIRC-003"
+    prose: "O estagio seguinte soma os operandos incorporando o bit de transporte recebido."
+
+active_learning:
+  inspection_type: "CIRCUIT_SIGNAL_TRACING"
+  target_simulation: "VIS-05-ARITHMETIC-ADDERS"
+  trace_focus: "Trace de teste para propagacao de sinal"
+  require_transfer_probe: true
+  # transfer_probe ausente propositadamente!
+
+visual_spec_ref: "VIS-05-ARITHMETIC-ADDERS"

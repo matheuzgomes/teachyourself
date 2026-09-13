@@ -34,7 +34,7 @@ Neste módulo, em 5 perguntas:
 4. Como forçar a gravação de verdade?
 5. Como o disco não corrompe a estrutura se a luz cai no meio?
 
-<IoPageCacheSandbox client:load />
+<IoPageCacheSandbox client:visible />
 
 O simulador acima responde: onde a escrita dorme antes do disco?
 1. Escreva e veja o dado parar no Page Cache como sujo.
@@ -139,7 +139,7 @@ Leitura e escrita vão direto entre buffer do usuário e controladora via <Term 
 
 Além do conteúdo, existe a estrutura: anexar 1 bloco mexe em 3 lugares em locais físicos distintos no disco, bloco de dados, inode e bitmap, por isso nunca gravam juntos de 1 vez.
 
-Se a luz cai no meio, 3 desastres clássicos:
+Se a energia for interrompida no meio da operação, surgem três estados inconsistentes clássicos:
 
 * **Só inode gravou:** aponta para lixo nunca escrito.
 * **Só dado gravou:** bytes sem dono, bitmap diz livre e outro arquivo pisa em cima.

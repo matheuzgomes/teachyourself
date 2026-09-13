@@ -170,12 +170,11 @@ import { withBase } from '../utils/paths';
             <div class="lg:col-span-5">
               <div class="rounded-2xl border border-ash bg-white/90 p-6 font-mono text-xs text-off-black shadow-monad">
                 <div class="flex items-center justify-between border-b border-ash/70 pb-3 mb-4">
-                  <div class="flex items-center gap-2">
-                    <span class="h-2.5 w-2.5 rounded-full bg-coral" />
-                    <span class="h-2.5 w-2.5 rounded-full bg-gold" />
-                    <span class="h-2.5 w-2.5 rounded-full bg-mint" />
+                  <div class="flex items-center gap-2 font-mono text-[11px] text-smoke">
+                    <span class="h-2 w-2 rounded-full bg-lake-blue animate-pulse" />
+                    <span class="font-bold tracking-wider text-off-black">REG_FILE // ACTIVE</span>
                   </div>
-                  <span class="text-xs text-smoke uppercase tracking-wider">x86-64 Execution State</span>
+                  <span class="text-xs text-smoke uppercase tracking-wider font-mono">x86-64 Execution State</span>
                 </div>
 
                 <div class="space-y-2.5 text-xs font-mono">
@@ -185,11 +184,11 @@ import { withBase } from '../utils/paths';
                   </div>
                   <div class="flex justify-between items-center py-1 border-b border-ash/30">
                     <span class="text-smoke">%rdi (1º Arg):</span>
-                    <span class="text-graphite">0x00007ffe4892c010</span>
+                    <span class="font-medium text-off-black">0x00007ffdc3a18040</span>
                   </div>
                   <div class="flex justify-between items-center py-1 border-b border-ash/30">
-                    <span class="text-smoke">%rsp (Pilha):</span>
-                    <span class="text-graphite">0x00007ffe4892bff8</span>
+                    <span class="text-smoke">%rsp (Ponteiro Pilha):</span>
+                    <span class="font-medium text-lake-blue font-bold">0x00007ffdc3a17fe0</span>
                   </div>
                   <div class="flex justify-between items-center py-1">
                     <span class="text-smoke">%rip (Instrução):</span>
@@ -229,13 +228,13 @@ import { withBase } from '../utils/paths';
               <div class="pt-4 flex flex-wrap items-center gap-2">
                 <a
                   href={withBase("/tracks/02-networks/00-rede-ipv4-dns-requisitos-host")}
-                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-3.5 py-2 min-h-[38px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2 min-h-[44px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all"
                 >
                   Módulo 00: IPv4 & DNS
                 </a>
                 <a
                   href={withBase("/tracks/02-networks/01-principio-fim-a-fim-internetworking")}
-                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-3.5 py-2 min-h-[38px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all"
+                  class="rounded-full bg-white border border-ash hover:border-off-black active:scale-[0.98] text-off-black px-4 py-2 min-h-[44px] inline-flex items-center text-xs font-mono uppercase tracking-wider transition-all"
                 >
                   Módulo 01: Fim a Fim
                 </a>

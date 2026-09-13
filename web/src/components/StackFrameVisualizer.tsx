@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Layers01Icon, ArrowDown01Icon, ChevronRightIcon, ChevronLeftIcon } from '@hugeicons/core-free-icons';
+import { Layers01Icon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
+import { useSimulationPlayback, SimulationToolbar } from './simulation';
 
 interface StackStep {
   stepNumber: number;
@@ -113,7 +113,12 @@ const STEPS: StackStep[] = [
 ];
 
 export default function StackFrameVisualizer() {
-  const [currentStepIdx, setCurrentStepIdx] = useState(0);
+  const playback = useSimulationPlayback({
+    totalSteps: STEPS.length,
+    stepIntervalMs: 3000,
+    loop: false,
+  });
+  const { currentStep: currentStepIdx } = playback;
   const step = STEPS[currentStepIdx];
 
   return (
@@ -136,37 +141,7 @@ export default function StackFrameVisualizer() {
 
         {/* Controles de Passo */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setCurrentStepIdx(Math.max(0, currentStepIdx - 1))}
-            disabled={currentStepIdx === 0}
-            className="flex items-center gap-1 rounded-full border border-ash bg-parchment px-3.5 py-1.5 text-xs font-mono text-graphite hover:text-off-black hover:border-lake-blue disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
-          >
-            <HugeiconsIcon icon={ChevronLeftIcon} className="h-4 w-4" />
-            <span>Anterior</span>
-          </button>
-          <div className="flex items-center gap-1">
-            {STEPS.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentStepIdx(idx)}
-                className={`h-9 w-9 rounded-full text-xs font-mono font-semibold transition-all border min-h-[36px] min-w-[36px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
-                  currentStepIdx === idx
-                    ? 'bg-lake-blue text-white border-lake-blue shadow-sm'
-                    : 'bg-parchment text-smoke border-ash hover:border-lake-blue/50 hover:text-off-black'
-                }`}
-              >
-                {idx + 1}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setCurrentStepIdx(Math.min(STEPS.length - 1, currentStepIdx + 1))}
-            disabled={currentStepIdx === STEPS.length - 1}
-            className="flex items-center gap-1 rounded-full border border-ash bg-white px-3.5 py-1.5 text-xs font-mono text-lake-blue font-medium hover:bg-lake-blue/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
-          >
-            <span>Próximo</span>
-            <HugeiconsIcon icon={ChevronRightIcon} className="h-4 w-4" />
-          </button>
+          <SimulationToolbar playback={playback} />
         </div>
       </div>
 

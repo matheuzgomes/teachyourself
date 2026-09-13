@@ -1,0 +1,52 @@
+# Fixture Adversarial: Retencao de Sentenca com Utility Score 0 (Empty Importance)
+# Deve ser sumariamente rejeitada pelo Gate C6 (C6_ZERO_UTILITY_KEPT)
+artifact_id: "adv-comp-zero-utility"
+compression_input:
+  prose: "A porta XOR avalia a paridade dos bits. Esse recurso e extremamente importante e revolucionario."
+  required_claims:
+    - "CLAIM-CIRC-003"
+  learning_contract:
+    learner_should_leave_believing:
+      - "porta XOR avalia paridade"
+    misconceptions_prevented: []
+  protected_elements:
+    technical_terms: ["XOR"]
+    necessary_qualifiers: []
+    exceptions: []
+    worked_examples: []
+
+sentences:
+  - id: "S01"
+    original_text: "A porta XOR avalia a paridade dos bits."
+    role: "MECHANISM"
+    claims_cited: ["CLAIM-CIRC-003"]
+    sentence_utility:
+      introduces_required_claim: 1
+      explains_mechanism: 1
+      establishes_causality: 0
+      qualifies_scope: 0
+      prevents_misconception: 0
+      provides_required_example: 0
+      enables_transition: 0
+    operation: "KEEP"
+  - id: "S02"
+    original_text: "Esse recurso e extremamente importante e revolucionario."
+    role: "NONE"
+    claims_cited: []
+    sentence_utility:
+      introduces_required_claim: 0
+      explains_mechanism: 0
+      establishes_causality: 0
+      qualifies_scope: 0
+      prevents_misconception: 0
+      provides_required_example: 0
+      enables_transition: 0
+    operation: "KEEP"
+
+compression_report:
+  before: { words: 14, sentences: 2 }
+  after: { words: 14, sentences: 2 }
+  reduction_pct: 0.0
+  operations_summary: { deleted: 0, merged: 0, rewritten_shorter: 0, kept: 2 }
+  gates: {}
+  status: "PASS"

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNumericInput } from './simulation/useNumericInput';
 
 const NetworkIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -19,18 +20,18 @@ type HeaderField = {
 };
 
 const FIELDS: HeaderField[] = [
-  { id: 'version', name: 'Version', bits: '4 bits', width: 4, meaning: 'Formato do cabecalho. Vale 4 neste protocolo. Versao diferente de 4 sofre descarte silencioso.' },
-  { id: 'ihl', name: 'IHL', bits: '4 bits', width: 4, meaning: 'Comprimento do cabecalho em palavras de 32 bits. Minimo 5, ou seja, 20 bytes. Aponta onde comecam os dados.' },
-  { id: 'tos', name: 'Type of Service', bits: '8 bits', width: 8, meaning: 'Qualidade desejada para a proxima rede: precedencia, retardo, vazao e confiabilidade.' },
-  { id: 'total', name: 'Total Length', bits: '16 bits', width: 16, meaning: 'Datagrama inteiro em octetos, cabecalho mais dados. Todo host aceita ate 576 octetos.' },
+  { id: 'version', name: 'Version', bits: '4 bits', width: 4, meaning: 'Formato do cabeçalho. Vale 4 neste protocolo. Versão diferente de 4 sofre descarte silencioso.' },
+  { id: 'ihl', name: 'IHL', bits: '4 bits', width: 4, meaning: 'Comprimento do cabeçalho em palavras de 32 bits. Mínimo 5, ou seja, 20 bytes. Aponta onde começam os dados.' },
+  { id: 'tos', name: 'Type of Service', bits: '8 bits', width: 8, meaning: 'Qualidade desejada para a próxima rede: precedência, retardo, vazão e confiabilidade.' },
+  { id: 'total', name: 'Total Length', bits: '16 bits', width: 16, meaning: 'Datagrama inteiro em octetos, cabeçalho mais dados. Todo host aceita até 576 octetos.' },
   { id: 'ident', name: 'Identification', bits: '16 bits', width: 16, meaning: 'Marca do emissor. Todos os fragmentos do mesmo datagrama carregam o mesmo valor.' },
-  { id: 'flags', name: 'Flags', bits: '3 bits', width: 3, meaning: 'DF proibe fatiar (1 proibe). MF avisa continuacao (1 tem mais fragmentos). Bit 0 reservado em zero.' },
-  { id: 'offset', name: 'Fragment Offset', bits: '13 bits', width: 13, meaning: 'Posicao do fragmento em unidades de 8 octetos. Primeiro fragmento em zero.' },
-  { id: 'ttl', name: 'Time to Live', bits: '8 bits', width: 8, meaning: 'Orcamento de saltos. Cada ponto decrementa ao menos um. Zero destroi o datagrama.' },
+  { id: 'flags', name: 'Flags', bits: '3 bits', width: 3, meaning: 'DF proíbe fatiar (1 proíbe). MF avisa continuação (1 tem mais fragmentos). Bit 0 reservado em zero.' },
+  { id: 'offset', name: 'Fragment Offset', bits: '13 bits', width: 13, meaning: 'Posição do fragmento em unidades de 8 octetos. Primeiro fragmento em zero.' },
+  { id: 'ttl', name: 'Time to Live', bits: '8 bits', width: 8, meaning: 'Orçamento de saltos. Cada ponto decrementa ao menos um. Zero destrói o datagrama.' },
   { id: 'proto', name: 'Protocol', bits: '8 bits', width: 8, meaning: 'Quem consome a carga no destino: TCP, UDP ou ICMP.' },
-  { id: 'checksum', name: 'Header Checksum', bits: '16 bits', width: 16, meaning: 'Protege somente o cabecalho e e refeito a cada salto por causa do TTL.' },
-  { id: 'src', name: 'Source Address', bits: '32 bits', width: 32, meaning: 'Endereco de origem em 4 octetos de comprimento fixo.' },
-  { id: 'dst', name: 'Destination Address', bits: '32 bits', width: 32, meaning: 'Endereco de destino em 4 octetos de comprimento fixo.' },
+  { id: 'checksum', name: 'Header Checksum', bits: '16 bits', width: 16, meaning: 'Protege somente o cabeçalho e é refeito a cada salto por causa do TTL.' },
+  { id: 'src', name: 'Source Address', bits: '32 bits', width: 32, meaning: 'Endereço de origem em 4 octetos de comprimento fixo.' },
+  { id: 'dst', name: 'Destination Address', bits: '32 bits', width: 32, meaning: 'Endereço de destino em 4 octetos de comprimento fixo.' },
 ];
 
 type Fragment = {
@@ -47,6 +48,22 @@ export default function Ipv4HeaderInspector() {
   const [datagram, setDatagram] = useState<number>(1500);
   const [mtu, setMtu] = useState<number>(576);
   const [dontFragment, setDontFragment] = useState<boolean>(false);
+
+  const datagramInput = useNumericInput({
+    value: datagram,
+    onChange: setDatagram,
+    min: 28,
+    max: 65535,
+    allowNegative: false,
+  });
+
+  const mtuInput = useNumericInput({
+    value: mtu,
+    onChange: setMtu,
+    min: 68,
+    max: 9000,
+    allowNegative: false,
+  });
 
   const active = FIELDS.find((f) => f.id === selected) || FIELDS[1];
 
@@ -90,26 +107,27 @@ export default function Ipv4HeaderInspector() {
         <div>
           <span className="font-mono text-xs uppercase tracking-widest text-lake-blue">Redes e Protocolos</span>
           <h4 className="font-serif text-xl md:text-2xl font-normal text-off-black">
-            Inspetor do Cabecalho IPv4 e Calculadora de Fragmentos
+            Inspetor do Cabeçalho IPv4 e Calculadora de Fragmentos
           </h4>
           <p className="font-mono text-xs text-graphite mt-0.5">
-            Clique em um campo para ler sua funcao. Ajuste tamanho e MTU para ver o fatiamento.
+            Clique em um campo para ler sua função. Ajuste tamanho e MTU para ver o fatiamento.
           </p>
         </div>
       </div>
 
       <ol className="mt-6 space-y-2 text-xs md:text-sm text-graphite leading-relaxed list-decimal list-inside">
-        <li><strong className="text-off-black">Passo 1:</strong> clique nos campos do mapa para entender o que cada grupo do cabecalho mede, protege ou orcamenta.</li>
+        <li><strong className="text-off-black">Passo 1:</strong> clique nos campos do mapa para entender o que cada grupo do cabeçalho mede, protege ou orçamenta.</li>
         <li><strong className="text-off-black">Passo 2:</strong> ajuste o tamanho do datagrama e o MTU para ver quantos fragmentos nascem e onde cada um se posiciona.</li>
         <li><strong className="text-off-black">Passo 3:</strong> ative DF e observe o descarte, depois confira que a soma dos dados mais 20 bytes remonta o total original.</li>
       </ol>
 
-      <div className="mt-6 flex flex-wrap gap-1.5" role="group" aria-label="Campos do cabecalho IPv4">
+      <div className="mt-6 flex flex-wrap gap-1.5" role="group" aria-label="Campos do cabeçalho IPv4">
         {FIELDS.map((f) => (
           <button
             key={f.id}
             type="button"
             onClick={() => setSelected(f.id)}
+            aria-pressed={selected === f.id}
             className={`min-h-[44px] px-3 rounded-xl border font-mono text-xs transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
               selected === f.id
                 ? 'bg-lake-blue text-white border-lake-blue font-bold shadow-sm'
@@ -126,27 +144,62 @@ export default function Ipv4HeaderInspector() {
         <p className="mt-1 text-sm text-off-black leading-relaxed">{active.meaning}</p>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <label className="rounded-2xl border border-ash bg-parchment p-4 text-xs font-mono text-graphite">
+      {/* Presets Didáticos de Fragmentação */}
+      <div className="mt-6 flex flex-wrap items-center gap-2 text-xs font-mono">
+        <span className="text-smoke text-[11px]">Cenários de Rede:</span>
+        {[
+          { label: '1500 B / MTU 576 (Padrão Internet)', data: 1500, mtuVal: 576, df: false },
+          { label: '4000 B / MTU 1500 (Ethernet Típica)', data: 4000, mtuVal: 1500, df: false },
+          { label: '1400 B / MTU 1500 (Sem Fragmentação)', data: 1400, mtuVal: 1500, df: false },
+          { label: '1500 B / MTU 576 (Bloqueio DF=1)', data: 1500, mtuVal: 576, df: true },
+        ].map((preset, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => {
+              setDatagram(preset.data);
+              setMtu(preset.mtuVal);
+              setDontFragment(preset.df);
+            }}
+            aria-pressed={datagram === preset.data && mtu === preset.mtuVal && dontFragment === preset.df}
+            className={`flex min-h-[44px] items-center rounded-full border px-3.5 py-1.5 text-[11px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
+              datagram === preset.data && mtu === preset.mtuVal && dontFragment === preset.df
+                ? 'bg-lake-blue text-white border-lake-blue shadow-2xs font-bold'
+                : 'bg-white text-graphite border-ash hover:border-off-black hover:text-off-black'
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <label htmlFor="ipv4-datagram" className="rounded-2xl border border-ash bg-parchment p-4 text-xs font-mono text-graphite block">
           Datagrama total (bytes)
           <input
-            type="number"
-            min={28}
-            max={65535}
-            value={datagram}
-            onChange={(e) => setDatagram(Number(e.target.value))}
-            className="mt-2 w-full rounded-xl border border-ash bg-white px-3 py-2.5 min-h-[44px] text-sm text-off-black focus:outline-none focus:ring-2 focus:ring-lake-blue"
+            id="ipv4-datagram"
+            type="text"
+            inputMode="numeric"
+            value={datagramInput.value}
+            onChange={datagramInput.onChange}
+            onBlur={datagramInput.onBlur}
+            onKeyDown={datagramInput.onKeyDown}
+            aria-label="Tamanho total do datagrama em bytes (28 a 65535)"
+            className="mt-2 w-full rounded-xl border border-ash bg-white px-3 py-2.5 min-h-[44px] text-sm text-off-black focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none font-bold"
           />
         </label>
-        <label className="rounded-2xl border border-ash bg-parchment p-4 text-xs font-mono text-graphite">
+        <label htmlFor="ipv4-mtu" className="rounded-2xl border border-ash bg-parchment p-4 text-xs font-mono text-graphite block">
           MTU do enlace (bytes)
           <input
-            type="number"
-            min={68}
-            max={9000}
-            value={mtu}
-            onChange={(e) => setMtu(Number(e.target.value))}
-            className="mt-2 w-full rounded-xl border border-ash bg-white px-3 py-2.5 min-h-[44px] text-sm text-off-black focus:outline-none focus:ring-2 focus:ring-lake-blue"
+            id="ipv4-mtu"
+            type="text"
+            inputMode="numeric"
+            value={mtuInput.value}
+            onChange={mtuInput.onChange}
+            onBlur={mtuInput.onBlur}
+            onKeyDown={mtuInput.onKeyDown}
+            aria-label="MTU do enlace em bytes (68 a 9000)"
+            className="mt-2 w-full rounded-xl border border-ash bg-white px-3 py-2.5 min-h-[44px] text-sm text-off-black focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none font-bold"
           />
         </label>
         <button
@@ -154,7 +207,7 @@ export default function Ipv4HeaderInspector() {
           onClick={() => setDontFragment((v) => !v)}
           aria-pressed={dontFragment}
           className={`rounded-2xl border p-4 text-xs font-mono text-left transition-all focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:outline-none ${
-            dontFragment ? 'border-[#b93815] bg-[#ff9473]/10 text-off-black' : 'border-ash bg-parchment text-graphite hover:bg-white'
+            dontFragment ? 'border-coral bg-coral/10 text-off-black' : 'border-ash bg-parchment text-graphite hover:bg-white'
           }`}
         >
           <span className="font-bold block">Flag DF: {dontFragment ? '1 (proibido fatiar)' : '0 (pode fatiar)'}</span>
@@ -179,7 +232,7 @@ export default function Ipv4HeaderInspector() {
               <tr><td colSpan={6} className="px-4 py-4 text-graphite">Valores fora da faixa: datagrama entre 28 e 65535, MTU entre 68 e 9000.</td></tr>
             )}
             {fragments !== null && fragments.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-4 text-[#b93815] font-bold">DF igual a 1 e pacote maior que o MTU: datagrama descartado, sem fatiamento.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-4 text-crimson font-bold">DF igual a 1 e pacote maior que o MTU: datagrama descartado, sem fatiamento.</td></tr>
             )}
             {fragments !== null && fragments.map((f) => (
               <tr key={f.n} className="border-t border-ash/60">
@@ -195,9 +248,9 @@ export default function Ipv4HeaderInspector() {
         </table>
       </div>
 
-      <p className="mt-6 rounded-2xl border border-[#a7fccd] bg-[#a7fccd]/20 p-5 text-xs md:text-sm text-off-black leading-relaxed">
-        <strong className="font-mono uppercase tracking-wider text-[#0e7c54] block mb-1">Conclusao</strong>
-        O cabecalho fixo permite a qualquer hardware ler o mesmo envelope, o offset em multiplos de 8 reposiciona cada fatia sem ambiguidade, e o destino remonta tudo pela quadrupla identificacao, origem, destino e protocolo. Com 1500 bytes e MTU 576, nascem 552 mais 552 mais 376, com offsets 0, 69 e 138.
+      <p className="mt-6 rounded-2xl border border-mint bg-mint/20 p-5 text-xs md:text-sm text-off-black leading-relaxed">
+        <strong className="font-mono uppercase tracking-wider text-emerald-800 block mb-1">Conclusão</strong>
+        O cabeçalho fixo permite a qualquer hardware ler o mesmo envelope, o offset em múltiplos de 8 reposiciona cada fatia sem ambiguidade, e o destino remonta tudo pela quádrupla identificação, origem, destino e protocolo. Com 1500 bytes e MTU 576, nascem 552 mais 552 mais 376, com offsets 0, 69 e 138.
       </p>
     </div>
   );

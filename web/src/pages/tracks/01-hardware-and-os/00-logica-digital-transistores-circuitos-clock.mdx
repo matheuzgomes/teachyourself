@@ -7,7 +7,6 @@ trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 ---
 
 import XorFromNandDiagram from '../../../components/diagrams/XorFromNandDiagram.astro';
-import LogicCircuitsSandbox from '../../../components/LogicCircuitsSandbox';
 import SrLatchInteractive from '../../../components/circuits/SrLatchInteractive';
 import MosfetTransistorCard from '../../../components/circuits/MosfetTransistorCard';
 import CmosInverterCard from '../../../components/circuits/CmosInverterCard';
@@ -47,11 +46,25 @@ Para construir um modelo mental sólido e intuitivo, este módulo percorre a con
 * **Parte 0C: Aritmética Binária e a Unidade Lógica e Aritmética (ALU)**
   A física do transporte elétrico (vai-um), o cálculo de somas com portas XOR e AND, o atraso do caminho crítico em cascatas de 64 bits e a multiplexação de operações na ALU.
 * **Parte 0D: Memória, Realimentação, Flip-Flop Mestre-Escravo e o Clock**
-  Como criar memória a partir de laços de realimentação biestáveis, a superação da armadilha da transparência através de eclusas disparadas por borda de subida e a sincronização periódica do sistema.
+  Como criar memória a partir de laços de realimentação biestáveis, a prevenção da cópia contínua por eclusas disparadas por borda de subida e a sincronização periódica do sistema.
 
 ---
 
 ## Parte 0A: A Chave Eletrônica e o Inversor CMOS
+
+### 0.0 A Lógica Mais Simples do Mundo: Duas Chaves e Uma Lâmpada
+
+Antes de examinar semicondutores microscópicos, imagine um circuito básico com uma pilha comum, fios condutores, dois interruptores de luz e uma lâmpada:
+
+* **Interruptores em fila no mesmo fio (Circuito em Série):**
+  A corrente elétrica que sai da pilha precisa atravessar o primeiro interruptor e depois o segundo para alcançar a lâmpada. Se o primeiro interruptor estiver fechado, mas o segundo interruptor estiver aberto, o circuito elétrico fica interrompido e a lâmpada não acende. A lâmpada só acende se a chave A **E** a chave B estiverem simultaneamente fechadas. Essa ligação em série reproduz fisicamente a porta AND (E).
+
+* **Interruptores em caminhos paralelos separados (Circuito em Paralelo):**
+  A corrente elétrica encontra uma bifurcação com duas rotas independentes até a lâmpada. Se o interruptor A estiver fechado, a corrente passa por ele e a lâmpada acende, mesmo que o interruptor B esteja aberto. Da mesma forma, se o interruptor B estiver fechado, a lâmpada acende. A lâmpada só permanece apagada se ambos os interruptores estiverem abertos. Essa ligação em paralelo reproduz fisicamente a porta OR (OU).
+
+Com apenas interruptores abrindo e fechando caminhos elétricos, é possível tomar qualquer decisão lógica e calcular qualquer operação matemática.
+
+O dilema da computação moderna é puramente mecânico: um ser humano aciona um interruptor poucas vezes por segundo. Peças mecânicas sofrem desgaste por atrito e são lentas demais para processar milhões de operações por segundo. A solução da engenharia foi criar uma chave acionada por eletricidade sem peças móveis: o **Transistor**.
 
 ### 0.1 Do Interruptor Mecânico ao Transistor MOSFET
 
@@ -76,7 +89,7 @@ No transistor <Term id="NMOS">NMOS</Term>:
 
 Como o eletrodo de Gate está isolado eletricamente do canal pelo óxido, nenhuma corrente flui para dentro da porta em regime permanente. O chaveamento consome carga apenas no breve instante necessário para carregar ou descarregar a capacitância do Gate.
 
-<MosfetTransistorCard client:load />
+<MosfetTransistorCard client:visible />
 
 ---
 
@@ -98,7 +111,7 @@ A montagem do inversor CMOS liga os Gates de ambos os transistores no mesmo fio 
 2. **Entrada $V_{in} = 1$ (3.3V / VDD):**
    O transistor PMOS superior abre e corta o contato com a alimentação. O transistor NMOS inferior fecha e conduz, drenando toda a carga da saída direto para o terra (0V). A saída cai para 0V (nível lógico `0`).
 
-<CmosInverterCard client:load />
+<CmosInverterCard client:visible />
 
 A consequência de engenharia mais relevante da topologia CMOS é o **consumo de energia estática nulo**:
 > O inversor CMOS entrega na saída o inverso do que recebeu na entrada. Em regime permanente estável (`0` ou `1`), ou a chave de cima está fechada e a de baixo aberta, ou a de cima está aberta e a de baixo fechada. Nunca existe um caminho aberto contínuo ligando VDD diretamente ao terra GND. A corrente elétrica só flui durante o chaveamento dinâmico para carregar e descarregar as capacitâncias dos fios e dos Gates subsequentes.
@@ -119,7 +132,7 @@ A análise física das redes revela o comportamento booleano:
 * **Caminho para o terra (Rede Pull-Down):** Como os transistores NMOS estão em série, a condução de corrente para GND exige que a entrada A **E** a entrada B sejam ambas iguais a `1`. Se a chave A estiver fechada mas a chave B aberta, a fila para o terra se rompe.
 * **Caminho para a alimentação (Rede Pull-Up):** Como os transistores PMOS estão em paralelo, basta que uma única entrada seja `0` para que seu respectivo PMOS conduza e puxe a saída direto para o nível alto de alimentação (nível `1`).
 
-<CmosNandCard client:load />
+<CmosNandCard client:visible />
 
 A tabela-verdade decorre diretamente dessa mecânica:
 
@@ -184,7 +197,16 @@ O circuito se chama meio somador porque só aceita duas entradas. Ele serve perf
 
 ### 0.6 O Somador Completo (Full Adder) e a Cascata Ripple-Carry
 
-O **Somador Completo (Full Adder)** junta dois meios somadores e uma porta OR para aceitar o transporte vindo da coluna anterior ($C_{in}$):
+Quando somamos números no papel coluna por coluna, às vezes precisamos incluir o "vai-um" que veio da coluna anterior. No circuito elétrico, cada posição recebe dois bits para somar e precisa ser capaz de receber esse terceiro valor. Essa terceira entrada de transporte chama-se **Carry-in**, abreviada como $C_{in}$.
+
+O circuito que realiza essa tarefa é o **Somador Completo (Full Adder)**. Ele soma os três valores: os dois bits da posição atual ($A$ e $B$) e o transporte recebido ($C_{in}$). Se o total da soma for 2 ou 3, o circuito precisa enviar um transporte para a próxima posição através de uma saída chamada **Carry-out**, abreviada como $C_{out}$.
+
+Se chegam três bits iguais a 1, a soma total é 3. Em binário, o número 3 escreve-se `11`: fica 1 na posição atual e segue 1 para a próxima coluna. Em termos de valores aritméticos, podemos expressar essa relação na equação:
+$$A + B + C_{in} = Sum + 2 \times C_{out}$$
+
+O fator multiplicador 2 aparece porque o carry avança para a próxima posição da esquerda, que na base dois vale o dobro da posição atual.
+
+Para construir essa função, o Somador Completo junta dois Meios Somadores e uma porta OR:
 1. O primeiro meio somador soma os bits $A$ e $B$, gerando a soma preliminar ($S_{int}$) e o transporte parcial ($C_1$).
 2. O segundo meio somador soma $S_{int}$ com $C_{in}$, produzindo a Soma final ($S = A \oplus B \oplus C_{in}$) e o segundo transporte parcial ($C_2$).
 3. Uma porta OR recebe os dois transportes parciais: se o primeiro meio somador produziu transporte OU se o segundo meio somador produziu transporte, a saída final $C_{out}$ é ativada.
@@ -204,19 +226,21 @@ O **Somador Completo (Full Adder)** junta dois meios somadores e uma porta OR pa
 
 No somador completo, note que os transportes parciais $C_1$ e $C_2$ nunca podem ser simultaneamente 1. Quando o primeiro meio somador produz $C_1 = 1$, sua soma intermediária $S_{int}$ vale obrigatoriamente 0, forçando $C_2 = 0$.
 
-Para somar números de 64 bits em um processador contemporâneo, encadeamos 64 somadores completos em linha: a saída $C_{out}$ do estágio 0 entra no pino $C_{in}$ do estágio 1, e assim por diante. Essa montagem em série chama-se **Somador em Cascata (Ripple-Carry Adder)**.
+Para somar números de vários bits em um processador, encadeamos somadores completos em linha: a saída $C_{out}$ da coluna 0 entra diretamente no pino $C_{in}$ da coluna 1, e assim por diante. Essa montagem em série chama-se **Somador em Cascata (Ripple-Carry Adder)**.
 
-<AdderCircuitsCard client:load />
+> [!NOTE]
+> **Modelo Didático e Circuitos de Produção:**
+> O somador em cascata é o modelo didático fundamental para compreender a passagem do transporte entre posições. Em circuitos de alta velocidade, a espera pela passagem do sinal de estágio em estágio limita o tempo de resposta. Por essa razão, processadores modernos utilizam somadores com lógica de cálculo antecipado (*Carry-Lookahead Adders*) ou árvores de prefixo paralelo, que calculam os transportes através de equações booleanas paralelas em tempo logarítmico.
+
+<AdderCircuitsCard client:visible />
 
 ---
 
 ### 0.7 O Caminho Crítico e a Unidade Lógica e Aritmética (ALU)
 
-O cálculo consome tempo real no espaço: os elétrons não viajam instantaneamente. No somador em cascata, o bit 63 não pode emitir sua resposta final até que o transporte elétrico tenha atravessado os 63 estágios precedentes em fila.
+O cálculo consome tempo real no espaço: os elétrons não viajam instantaneamente. No somador em cascata, o bit mais alto não pode emitir sua resposta final até que o transporte elétrico tenha atravessado todos os estágios precedentes em fila.
 
 A trilha de portas lógicas mais longa e lenta que um sinal precisa percorrer antes que o resultado se estabilize é chamada de **Caminho Crítico (Critical Path)**.
-
-Em circuitos de alta velocidade, o somador em cascata simples limitaria a frequência de clock a valores muito reduzidos. Para contornar o caminho crítico, engenheiros substituem o ripple-carry por somadores de cálculo antecipado de transporte (**Carry-Lookahead Adders**) ou árvores de prefixo paralelo. Esses circuitos usam álgebra booleana paralela para deduzir se uma coluna gera transporte ou apenas propaga o transporte existente, reduzindo a latência temporal de $O(N)$ para $O(\log N)$.
 
 Com somadores, portas booleanas e deslocadores de bits em mãos, a <Term id="CPU">CPU</Term> reúne esses circuitos combinacionais na **Unidade Lógica e Aritmética (<Term id="ALU">ALU</Term>)**. A ALU calcula todas as operações ao mesmo tempo nos fios condutores. Na saída, uma chave seletora chamada **Multiplexador (<Term id="MUX">MUX</Term>)** recebe o código da instrução e conecta a saída correspondente ao fio de resposta final.
 
@@ -232,7 +256,7 @@ Para fazer um circuito elétrico lembrar de algo, a eletrônica digital recorre 
 
 O circuito clássico elementar de memória com realimentação é o **Latch SR (Set-Reset)**, montado com duas portas <Term id="NOR">NOR</Term> cruzadas:
 
-<SrLatchInteractive client:load data-visual-model="VIS-01-SR-LATCH-NOR" />
+<SrLatchInteractive client:visible data-visual-model="VIS-01-SR-LATCH-NOR" />
 
 O circuito opera em quatro regimes:
 * **Gravação (Set = 1, Reset = 0):** O comando Set força a saída $Q = 1$. O circuito guarda o bit 1.
@@ -244,15 +268,15 @@ Para afastar o estado proibido, os engenheiros criaram o **Latch D (Data Latch)*
 
 ---
 
-### 0.9 A Armadilha da Transparência e o Flip-Flop D Mestre-Escravo
+### 0.9 O Dilema da Transparência e o Flip-Flop D Mestre-Escravo
 
-O Latch D resolve o estado proibido, mas traz a **transparência**: enquanto a permissão (*Enable*) estiver ligada, qualquer ruído ou variação na entrada $D$ passa direto para a saída $Q$. Se a saída do registrador alimentar uma ALU cujo resultado retroalimenta a mesma memória, o sinal correria em círculos descontrolados durante todo o pulso ativo.
+O Latch D elimina o estado proibido, mas introduz um comportamento que exige coordenação: a **transparência**. Enquanto o sinal de permissão (*Enable*) permanecer em nível alto, qualquer variação na entrada $D$ passa imediatamente para a saída $Q$. Se a saída de um registrador alimentar um somador cujo resultado é devolvido para a entrada desse mesmo registrador, o valor mudaria continuamente em círculos durante todo o intervalo em que a permissão estivesse ativa.
 
-O processador síncrono exige que a memória capture o dado em um único instante fugaz e imediatamente tranque a porta: o **Flip-Flop D Disparado por Borda (Edge-Triggered)**.
+Para operar com sincronismo e estabilidade, o circuito precisa que a memória capture o dado em um instante preciso e trave a entrada em seguida: o **Flip-Flop D Disparado por Borda (Edge-Triggered)**.
 
 A topologia padrão é o circuito **Mestre-Escravo (Master-Slave)**:
 
-<MasterSlaveFlipFlopCard client:load />
+<MasterSlaveFlipFlopCard client:visible />
 
 Dois compartimentos são colocados em série sob sinais de clock opostos:
 1. Quando o sinal de Clock está em nível baixo (`0`), o Mestre está transparente escutando a entrada $D$, mas o Escravo está firmemente travado. Nada passa para a saída final $Q$.
@@ -278,7 +302,7 @@ Para evitar que dispersões em tempos de propagação gerem corridas elétricas,
 
 O clock é uma onda quadrada contínua gerada por um oscilador a cristal piezoelétrico de quartzo. O intervalo entre duas bordas de subida consecutivas é o **Período de Clock ($T_{clock}$)**, e seu inverso é a **Frequência de Clock ($f = 1 / T_{clock}$)**.
 
-<ClockChronogramCard client:load />
+<ClockChronogramCard client:visible />
 
 O período de clock deve respeitar o tempo de propagação do caminho crítico e os limites do registrador:
 
@@ -289,7 +313,9 @@ Onde:
 * $t_{comb\_max}$: Atraso no caminho crítico dos circuitos combinacionais.
 * $t_{setup}$ (**Setup Time**): Intervalo mínimo em que o dado de entrada deve permanecer estável antes da chegada da próxima borda de subida do clock.
 
-Se a frequência de clock for acelerada além do limite, a próxima borda chegará antes que os somadores terminem de calcular o vai-um. O registrador fotografará um sinal ainda em transição e o computador travará com cálculos corrompidos.
+A soma desses três intervalos determina a cadência do processador: o primeiro registrador precisa de tempo para liberar o valor anterior ($t_{prop\_ff}$), as portas lógicas precisam de tempo para realizar o cálculo ($t_{comb\_max}$), e o registrador seguinte precisa receber o resultado com antecedência mínima ($t_{setup}$) para que a tensão elétrica se estabilize antes do próximo pulso de relógio.
+
+Se a frequência de clock for acelerada além do limite, a próxima borda chegará antes que os somadores terminem de calcular o transporte. O registrador fotografará um sinal ainda em transição e o circuito entrará em estado inconsistente.
 
 ---
 
@@ -300,7 +326,7 @@ Fisicamente, um registrador de 64 bits da CPU (como `%rax` no x86-64 ou `x0` no 
 * Entradas de clock ligadas ao mesmo sinal mestre sincronizado por clock;
 * Uma linha de habilitação de escrita chamada **Write Enable (WE)**.
 
-<RegisterBankCard client:load />
+<RegisterBankCard client:visible />
 
 Quando a CPU grava um valor em `%rax`:
 1. Os 64 bits calculados são roteados até as entradas de dados de `%rax`.

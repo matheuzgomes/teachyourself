@@ -205,7 +205,9 @@ export default function RegisterInspector() {
         </div>
 
         <button
+          type="button"
           onClick={() => setSimulateWrite32(!simulateWrite32)}
+          aria-pressed={simulateWrite32}
           className={`flex items-center gap-2 rounded-full px-4 py-2 font-mono text-xs font-medium border transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
             simulateWrite32
               ? 'bg-lake-blue text-white border-lake-blue shadow-sm'
@@ -222,7 +224,9 @@ export default function RegisterInspector() {
         {REGISTERS.map((r, i) => (
           <button
             key={r.name64}
+            type="button"
             onClick={() => setSelectedIdx(i)}
+            aria-pressed={selectedIdx === i}
             className={`flex flex-col items-center rounded-2xl p-2.5 text-center transition-all border min-h-[52px] justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
               selectedIdx === i
                 ? 'bg-white border-lake-blue text-lake-blue font-medium ring-2 ring-lake-blue/20 shadow-sm'

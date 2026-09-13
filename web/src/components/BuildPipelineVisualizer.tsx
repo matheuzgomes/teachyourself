@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CpuIcon, TerminalIcon, Layers01Icon, PlayIcon, PauseIcon, ArrowRight01Icon, ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { CpuIcon, TerminalIcon, Layers01Icon, ArrowRight01Icon, ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { useSimulationPlayback, SimulationToolbar } from './simulation';
 
 interface PipelineStep {
   id: string;
@@ -78,18 +78,13 @@ const STEPS: PipelineStep[] = [
 ];
 
 export default function BuildPipelineVisualizer() {
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const playback = useSimulationPlayback({
+    totalSteps: STEPS.length,
+    stepIntervalMs: 2800,
+    loop: true,
+  });
+  const { currentStep: selectedIdx, next, prev, jumpTo, isPlaying } = playback;
   const current = STEPS[selectedIdx];
-
-  // Auto-play do fluxo com ciclo contínuo
-  useEffect(() => {
-    if (!isPlaying) return;
-    const interval = setInterval(() => {
-      setSelectedIdx((prev) => (prev + 1) % STEPS.length);
-    }, 2800);
-    return () => clearInterval(interval);
-  }, [isPlaying]);
 
   return (
     <div className="my-8 rounded-card border border-ash bg-white p-6 md:p-8 text-graphite shadow-sm transition-all">
@@ -111,32 +106,7 @@ export default function BuildPipelineVisualizer() {
 
         {/* Controles de Reprodução e Estado */}
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-mono uppercase tracking-wider font-medium border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue min-h-[44px] ${
-              isPlaying
-                ? 'bg-lake-blue text-white border-lake-blue shadow-sm'
-                : 'bg-parchment text-graphite border-ash hover:border-lake-blue hover:text-off-black'
-            }`}
-          >
-            {isPlaying ? (
-              <>
-                <HugeiconsIcon icon={PauseIcon} className="h-3.5 w-3.5" /> Pausar Fluxo
-              </>
-            ) : (
-              <>
-                <HugeiconsIcon icon={PlayIcon} className="h-3.5 w-3.5" /> Animar Fluxo
-              </>
-            )}
-          </button>
-
-          <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-ash bg-parchment px-3.5 py-2 font-mono text-xs text-smoke min-h-[44px]">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lake-blue opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-lake-blue"></span>
-            </span>
-            <span>Etapa {selectedIdx + 1} de 4</span>
-          </div>
+          <SimulationToolbar playback={playback} />
         </div>
       </div>
 
@@ -151,10 +121,7 @@ export default function BuildPipelineVisualizer() {
               <div key={step.id} className="flex items-center flex-1 min-w-[170px] last:flex-none">
                 {/* Botão do Nó da Etapa */}
                 <button
-                  onClick={() => {
-                    setIsPlaying(false);
-                    setSelectedIdx(idx);
-                  }}
+                  onClick={() => jumpTo(idx)}
                   className={`group relative flex items-center gap-2.5 rounded-full px-4 py-2.5 text-xs font-mono transition-all border w-full text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
                     isSelected
                       ? 'bg-white border-lake-blue text-lake-blue shadow-sm ring-2 ring-lake-blue/20 font-medium'
@@ -168,7 +135,7 @@ export default function BuildPipelineVisualizer() {
                       isSelected
                         ? 'bg-lake-blue text-white'
                         : isPast
-                        ? 'bg-[#0e7c54] text-white'
+                        ? 'bg-emerald-700 text-white'
                         : 'bg-ash/40 text-smoke'
                     }`}
                   >
@@ -298,20 +265,14 @@ export default function BuildPipelineVisualizer() {
             {/* Navegação Manual entre Etapas */}
             <div className="mt-6 pt-4 border-t border-ash flex justify-between items-center text-xs">
               <button
-                onClick={() => {
-                  setIsPlaying(false);
-                  setSelectedIdx(Math.max(0, selectedIdx - 1));
-                }}
+                onClick={prev}
                 disabled={selectedIdx === 0}
                 className="rounded-full border border-ash bg-white px-4 py-2 font-mono text-graphite hover:text-off-black hover:border-lake-blue disabled:opacity-30 disabled:cursor-not-allowed transition-all inline-flex items-center gap-1.5 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
               >
                 <HugeiconsIcon icon={ArrowLeft01Icon} className="h-3.5 w-3.5" /> Etapa Anterior
               </button>
               <button
-                onClick={() => {
-                  setIsPlaying(false);
-                  setSelectedIdx(Math.min(STEPS.length - 1, selectedIdx + 1));
-                }}
+                onClick={next}
                 disabled={selectedIdx === STEPS.length - 1}
                 className="rounded-full bg-lake-blue text-white px-5 py-2 font-mono font-medium hover:bg-lake-blue/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all inline-flex items-center gap-1.5 min-h-[44px] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2"
               >

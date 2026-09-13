@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CalculatorIcon, ZapIcon, DatabaseIcon } from '@hugeicons/core-free-icons';
+import { useNumericInput } from './simulation/useNumericInput';
 
 export default function AddressingModeVisualizer() {
   const [mode, setMode] = useState<'memory' | 'leaq'>('memory');
@@ -8,6 +9,18 @@ export default function AddressingModeVisualizer() {
   const baseVal = 0x1000;
   const [indexVal, setIndexVal] = useState(2);
   const [scale, setScale] = useState(4);
+
+  const immInput = useNumericInput({
+    value: imm,
+    onChange: setImm,
+    allowNegative: true,
+  });
+
+  const indexInput = useNumericInput({
+    value: indexVal,
+    onChange: setIndexVal,
+    allowNegative: true,
+  });
 
   // Cálculo do endereço efetivo
   const scaledIndex = indexVal * scale;
@@ -33,8 +46,10 @@ export default function AddressingModeVisualizer() {
         {/* Alternância de Modo */}
         <div className="flex rounded-full border border-ash bg-parchment p-1">
           <button
+            type="button"
             onClick={() => setMode('memory')}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-mono font-medium transition-all min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
+            aria-pressed={mode === 'memory'}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-mono font-medium transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
               mode === 'memory'
                 ? 'bg-white text-off-black shadow-sm border border-ash'
                 : 'text-smoke hover:text-off-black'
@@ -44,8 +59,10 @@ export default function AddressingModeVisualizer() {
             <span>Acesso à Memória (movq)</span>
           </button>
           <button
+            type="button"
             onClick={() => setMode('leaq')}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-mono font-medium transition-all min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
+            aria-pressed={mode === 'leaq'}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-mono font-medium transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
               mode === 'leaq'
                 ? 'bg-white text-off-black shadow-sm border border-ash'
                 : 'text-smoke hover:text-off-black'
@@ -94,12 +111,19 @@ export default function AddressingModeVisualizer() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {/* Deslocamento (Imm) */}
         <div className="rounded-2xl border border-ash bg-parchment p-3.5">
-          <label className="text-xs font-mono text-smoke block mb-1">Deslocamento (Imm):</label>
+          <label htmlFor="addr-imm" className="text-xs font-mono text-smoke block mb-1">
+            Deslocamento (Imm):
+          </label>
           <input
-            type="number"
-            value={imm}
-            onChange={(e) => setImm(parseInt(e.target.value) || 0)}
-            className="w-full rounded-xl bg-white border border-ash px-3 py-1.5 font-mono text-xs text-off-black focus:outline-none focus:ring-2 focus:ring-lake-blue"
+            id="addr-imm"
+            type="text"
+            inputMode="numeric"
+            value={immInput.value}
+            onChange={immInput.onChange}
+            onBlur={immInput.onBlur}
+            onKeyDown={immInput.onKeyDown}
+            aria-label="Deslocamento imediato em bytes"
+            className="w-full rounded-xl bg-white border border-ash px-3 py-1.5 font-mono text-xs text-off-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue font-bold"
           />
           <span className="text-[10px] font-mono text-smoke block mt-1.5">Offset constante em bytes</span>
         </div>
@@ -115,12 +139,19 @@ export default function AddressingModeVisualizer() {
 
         {/* Índice (%rcx) */}
         <div className="rounded-2xl border border-ash bg-parchment p-3.5">
-          <label className="text-xs font-mono text-smoke block mb-1">Índice (%rcx):</label>
+          <label htmlFor="addr-index" className="text-xs font-mono text-smoke block mb-1">
+            Índice (%rcx):
+          </label>
           <input
-            type="number"
-            value={indexVal}
-            onChange={(e) => setIndexVal(parseInt(e.target.value) || 0)}
-            className="w-full rounded-xl bg-white border border-ash px-3 py-1.5 font-mono text-xs text-off-black focus:outline-none focus:ring-2 focus:ring-lake-blue"
+            id="addr-index"
+            type="text"
+            inputMode="numeric"
+            value={indexInput.value}
+            onChange={indexInput.onChange}
+            onBlur={indexInput.onBlur}
+            onKeyDown={indexInput.onKeyDown}
+            aria-label="Índice de elemento no array"
+            className="w-full rounded-xl bg-white border border-ash px-3 py-1.5 font-mono text-xs text-off-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue font-bold"
           />
           <span className="text-[10px] font-mono text-smoke block mt-1.5">Posição do elemento (i)</span>
         </div>
@@ -132,8 +163,10 @@ export default function AddressingModeVisualizer() {
             {[1, 2, 4, 8].map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => setScale(s)}
-                className={`rounded-lg py-1 font-mono text-xs font-bold border transition-all ${
+                aria-pressed={scale === s}
+                className={`flex items-center justify-center min-h-[44px] rounded-lg py-1 font-mono text-xs font-bold border transition-all ${
                   scale === s
                     ? 'bg-lake-blue text-white border-lake-blue shadow-sm'
                     : 'bg-white border-ash text-graphite hover:border-lake-blue hover:text-off-black'

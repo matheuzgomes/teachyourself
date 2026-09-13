@@ -1,0 +1,46 @@
+# Politica de Prosa Autoral de Engenharia do TeachYourself (Prose Policy)
+policy_id: "prose"
+version: "2.1.0"
+description: "Regras de engenharia de prosa, continuidade Given -> New, assimetria editorial e densidade semantica."
+
+discourse_continuity:
+  pattern: "GIVEN_TO_NEW"
+  rules:
+    - "A ancoragem inicial do periodo deve referenciar um elemento Given apresentado no periodo anterior."
+    - "Empilhamento enciclopedico de definicoes desconectadas e estritamente proibido."
+
+editorial_principles:
+  editorial_asymmetry:
+    enforce_asymmetry: true
+    forbid_forced_three_item_lists: true
+    depth_follows_conceptual_difficulty: true
+  section_closure:
+    forbid_moralizing_summaries: true
+    prefer_causal_transition_to_next_problem: true
+  lexical_repetition:
+    forbid_synonym_roulette: true
+    require_consistent_domain_nouns: true
+    allowed_variation_targets: ["support_verbs", "connectives"]
+  reference_compression:
+    encourage_natural_anaphora_after_anchor: true
+  compressed_contrast:
+    forbid_theatrical_parallelisms: true
+  subject_verb_proximity:
+    maximize_proximity_in_claim_and_mechanism: true
+  rhetorical_question_restraint:
+    allow_only_when_gap_is_immediately_resolved: true
+
+semantic_density:
+  forbid_paraphrase_cycles: true
+  cycle_signature: "CLAIM -> PARAPHRASE -> TRIVIAL_CONCLUSION"
+  each_sentence_must_do_work: true
+  allowed_sentence_roles:
+    - "CLAIM"
+    - "EXPLANATION"
+    - "CAUSE"
+    - "CONSEQUENCE"
+    - "EXAMPLE"
+    - "QUALIFICATION"
+    - "TRANSITION"
+    - "SUMMARY"
+    - "DEFINITION"

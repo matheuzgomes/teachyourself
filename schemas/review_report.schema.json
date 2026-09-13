@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://teachyourself.dev/schemas/review_report.schema.json",
+  "title": "ReviewReport",
+  "description": "Schema para relatorios estruturados de revisores semanticos e de prosa",
+  "type": "object",
+  "required": ["reviewer_id", "gate", "status", "findings", "timestamp"],
+  "properties": {
+    "reviewer_id": { "type": "string" },
+    "gate": {
+      "type": "string",
+      "enum": [
+        "EPISTEMIC_VALIDATION",
+        "PREREQUISITE_CLOSURE",
+        "EXPLANATION_LADDER",
+        "INFERENCE_TRUST",
+        "DISCOURSE_NATURALNESS",
+        "SEMANTIC_REDUNDANCY",
+        "VISUAL_INVARIANTS",
+        "ASSESSMENT_INTEGRITY"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "WARN"]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target_element", "type", "severity", "evidence", "recommendation"],
+        "properties": {
+          "target_element": { "type": "string" },
+          "type": { "type": "string" },
+          "severity": { "type": "string", "enum": ["HARD_FAIL", "SOFT_FAIL", "WARN"] },
+          "evidence": { "type": "object" },
+          "recommendation": { "type": "string" }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "timestamp": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

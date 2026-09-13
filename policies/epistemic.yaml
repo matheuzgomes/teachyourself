@@ -1,0 +1,44 @@
+# Politica Epistemica do TeachYourself (Epistemic Policy)
+policy_id: "epistemic"
+version: "4.2.0"
+description: "Regras formais de integridade epistemica, autoridade de fontes e proveniencia de claims."
+
+authority_levels:
+  NORMATIVE:
+    weight: 1.0
+    roles: ["NORMATIVE_SPEC", "ARCHITECTURAL_SPEC"]
+    description: "Normas internacionais e especificacoes oficiais dos criadores da arquitetura."
+  CANONICAL_ACADEMIC:
+    weight: 0.9
+    roles: ["PRIMARY_RESEARCH", "SEMINAL_PAPER"]
+    description: "Artigos seminais revisados por pares e fundacionais da ciencia da computacao."
+  REFERENCE_IMPLEMENTATION:
+    weight: 0.85
+    roles: ["REFERENCE_IMPLEMENTATION"]
+    description: "Codigo-fonte canônico pinnado por commit SHA ou release tag (Linux, LLVM, xv6)."
+  SECONDARY_SYNTHESIS:
+    weight: 0.7
+    roles: ["TEXTBOOK", "SECONDARY_SYNTHESIS", "PEDAGOGICAL_EXPOSITION"]
+    description: "Livros-texto universitarios de referencia (CSAPP, Patterson & Hennessy, OSTEP)."
+
+rules:
+  provenance:
+    orphan_claim_allowed: false
+    orphan_claim_severity: "HARD_FAIL"
+    reference_provenance_coverage_pct: 100.0
+    allowed_claim_types:
+      - "CANONICAL"
+      - "DERIVED"
+      - "PEDAGOGICAL_ANALOGY"
+      - "CONCRETE_EXAMPLE"
+      - "DISCOURSE_TRANSITION"
+
+  source_pinning:
+    require_exact_locator: true
+    require_retrieved_date_for_code: true
+    prohibit_superseded_standards_without_historical_context: true
+
+  empirical_claims:
+    require_explicit_hardware_scope: true
+    prohibit_unscoped_performance_numbers: true
+    prohibit_universalized_implementation_details: true

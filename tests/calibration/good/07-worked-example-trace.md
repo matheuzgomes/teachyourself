@@ -1,0 +1,1 @@
+Considere o par de instrucoes add t0, t1, t2 seguido de sub t3, t0, t4. No ciclo 3, o estagio EX calcula o resultado de t0; no ciclo 4, a fiação de forwarding encaminha esse valor diretamente para a entrada da ALU antes da gravacao no estagio WB.

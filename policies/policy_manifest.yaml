@@ -1,0 +1,29 @@
+# Matriz de Versões das Políticas Normativas do TeachYourself
+# Policy as Code: Registro Semver de Políticas Ativas
+manifest_version: "1.0.0"
+version: "1.0.0"
+updated_at: "2026-09-12T14:00:00Z"
+
+active_policies:
+  epistemic: "4.2.0"
+  pedagogy: "3.0.0"
+  prose: "2.1.0"
+  anti_slop: "2.0.0"
+  visuals: "2.0.0"
+  assessment: "2.0.0"
+  compression: "1.0.0"
+
+minimum_supported_policy_version:
+  epistemic: "4.0.0"
+  pedagogy: "2.5.0"
+  prose: "2.0.0"
+  anti_slop: "1.5.0"
+  visuals: "1.0.0"
+  assessment: "1.0.0"
+  compression: "1.0.0"
+
+enforcement_rules:
+  fail_closed: true
+  allow_missing_policies: false
+  allow_version_downgrade: false
+  require_signed_manifest: true

@@ -115,7 +115,9 @@ export default function CpuFlagsVisualizer() {
           {PRESETS.map((p, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => setSelectedPresetIdx(idx)}
+              aria-pressed={selectedPresetIdx === idx}
               className={`rounded-2xl border p-3.5 text-xs font-mono text-left transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue ${
                 selectedPresetIdx === idx
                   ? 'border-lake-blue bg-white text-lake-blue font-medium ring-2 ring-lake-blue/20 shadow-sm'
