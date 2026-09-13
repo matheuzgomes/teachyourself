@@ -14,7 +14,6 @@ import LockPaths from "../../../components/diagrams/LockPaths.astro";
 import DeadlockCycle from "../../../components/diagrams/DeadlockCycle.astro";
 import DeepDive from "../../../components/DeepDive.astro";
 import Term from "../../../components/Term.astro";
-import PredictionChallenge from "../../../components/PredictionChallenge";
 
 {/* Curriculum Ledger 07: KNOWN=[cache 64B, TLB, pilha, ABI, syscall, troca de contexto, COW] CURRENT=[MESI, falso compartilhamento, TSO, RMW, CAS, stdatomic, futex, deadlock] DEFERRED=[RCU, lock-free avancado, NUMA] */}
 
@@ -219,29 +218,6 @@ int consome(void) {
 2. **Par release e acquire:** escrita release descarrega tudo antes de publicar e leitura acquire segura tudo depois, formando a passagem de mensagem segura.
 3. **Sequencial (`seq_cst`, o padrão):** ordem global única para todos, com custo de `lock` ou barreira no x86-64.
 
-<PredictionChallenge
-  client:load
-  question="Duas threads somam na mesma variável sem trava nem atômico e o resultado sai menor que o esperado. Qual é a causa e qual a correção mínima?"
-  correctOptionId="B"
-  technicalTakeaway="Leitura-modificação-escrita em 3 gestos perde atualização em corrida. A correção mínima é 1 ordem atômica ou 1 trava."
-  options={[
-    {
-      id: "A",
-      label: "A ALU somou errado por falta de precisão e a correção é usar ponto flutuante.",
-      explanation: "Incorreto. A soma na ALU é exata. O erro é a interlevação das 3 etapas entre núcleos."
-    },
-    {
-      id: "B",
-      label: "As 3 etapas se intercalaram e 1 atualização se perdeu; a correção é CAS com repetição ou trava.",
-      explanation: "Exato! Ler juntos, somar separado e gravar por cima perde conta. Atômico torna as 3 etapas indivisíveis."
-    },
-    {
-      id: "C",
-      label: "O compilador apagou a soma por undefined behavior e a correção é desligar a otimização.",
-      explanation: "Incorreto. Sem sincronização há corrida de dados, mas a perda mecânica é a interlevação, não a otimização."
-    }
-  ]}
-/>
 
 ---
 

@@ -7,7 +7,6 @@ trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 ---
 
 import VirtualMemoryVisualizer from "../../../components/VirtualMemoryVisualizer";
-import PredictionChallenge from "../../../components/PredictionChallenge";
 import DeepDive from "../../../components/DeepDive.astro";
 import Term from "../../../components/Term.astro";
 
@@ -135,29 +134,6 @@ Quando a <Term id="CPU">CPU</Term> emite um endereço virtual de 48 bits, a <Ter
     O papel central da <Term id="MMU">MMU</Term> consiste em consultar as tabelas de páginas em memória para traduzir esse número de 36 bits em um **Número de Página Física (Physical Page Number, PPN)**.
     Uma vez obtido o PPN de hardware, a <Term id="MMU">MMU</Term> concatena o PPN com os 12 bits do deslocamento original para formar o endereço físico de 64 bits que será enviado à memória física.
 
-<PredictionChallenge
-  client:load
-  question="Em uma arquitetura x86-64 com páginas padrão de 4 KiB (4096 bytes), a CPU emite uma leitura no endereço virtual 0x00007fffffffe028. Para onde vão os 12 bits menos significativos desse endereço (bits 0 a 11, valor 0x028) durante a tradução da MMU?"
-  correctOptionId="B"
-  technicalTakeaway="Como a página virtual e a moldura física possuem o mesmo tamanho de 4096 bytes (2^12), o deslocamento dentro da página é invariante. Os 12 bits inferiores (0x028) passam inalterados diretamente para a formação do endereço físico."
-  options={[
-    {
-      id: "A",
-      label: "São utilizados pela MMU para indexar a tabela de primeiro nível PML4.",
-      explanation: "Incorreto. As tabelas de páginas utilizam os bits superiores [47:12] divididos em blocos de 9 bits para selecionar as entradas."
-    },
-    {
-      id: "B",
-      label: "Passam inalterados diretamente para o endereço físico como o deslocamento (Page Offset) dentro da moldura física.",
-      explanation: "Exato! Como tanto a página virtual quanto a moldura de página física possuem exatamente 4096 bytes, a posição relativa do byte dentro do bloco de 4 KiB é rigorosamente a mesma no espaço virtual e no espaço físico."
-    },
-    {
-      id: "C",
-      label: "São descartados pela CPU porque a memória RAM só consegue transferir blocos de 4096 bytes de uma única vez.",
-      explanation: "Incorreto. A memória física transfere dados em granularidade de linhas de cache (64 bytes) e entrega a palavra exata solicitada pelo deslocamento."
-    }
-  ]}
-/>
 
 ---
 
@@ -236,29 +212,6 @@ Cada entrada de 64 bits na tabela de páginas final (Entrada de Tabela, ou <Term
 O bit NX (No-Execute) é a base da proteção contemporânea de software contra exploits de corrupção de memória.
 Ao marcar as molduras da pilha de execução e do heap com `NX = 1`, o kernel impede que códigos injetados por vulnerabilidades de estouro de buffer sejam executados pela CPU.
 
-<PredictionChallenge
-  client:load
-  question="O registrador de instrução %rip tenta buscar a próxima instrução em um endereço de memória cuja entrada PTE correspondente possui o bit NX (No-Execute, bit 63) ativado como 1. O que acontece no hardware?"
-  correctOptionId="B"
-  technicalTakeaway="A MMU identifica a tentativa de busca de instrução em página sem permissão de execução e dispara uma exceção de falta de página (#PF) com código de erro de execução, impedindo que dados na pilha ou heap sejam executados como código."
-  options={[
-    {
-      id: "A",
-      label: "A CPU executa a instrução normalmente, mas grava uma mensagem de advertência nos logs do kernel.",
-      explanation: "Incorreto. O bit NX é uma barreira de segurança estrita em hardware: a CPU recusa-se a carregar e decodificar a instrução."
-    },
-    {
-      id: "B",
-      label: "A MMU bloqueia a busca da instrução e dispara uma exceção de falta de página (#PF), impedindo a execução de shellcodes injetados em áreas de dados.",
-      explanation: "Exato! O bit NX transforma a pilha e o heap em áreas estritamente de dados. Qualquer tentativa de executar instruções nessa região resulta em falta de página imediata, abortando o exploit com SIGSEGV."
-    },
-    {
-      id: "C",
-      label: "A MMU traduz automaticamente a instrução para uma operação neutra de nop e prossegue com a execução.",
-      explanation: "Incorreto. A CPU não altera as instruções do programa; ela bloqueia a execução por violação de privilégio de acesso."
-    }
-  ]}
-/>
 
 ---
 
@@ -304,29 +257,6 @@ Quando a <Term id="CPU">CPU</Term> emite um endereço virtual para buscar uma in
 
 Graças à localidade temporal e espacial (Módulo 04), a taxa de acerto do <Term id="TLB">TLB</Term> em cargas regulares típicas supera noventa e nove por cento, amortecendo o caminhamento multinível.
 
-<PredictionChallenge
-  client:load
-  question="Qual a distinção causal fundamental de arquitetura entre um TLB Miss e um Page Fault?"
-  correctOptionId="B"
-  technicalTakeaway="O TLB Miss é resolvido inteiramente em hardware pelo Page Table Walker da MMU em dezenas de ciclos sem intervenção do SO. O Page Fault é uma exceção de interrupção de hardware (#PF) tratada pelo software do kernel do sistema operacional."
-  options={[
-    {
-      id: "A",
-      label: "São termos sinônimos para o mesmo erro de memória, diferenciando apenas se o acesso foi de leitura ou escrita.",
-      explanation: "Incorreto. São eventos arquiteturais totalmente distintos em níveis diferentes de abstração e camadas de controle."
-    },
-    {
-      id: "B",
-      label: "O TLB Miss é resolvido em hardware pela MMU lendo as tabelas na RAM; o Page Fault é uma exceção de interrupção tratada pelo kernel do sistema operacional.",
-      explanation: "Exato! O TLB Miss ocorre quando a tradução não está na cache da MMU (resolvido pelo Page Table Walker em dezenas de ciclos). O Page Fault ocorre quando a página está ausente ou viola permissões, exigindo a intervenção do tratador do kernel."
-    },
-    {
-      id: "C",
-      label: "O TLB Miss encerra imediatamente o processo com SIGSEGV, enquanto o Page Fault apenas recarrega o registrador %cr3.",
-      explanation: "Incorreto. O TLB Miss é transparente e nunca aborta programas. Apenas falhas de proteção sem tratamento em Page Fault geram SIGSEGV."
-    }
-  ]}
-/>
 
 ### Troca de Contexto e Identificadores PCID
 Quando o sistema operacional troca de processo, os endereços virtuais passam a pertencer a outro programa.
@@ -397,29 +327,6 @@ Com a memória virtual, o kernel executa uma otimização profunda:
 5. O tratador do kernel detecta que a página é do tipo COW: ele aloca uma nova moldura física livre, copia o bloco de 4 KiB da página compartilhada para a nova moldura, atualiza a tabela do processo escritor apontando para a nova cópia com `R/W = 1`, e reinicia a instrução.
 6. A partir desse instante, cada processo passa a ter sua própria cópia independente da página modificada.
 
-<PredictionChallenge
-  client:load
-  question="Um processo pai consome 16 Gigabytes de memória física. O programa cria um processo filho com fork(). Por que a criação leva microssegundos típicos em vez de segundos?"
-  correctOptionId="B"
-  technicalTakeaway="O Linux não duplica os 16 GiB de memória: ele apenas duplica as tabelas de páginas PML4 marcando todas as PTEs compartilhadas como somente-leitura (R/W = 0). As páginas de 4 KiB só são copiadas fisicamente sob demanda quando houver escrita (Copy-on-Write)."
-  options={[
-    {
-      id: "A",
-      label: "Porque o Linux utiliza circuitos de DMA para duplicar os 16 GiB em segundo plano na memória RAM.",
-      explanation: "Incorreto. Copiar 16 GiB de dados consumiria gigabytes por segundo de barramento e levaria centenas de milissegundos."
-    },
-    {
-      id: "B",
-      label: "Porque o kernel não duplica os dados: ele apenas duplica as tabelas de páginas como somente-leitura, copiando molduras de 4 KiB individuais sob demanda quando houver escrita.",
-      explanation: "Exato! Graças à memória virtual e ao Copy-on-Write, pai e filho compartilham as mesmas páginas físicas instantaneamente. Uma moldura só é copiada quando um dos processos executa uma alteração de dados."
-    },
-    {
-      id: "C",
-      label: "Porque o processo filho inicia vazio e só herda os descritores de arquivos abertos.",
-      explanation: "Incorreto. O processo filho herda o estado completo de memória do pai, incluindo código, dados globais, heap e pilha."
-    }
-  ]}
-/>
 
 ### 3. Faltas Maiores (Major Page Faults)
 Uma falta maior ocorre quando os dados necessários não residem na memória RAM física.

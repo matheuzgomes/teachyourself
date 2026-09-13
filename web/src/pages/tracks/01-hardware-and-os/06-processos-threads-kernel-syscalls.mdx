@@ -12,7 +12,6 @@ import TaskStructMap from "../../../components/diagrams/TaskStructMap.astro";
 import CloneTree from "../../../components/diagrams/CloneTree.astro";
 import DeepDive from "../../../components/DeepDive.astro";
 import Term from "../../../components/Term.astro";
-import PredictionChallenge from "../../../components/PredictionChallenge";
 
 {/* Curriculum Ledger 06: KNOWN=[RAM linear, cache, TLB, virtual vs fisico, COW, pilha, ABI] CURRENT=[aneis de privilegio, syscall, task_struct, clone, troca de contexto, sinais] DEFERRED=[MESI, TSO, atomicos, futex, perf sched] */}
 
@@ -200,29 +199,6 @@ A `clone()` recebe flags que dizem o que a nova tarefa compartilha:
 ### PID vs TGID em 1 parágrafo
 O padrão <Term id="POSIX">POSIX</Term> exige que todas as threads vejam o mesmo `getpid()`. O kernel guarda 2 números: `pid` único da tarefa e `tgid` do grupo. `getpid()` devolve o `tgid`, `gettid()` devolve o `pid`.
 
-<PredictionChallenge
-  client:load
-  question="Duas tarefas compartilham o mesmo mapa de memória e o mesmo %cr3, mas têm pilhas de usuário diferentes. Pelo modelo do escalonador Linux, o que elas são e o que acontece ao trocar de uma para a outra?"
-  correctOptionId="B"
-  technicalTakeaway="São threads do mesmo processo: a troca preserva %cr3 e TLB quente, sem recarregar tabelas."
-  options={[
-    {
-      id: "A",
-      label: "São processos distintos e a troca recarrega %cr3 com TLB flush.",
-      explanation: "Incorreto. Mesmo mapa significa mesmo %cr3, e o kernel pula a recarga quando os mapas coincidem."
-    },
-    {
-      id: "B",
-      label: "São threads do mesmo processo e a troca mantém %cr3 com TLB preservado.",
-      explanation: "Exato! Mesmo mapa, mesma PML4, sem flush. Só pilha e registradores trocam."
-    },
-    {
-      id: "C",
-      label: "São o mesmo programa rodando 2 vezes sem compartilhar nada.",
-      explanation: "Incorreto. Compartilhar o mapa é exatamente o que define threads contra processos."
-    }
-  ]}
-/>
 
 ---
 

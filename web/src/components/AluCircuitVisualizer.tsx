@@ -301,7 +301,7 @@ export default function AluCircuitVisualizer() {
                     <span>Cout{bitIdx} = <strong className="text-off-black">{carryOut}</strong></span>
                   </div>
                   {isLsb && isSub && (
-                    <span className="inline-block text-[9px] font-bold text-lake-blue bg-lake-blue/10 px-2 py-0.5 rounded-full">
+                    <span className="inline-block text-[10px] font-bold text-lake-blue bg-lake-blue/10 px-2 py-0.5 rounded-full">
                       C0 = 1 injetado pelo fio SUB (+1 gratuito)
                     </span>
                   )}

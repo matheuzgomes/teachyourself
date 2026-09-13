@@ -14,9 +14,8 @@ import CmosInverterCard from '../../../components/circuits/CmosInverterCard';
 import CmosNandCard from '../../../components/circuits/CmosNandCard';
 import AdderCircuitsCard from '../../../components/circuits/AdderCircuitsCard';
 import MasterSlaveFlipFlopCard from '../../../components/circuits/MasterSlaveFlipFlopCard';
-import ClockChronogramCard from '../../../components/circuits/ClockChronogramCard';
 import RegisterBankCard from '../../../components/circuits/RegisterBankCard';
-import PredictionChallenge from '../../../components/PredictionChallenge';
+import ClockChronogramCard from '../../../components/circuits/ClockChronogramCard';
 import Term from '../../../components/Term.astro';
 
 {/* Curriculum Ledger 00: KNOWN=[operacoes basicas, ideia de programa e variavel] CURRENT=[chave, transistor, inversor, NAND, soma, latch, flip-flop, clock, registrador] DEFERRED=[bit, byte, overflow, complemento de dois, assembly, ISA, ABI, cache, memoria virtual, C, GDB] */}
@@ -104,31 +103,6 @@ A montagem do inversor CMOS liga os Gates de ambos os transistores no mesmo fio 
 A consequência de engenharia mais relevante da topologia CMOS é o **consumo de energia estática nulo**:
 > O inversor CMOS entrega na saída o inverso do que recebeu na entrada. Em regime permanente estável (`0` ou `1`), ou a chave de cima está fechada e a de baixo aberta, ou a de cima está aberta e a de baixo fechada. Nunca existe um caminho aberto contínuo ligando VDD diretamente ao terra GND. A corrente elétrica só flui durante o chaveamento dinâmico para carregar e descarregar as capacitâncias dos fios e dos Gates subsequentes.
 
-<PredictionChallenge
-  client:load
-  question="Antes de acionar a chave no simulador: se aplicarmos uma tensão alta de 3.3V (nível lógico 1) na entrada de um Inversor CMOS, qual o estado físico dos transistores e qual a tensão final no fio de saída?"
-  options={[
-    {
-      id: "a",
-      text: "O transistor PMOS superior conduz corrente de VDD e o NMOS inferior abre, elevando a saída para 3.3V.",
-      isCorrect: false,
-      explanation: "Tensão alta no gate de um PMOS desativa seu canal condutor, cortando a conexão com VDD."
-    },
-    {
-      id: "b",
-      text: "O transistor NMOS inferior conduz drenando a saída para o terra GND (0V) e o PMOS superior abre cortando VDD.",
-      isCorrect: true,
-      explanation: "Correto! Tensão positiva atrai elétrons criando o canal condutor no NMOS para o terra GND. Simultaneamente, a tensão positiva no PMOS desativa seu canal. A saída estabiliza em 0V com consumo estático nulo."
-    },
-    {
-      id: "c",
-      text: "Ambos os transistores conduzem simultaneamente gerando 1.65V.",
-      isCorrect: false,
-      explanation: "A condução simultânea só ocorre durante a fração infinitesimal da transição, nunca em regime estacionário."
-    }
-  ]}
-/>
-
 ---
 
 ## Parte 0B: Decisões Lógicas e a Universalidade da Porta NAND
@@ -183,31 +157,6 @@ A matemática formal denomina essa propriedade **universalidade funcional** (ou 
    A porta <Term id="XOR">XOR</Term> dá 1 se exatamente uma das entradas for 1, mas dá 0 se ambas forem iguais. Quatro portas NAND interligadas produzem a função XOR com perfeição mecânica.
 
 <XorFromNandDiagram />
-
-<PredictionChallenge
-  client:load
-  question="Desafio de Reconstrução: você possui apenas portas universais NAND. Como transformar uma única porta NAND de duas entradas em um inversor (porta NOT) perfeito?"
-  options={[
-    {
-      id: "a",
-      text: "Conectar uma das entradas ao terra GND (0V) e aplicar o sinal na outra.",
-      isCorrect: false,
-      explanation: "Se uma entrada for mantida em 0V, a saída da NAND permanecerá travada em 1 independentemente da outra entrada."
-    },
-    {
-      id: "b",
-      text: "Unir fisicamente os dois pinos de entrada da porta NAND no mesmo fio de sinal.",
-      isCorrect: true,
-      explanation: "Correto! Ao unir os dois pinos, ambas as entradas recebem 0 juntas (gerando saída 1) ou 1 juntas (gerando saída 0). Isso implementa rigorosamente a tabela-verdade do inversor NOT."
-    },
-    {
-      id: "c",
-      text: "Inverter a polaridade dos pinos de alimentação VDD e terra GND.",
-      isCorrect: false,
-      explanation: "Inverter a alimentação danifica o circuito integrado por queima das junções semicondutoras internas."
-    }
-  ]}
-/>
 
 ---
 
@@ -291,31 +240,6 @@ O circuito opera em quatro regimes:
 * **Limpeza (Set = 0, Reset = 1):** O sinal Reset força a saída $Q = 0$. O circuito retém 0 no latch SR.
 * **Estado Proibido (Set = 1, Reset = 1):** Se Set e Reset forem ativados juntos, ambas as saídas são forçadas a zero. Ao soltar ambos os comandos simultaneamente, o circuito entra em oscilação imprevisível (metaestabilidade).
 
-<PredictionChallenge
-  client:load
-  question="Explique o Mecanismo: você colocou a entrada Set em 1, gravando o bit 1 na saída Q. Em seguida, você desativa Set retornando-o para 0. Por que a saída Q permanece em nível 1 em vez de apagar?"
-  options={[
-    {
-      id: "a",
-      text: "Porque a saída Q_negada foi para 0 e esse sinal alimenta a porta NOR superior, mantendo Q em 1 mesmo com Set desligado.",
-      isCorrect: true,
-      explanation: "Exato! A realimentação cruzada sustenta o estado: a saída Q (1) mantém a porta inferior com saída 0 (Q_negada), e esse 0 é injetado de volta na porta superior. Como Reset=0 e Q_negada=0, a saída Q é mantida em 1 pela física da porta NOR."
-    },
-    {
-      id: "b",
-      text: "Porque a porta lógica retém eletricidade estática residual como uma bateria química.",
-      isCorrect: false,
-      explanation: "Portas lógicas não possuem baterias químicas internas; o sinal é sustentado ativamente pela alimentação contínua e realimentação de corrente."
-    },
-    {
-      id: "c",
-      text: "Porque o sinal Reset precisa receber um pulso negativo (-3.3V) para desligar.",
-      isCorrect: false,
-      explanation: "Circuitos CMOS digitais operam na faixa de 0V a 3.3V; não há pulsos negativos na operação lógica padrão."
-    }
-  ]}
-/>
-
 Para afastar o estado proibido, os engenheiros criaram o **Latch D (Data Latch)**: usamos um único fio de dados ($D$) com um inversor e uma chave de permissão (*Enable*), impedindo que o circuito receba ordens contraditórias de Set e Reset.
 
 ---
@@ -345,31 +269,6 @@ Dois compartimentos são colocados em série sob sinais de clock opostos:
 | **Borda de Descida** | $1 \rightarrow 0$ | **Abre** | **Trava** | Libera nova amostra | Retém $Q$ | Escravo tranca a saída antes que o Mestre comece a capturar novo valor. |
 
 O flip-flop disparado por borda captura o dado na transição, isolando o estado presente durante o restante do ciclo.
-
-<PredictionChallenge
-  client:load
-  question="O sinal de Clock de um processador acabou de subir de 0V para 3.3V (borda de subida). Dois nanossegundos depois, com o Clock ainda estabilizado em 3.3V (nível alto contínuo), o valor no fio de entrada D se altera. O que acontece com a saída Q do Flip-Flop D?"
-  options={[
-    {
-      id: "a",
-      text: "A saída Q se altera de imediato acompanhando D durante todo o nível alto.",
-      isCorrect: false,
-      explanation: "Isso seria o comportamento de um latch transparente, e não de um flip-flop disparado por borda."
-    },
-    {
-      id: "b",
-      text: "A saída Q permanece inalterada, porque o estágio Mestre trancou sua entrada no momento da borda de subida.",
-      isCorrect: true,
-      explanation: "Correto! Na transição de subida, o estágio Mestre é desconectado da entrada externa. Enquanto o Clock estiver alto, a entrada externa está fisicamente isolada. O flip-flop memoriza o valor visto na borda."
-    },
-    {
-      id: "c",
-      text: "O circuito entra em curto-circuito gerando metaestabilidade.",
-      isCorrect: false,
-      explanation: "Não há curto-circuito: o isolamento do estágio Mestre protege a saída contra qualquer variação subsequente na entrada."
-    }
-  ]}
-/>
 
 ---
 

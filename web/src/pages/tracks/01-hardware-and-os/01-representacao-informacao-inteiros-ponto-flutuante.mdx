@@ -20,7 +20,6 @@ import CastingTrapVisualizer from '../../../components/CastingTrapVisualizer';
 import BitShiftVisualizer from '../../../components/BitShiftVisualizer';
 import Float754Inspector from '../../../components/Float754Inspector';
 import Term from '../../../components/Term.astro';
-import PredictionChallenge from '../../../components/PredictionChallenge';
 import ArianeCrashVisualizer from '../../../components/ArianeCrashVisualizer';
 import CpuFlagsVisualizer from '../../../components/CpuFlagsVisualizer';
 import AluBitSliceDiagram from '../../../components/diagrams/AluBitSliceDiagram.astro';
@@ -184,30 +183,6 @@ A regra SEI CERT C `FLP34-C` exige exatamente isso: validar limites antes de con
 > 2. **Hardware contra linguagem:** o circuito descarta e sinaliza <Term id="OF">OF</Term>, C chama de <Term id="UB">UB</Term> e Ada dispara exceção;
 > 3. **Conversão segura:** validar limites antes de forçar valor em tipo menor.
 
-<PredictionChallenge
-  client:load
-  question="Considere dois cenários de conversão do valor 36842 para int16_t (cujo valor máximo é 32767): primeiro, um narrowing cast a partir do inteiro uint32_t 36842 (0x8FF2); segundo, um cast direto a partir do float 36842.0 em C. Qual é o comportamento exato de acordo com as normas de hardware e linguagem?"
-  correctOptionId="B"
-  technicalTakeaway="Narrowing casts entre inteiros descartam bits superiores no anel modular (0x8FF2 vira -28694). Já a conversão direta de float fora de escala em C é Comportamento Indefinido (C11 §6.3.1.4), enquanto em Ada (Ariane 5) disparou a exceção fatal CONSTRAINT_ERROR."
-  options={[
-    {
-      id: "A",
-      label: "O processador satura o valor automaticamente em 32767 (INT16_MAX) em ambos os casos para manter a integridade numérica dos dados.",
-      explanation: "Incorreto. Processadores de propósito geral (x86, ARM, RISC-V) e a linguagem C não realizam saturação aritmética por padrão. A saturação só ocorre quando instruções vetoriais SIMD dedicadas são explicitamente invocadas."
-    },
-    {
-      id: "B",
-      label: "No narrowing cast entre inteiros, os bits superiores são descartados (0x8FF2 vira -28694 sem exceção); na conversão de float em C o comportamento é indefinido (C11 §6.3.1.4), e em Ada gerou a exceção CONSTRAINT_ERROR.",
-      explanation: "Exato! Em operações inteiras, 36842 (0x8FF2) truncado em 16 bits tem o bit 15 ativo com peso -32768, resultando em -28694. Já a conversão de float que excede o tipo destino em C viola a norma ISO C11 gerando comportamento indefinido, e em Ada paralisou o Ariane 5 com CONSTRAINT_ERROR."
-    },
-    {
-      id: "C",
-      label: "Em ambos os casos o processador interrompe imediatamente a execução do programa com uma falha de proteção geral (SIGSEGV).",
-      explanation: "Incorreto. Truncamento de inteiros e estouro de capacidade em registradores de uso geral não geram falhas de proteção no barramento da CPU; a operação é concluída silenciosamente com dados corrompidos."
-    }
-  ]}
-/>
-
 ---
 
 ## 2. Números Negativos: Complemento de Dois e a Unificação de Circuitos
@@ -294,43 +269,14 @@ A conta fecha com precisão matemática absoluta.
 > 2. **Peso negativo:** o bit à esquerda vale menos $2^{w-1}$ e elimina o zero duplo;
 > 3. **Subtrair sem subtrator:** a <Term id="ALU">ALU</Term> soma $A$ mais inverso de $B$ mais 1.
 
-<PredictionChallenge
-  client:load
-  question="Por que o padrão de bits 1111 1111 em um byte com sinal (int8_t) representa exatamente o valor -1, e não -127 ou -0?"
-  correctOptionId="B"
-  technicalTakeaway="O bit mais significativo possui peso formal de -128, enquanto os 7 bits restantes somam +127. Como -128 + 127 = -1, o sistema elimina a duplicidade de zero e unifica a aritmética na somadora."
-  options={[
-    {
-      id: "A",
-      label: "Porque o primeiro bit funciona como sinal negativo e os outros 7 bits indicam magnitude 1 (- 0000001).",
-      explanation: "Incorreto. Essa seria a convenção de Sinal-Magnitude, abandonada nos anos 1960 por gerar dois zeros (+0 e -0) e exigir circuitos de subtração separados."
-    },
-    {
-      id: "B",
-      label: "Porque o bit mais significativo (MSB) possui peso negativo de -128, enquanto todos os demais bits somam pesos positivos (+127), resultando em -128 + 127 = -1.",
-      explanation: "Exato! Em complemento de dois de 8 bits, o bit 7 tem peso formal -2^7 = -128. Os bits 0 a 6 somam 64 + 32 + 16 + 8 + 4 + 2 + 1 = 127. Somando ambas as partes: -128 + 127 = -1."
-    },
-    {
-      id: "C",
-      label: "Porque a arquitetura x86 reserva o padrão todo em 1s para sinalizar ponteiros nulos.",
-      explanation: "Incorreto. Ponteiro nulo é representado fisicamente por todos os bits zerados (0x00000000) na esmagadora maioria das arquiteturas modernas."
-    }
-  ]}
-/>
+#### Sequência de Negação Aritmética em Complemento de Dois
 
-<details>
-<summary><b>Problema de Parsons 1: Sequência de Negação Aritmética em Complemento de Dois</b></summary>
-
-Ordene a sequência de passos formais para transformar um número inteiro positivo $X$ em seu oposto aditivo $-X$ dentro de um anel modular de $w$ bits:
-
-1. [Passo 1] Obter a palavra binária de $w$ bits correspondente ao valor positivo original $X$.
-2. [Passo 2] Inverter todos os bits da palavra através de portas XOR de controle, computando $\sim X = (2^w - 1) - X$.
-3. [Passo 3] Injetar o nível lógico 1 no pino de transporte inicial C0 do circuito somador digital.
-4. [Passo 4] Somar o padrão invertido ao transporte inicial na ALU, obtendo o inverso aditivo $-X = \sim X + 1$.
-5. [Passo 5] Comprovar o fechamento no anel modular: $X + (\sim X + 1) = X + (2^w - X) = 2^w \equiv 0 \pmod{2^w}$.
-
-**Racional:** A inversão bit a bit complementa a palavra em relação a $2^w - 1$. Ao somar 1 através do pino C0, a grandeza atinge $2^w - X$. Quando o circuito somador adiciona $X$ a essa expressão, o resultado gera um transporte que transborda a largura fixa da palavra, deixando zero nos bits remanescentes.
-</details>
+Para transformar um número inteiro positivo $X$ em seu oposto aditivo $-X$ dentro de um anel modular de $w$ bits:
+1. Obtenha a palavra binária de $w$ bits correspondente ao valor positivo original $X$.
+2. Inverta todos os bits da palavra através de portas XOR de controle, computando $\sim X = (2^w - 1) - X$.
+3. Injete o nível lógico 1 no pino de transporte inicial $C_0$ do circuito somador digital.
+4. Some o padrão invertido ao transporte inicial na ALU, obtendo o inverso aditivo $-X = \sim X + 1$.
+5. Comprove o fechamento no anel modular: $X + (\sim X + 1) = X + (2^w - X) = 2^w \equiv 0 \pmod{2^w}$. A grandeza atinge $2^w - X$, transbordando a largura física da palavra e deixando zero nos bits remanescentes.
 
 ---
 
@@ -551,30 +497,6 @@ O somador digital realiza exatamente a mesma operação elétrica sobre os bits,
 > 2. **O pino C0 ativa a subtração sem custo:** a linha de controle `SUB = 1` inverte os bits de $B$ via portas XOR e injeta o $+1$ diretamente no transporte inicial do Bit 0.
 > 3. **As flags interpretam o resultado cego do somador:** a ALU apenas calcula bits; as flags $ZF$ (zero), $SF$ (sinal negativo), $CF$ (empréstimo unsigned) e $OF$ (estouro signed) informam ao software o que aconteceu.
 
-<PredictionChallenge
-  client:load
-  question="Imagine uma CPU de 4 bits operando no modo de subtração (SUB = 1) com as entradas A = 4 (0100) e B = 6 (0110). Qual será a saída binária e o estado das flags CF (convenção x86) e OF?"
-  correctOptionId="B"
-  technicalTakeaway="Ao calcular 4 - 6, a ALU calcula 0100 + 1001 + 1 = 1110 (-2). O transporte do MSB tem Cin3 = 0 e Cout3 = 0, gerando OF = 0. Na convenção x86, Cout3 = 0 é invertido para CF = 1, registrando o empréstimo unsigned necessário pois 4 < 6."
-  options={[
-    {
-      id: "A",
-      label: "Saída 0010 (+2), CF = 0 e OF = 1.",
-      explanation: "Incorreto. A subtração de 4 - 6 resulta em -2 (1110 em complemento de dois), e não +2."
-    },
-    {
-      id: "B",
-      label: "Saída 1110 (-2), CF = 1 (empréstimo unsigned ocorrido) e OF = 0 (sem estouro signed).",
-      explanation: "Exato! Em 4 bits, 4 - 6 resulta em 1110 (-2 em complemento de dois). Como -2 cabe na faixa de 4 bits [-8, +7], OF = 0. Como 4 < 6 em unsigned, o circuito precisou de empréstimo (Cout3 = 0), que a x86 inverte para CF = 1."
-    },
-    {
-      id: "C",
-      label: "Saída 1110 (-2), CF = 0 e OF = 1.",
-      explanation: "Incorreto. Subtrair dois números positivos (4 e 6) nunca causa estouro com sinal (OF = 0), e 4 < 6 exige empréstimo (CF = 1 em x86)."
-    }
-  ]}
-/>
-
 ---
 
 ### 2.6 Aprofundamento de Linguagem: A Armadilha de INT_MIN em C
@@ -718,32 +640,7 @@ Imagine que seu navegador deseja se conectar a um servidor web na porta de rede 
 
 Para evitar esse problema clássico, a biblioteca de rede <Term id="POSIX">POSIX</Term> fornece funções padronizadas como `htons()` (da máquina para a rede, *Host to Network Short*), que invertem a ordem dos bytes antes de transmiti-los pela rede.
 
-> [!IMPORTANT]
 > **REGRA CENTRAL (Core Principle):** Memória <Term id="RAM">RAM</Term> é endereçada em bytes, mas valores escalares ocupam múltiplos bytes contíguos. Endianness define apenas qual ponta (<Term id="MSB">MSB</Term> ou <Term id="LSB">LSB</Term>) fica no endereço mais baixo. Redes TCP/IP padronizam Big Endian; CPUs x86 usam Little Endian para propagação direta de carry.
-
-<PredictionChallenge
-  client:load
-  question="Um servidor x86_64 envia o número de porta TCP 80 (0x0050) diretamente para a rede sem a conversão htons(). Como um roteador receptor (Big Endian) interpretará essa porta nos cabeçalhos TCP?"
-  correctOptionId="B"
-  technicalTakeaway="Em Little Endian, 0x0050 é serializado como [0x50, 0x00]. Ao ser lido por uma arquitetura Big Endian, 0x50 vira o byte de maior peso, interpretando a porta como 0x5000 (decimal 20480)."
-  options={[
-    {
-      id: "A",
-      label: "O roteador lê normalmente a porta 80, pois inteiros de 16 bits abaixo de 256 não sofrem influência de endianness.",
-      explanation: "Incorreto. A inversão de bytes ocorre para qualquer valor que ocupe mais de 1 byte. O byte de valor zero e o byte de valor 0x50 trocam de posição na leitura."
-    },
-    {
-      id: "B",
-      label: "O roteador lê a porta 20480 (0x5000), pois o byte menos significativo 0x50 foi transmitido primeiro no fluxo de bytes.",
-      explanation: "Exato! Em x86_64, a representação em memória de 0x0050 coloca 0x50 no primeiro endereço e 0x00 no segundo. Na rede (Big Endian), o primeiro byte recebido é interpretado como o mais significativo, resultando em 0x5000 (decimal 20480)."
-    },
-    {
-      id: "C",
-      label: "O pacote é rejeitado imediatamente na camada de enlace (Ethernet) por violação de protocolo elétrico.",
-      explanation: "Incorreto. A placa de rede transmite os bytes perfeitamente sem inspecionar a semântica da camada de aplicação ou transporte. O erro ocorre no handshake TCP da camada de transporte."
-    }
-  ]}
-/>
 
 ---
 
@@ -840,32 +737,7 @@ if (a + b < a) // Tentativa ingênua de checar overflow
 são **completamente eliminadas e apagadas pelo compilador** durante a compilação com níveis de otimização (`-O2` ou `-O3`). Como o compilador assume que overflow com sinal é impossível na semântica da linguagem, ele conclui que a condição é sempre falsa.
 </DeepDive>
 
-> [!IMPORTANT]
 > **REGRA CENTRAL (Core Principle):** Na fronteira de casting em expressões C com tipos signed e unsigned de mesma largura, o valor signed é promovido automaticamente para unsigned. O bit de sinal vira magnitude astronômica ($2^w - 1$), subvertendo testes condicionais de segurança.
-
-<PredictionChallenge
-  client:load
-  question="Em C, qual é o resultado avaliado da expressão condicional if (-1 < 5u) e por qual razão física no compilador/hardware?"
-  correctOptionId="B"
-  technicalTakeaway="A regra de Usual Arithmetic Conversions promove o operando int para unsigned int. O padrão binário de -1 (0xFFFFFFFF) passa a valer 4.294.967.295u, tornando a condição falsa."
-  options={[
-    {
-      id: "A",
-      label: "Verdadeiro, pois matematicamente o número negativo -1 é menor que o número positivo 5 em qualquer sistema numérico.",
-      explanation: "Incorreto. Embora verdadeiro na matemática do papel, a linguagem C impõe regras de conversão implícita que prevalecem sobre a intuição matemática."
-    },
-    {
-      id: "B",
-      label: "Falso, porque a presença do operando unsigned força a promoção de -1 para unsigned int, transformando-o em 4294967295u, que é maior que 5u.",
-      explanation: "Exato! Conforme a norma ISO C e a regra CERT INT31-C, comparações entre signed e unsigned de mesma largura promovem o valor negativo para unsigned. Em 32 bits, -1 vira 0xFFFFFFFF (4.294.967.295u), invertendo a lógica do teste condicional."
-    },
-    {
-      id: "C",
-      label: "Erro de compilação, pois o padrão ISO C proíbe estritamente misturar identificadores signed e unsigned no mesmo operador relacional.",
-      explanation: "Incorreto. A linguagem C permite comparações mistas sem erro sintático. Compiladores modernos podem emitir um aviso (-Wsign-compare), mas o código compila e executa o teste corrompido."
-    }
-  ]}
-/>
 
 ---
 
@@ -984,32 +856,7 @@ Em regime normalizado, o primeiro dígito significativo é sempre 1. Por isso, o
   ]}
 />
 
-> [!IMPORTANT]
 > **REGRA CENTRAL (Core Principle):** No padrão <Term id="IEEE">IEEE</Term> 754, a base é 2: frações com fator primo 5 (como 0.1 e 0.2) são dízimas periódicas infinitas. Em mantissas finitas, arredondamentos são inevitáveis e acumulam erro a cada operação.
-
-<PredictionChallenge
-  client:load
-  question="Por que o valor decimal 0.1 não pode ser representado com exatidão finita em float IEEE 754 de 32 ou 64 bits, gerando discrepâncias como 0.1 + 0.2 = 0.30000000000000004?"
-  correctOptionId="B"
-  technicalTakeaway="Uma fração irredutível p/q tem representação finita na base B se e somente se todos os fatores primos de q dividem B. Como 10 = 2 x 5 e 5 não divide 2, 1/10 é dízima periódica infinita na base 2."
-  options={[
-    {
-      id: "A",
-      label: "Porque os circuitos da FPU não realizam operações aritméticas sobre números com casas decimais ímpares.",
-      explanation: "Incorreto. Circuitos digitais realizam cálculos sobre qualquer padrão de bits, independentemente de paridade decimal."
-    },
-    {
-      id: "B",
-      label: "Porque o denominador 10 contém o fator primo 5, produzindo uma dízima periódica infinita na base 2 (0,0001100110011..._2) que precisa ser truncada na mantissa.",
-      explanation: "Exato! Na base 2, frações finitas exigem denominadores que sejam potências puras de 2 (1/2, 1/4, 1/8). Como 1/10 possui o fator 5, sua expansão binária nunca termina. A mantissa de 23 bits (float32) trunca a dízima, gerando erro de arredondamento inescapável."
-    },
-    {
-      id: "C",
-      label: "Porque o padrão IEEE 754 reserva os primeiros bits da mantissa exclusivamente para armazenar expoentes negativos.",
-      explanation: "Incorreto. O expoente possui seu próprio campo dedicado de 8 bits com viés (+127), completamente separado dos 23 bits da mantissa fracionária."
-    }
-  ]}
-/>
 
 #### Tabela de Rastreamento de Formatos e Casos Especiais (IEEE 754)
 
@@ -1021,20 +868,15 @@ Em regime normalizado, o primeiro dígito significativo é sempre 1. Por isso, o
 | **Infinito ($\pm \infty$)** | `11...11` ($255 / 2047$) | `00...00` ($0$) | $(-1)^s \times \infty$ | Estouro de magnitude (*overflow*) |
 | **Não-Número (NaN)** | `11...11` ($255 / 2047$) | $\ne 0$ | Indefinido | Operação inválida ($0/0$, $\sqrt{-1}$) |
 
-<details>
-<summary><b>Problema de Parsons 2: Pipeline de Adição em Ponto Flutuante IEEE 754</b></summary>
+#### Pipeline de Adição em Ponto Flutuante IEEE 754
 
-Ordene os seis estágios físicos executados pela unidade de ponto flutuante (FPU) para somar dois números normalizados de formato IEEE 754:
-
-1. [Passo 1] Desempacotar os operandos extraindo os bits de sinal, o expoente com viés e a mantissa com o dígito 1 implícito.
-2. [Passo 2] Comparar os expoentes dos dois operandos e calcular a diferença de grandeza $\Delta E = |E_1 - E_2|$.
-3. [Passo 3] Alinhar as mantissas deslocando a fração do menor operando para a direita em $\Delta E$ bits.
-4. [Passo 4] Somar ou subtrair as frações alinhadas no circuito somador de ponto flutuante de acordo com os sinais dos operandos.
-5. [Passo 5] Renormalizar o resultado deslocando a mantissa e ajustando o expoente para restaurar o bit 1 na posição implícita.
-6. [Passo 6] Aplicar o arredondamento segundo o padrão IEEE 754 (round-to-nearest-even) e checar flags de estouro (*overflow* ou *underflow*).
-
-**Racional:** Dois números de escalas distintas não podem ser somados diretamente sem alinhamento prévio. A FPU desloca a mantissa do número menor para a direita até igualar os expoentes, realiza a operação no circuito somador, renormaliza o padrão para isolar o 1 implícito e descarta os resíduos de arredondamento excedentes.
-</details>
+Os seis estágios físicos executados pela unidade de ponto flutuante (FPU) para somar dois números normalizados de formato IEEE 754 ocorrem na seguinte ordem:
+1. **Desempacotar os operandos:** extrair os bits de sinal, o expoente com viés e a mantissa com o dígito 1 implícito.
+2. **Comparar os expoentes:** calcular a diferença de grandeza $\Delta E = |E_1 - E_2|$.
+3. **Alinhar as mantissas:** deslocar a fração do menor operando para a direita em $\Delta E$ bits para igualar as escalas.
+4. **Somar ou subtrair:** operar as frações alinhadas no circuito somador de acordo com os sinais dos operandos.
+5. **Renormalizar o resultado:** deslocar a mantissa e ajustar o expoente para restaurar o bit 1 na posição implícita.
+6. **Arredondamento e flags:** aplicar o arredondamento (round-to-nearest-even) e atualizar as flags de estouro (*overflow* ou *underflow*).
 
 ---
 

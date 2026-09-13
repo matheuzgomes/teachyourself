@@ -8,7 +8,6 @@ trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 
 import CacheSimulator from "../../../components/CacheSimulator";
 import BitFieldLayout from "../../../components/diagrams/BitFieldLayout.astro";
-import PredictionChallenge from "../../../components/PredictionChallenge";
 import DeepDive from "../../../components/DeepDive.astro";
 import Term from "../../../components/Term.astro";
 
@@ -159,29 +158,6 @@ Toda transferência entre níveis de memória ocorre em blocos contíguos de tam
 Quando o programa requisita um único byte de memória que resulta em falha, o hardware busca a linha inteira de 64 bytes ao redor desse endereço.
 Os acessos subsequentes aos próximos 63 bytes serão acertos instantâneos na cache.
 
-<PredictionChallenge
-  client:load
-  question="Um programa em C aloca um vetor contíguo de inteiros de 32 bits (4 bytes cada): int arr[1024]. O array não está na cache. A CPU executa a leitura arr[0]. Quantos inteiros subsequentes (arr[1], arr[2], etc.) já são carregados automaticamente para a cache L1 no mesmo ciclo de barramento?"
-  correctOptionId="B"
-  technicalTakeaway="Como cada linha de cache possui 64 bytes e cada int ocupa 4 bytes, uma única transferência traz exatamente 64 / 4 = 16 inteiros. Ao buscar arr[0], os elementos arr[1] até arr[15] já entram imediatamente na cache L1."
-  options={[
-    {
-      id: "A",
-      label: "Nenhum elemento adicional, pois a CPU só transfere os 4 bytes estritamente requisitados pela instrução movl.",
-      explanation: "Incorreto. A granularidade física de transferência entre memória e cache é a linha de cache inteira (64 bytes), nunca palavras individuais."
-    },
-    {
-      id: "B",
-      label: "15 inteiros adicionais (arr[1] até arr[15]), preenchendo a linha completa de 64 bytes da cache.",
-      explanation: "Exato! Uma linha de 64 bytes acomoda exatamente 16 inteiros de 4 bytes. O acesso a arr[0] sofre uma falta de cache, mas os 15 acessos seguintes serão acertos instantâneos em L1."
-    },
-    {
-      id: "C",
-      label: "Todos os 1024 inteiros do vetor são carregados de uma única vez na cache.",
-      explanation: "Incorreto. 1024 inteiros ocupam 4096 bytes (4 KiB), o que exigiria 64 linhas de cache distintas. A CPU carrega apenas o bloco de 64 bytes correspondente ao endereço requisitado."
-    }
-  ]}
-/>
 
 ### O Impacto da Localidade no Código: O Teste das Matrizes
 A escolha da ordem dos laços de repetição em software afeta drasticamente o aproveitamento da localidade espacial.
@@ -287,29 +263,6 @@ O acerto de cache (Cache Hit) ocorre quando duas condições são simultaneament
 > 2. **Meio usa bits centrais:** blocos vizinhos espalham por conjuntos vizinhos;
 > 3. **Acerto exige dupla:** válido mais Tag igual.
 
-<PredictionChallenge
-  client:load
-  question="Considere uma memória cache de dados L1 de 32 KiB (32.768 bytes), associativa em conjunto de 8 vias (8-way), com linhas de 64 bytes, em um processador com endereços de 64 bits. Como o hardware particiona os 64 bits do endereço nos campos Tag, Set Index e Block Offset?"
-  correctOptionId="A"
-  technicalTakeaway="Offset = 6 bits (2^6 = 64B). Número de conjuntos = 32 KiB / (8 vias * 64B) = 64 conjuntos, logo Set Index = 6 bits (2^6 = 64). Tag = 64 - (6 + 6) = 52 bits."
-  options={[
-    {
-      id: "A",
-      label: "Offset: 6 bits | Set Index: 6 bits | Tag: 52 bits",
-      explanation: "Exato! Cada linha tem 64 bytes (2^6), exigindo 6 bits de offset. A cache tem 32 KiB / (8 * 64) = 64 conjuntos (2^6), exigindo 6 bits de índice. Os 52 bits restantes formam a Tag."
-    },
-    {
-      id: "B",
-      label: "Offset: 8 bits | Set Index: 8 bits | Tag: 48 bits",
-      explanation: "Incorreto. 8 bits de offset corresponderiam a linhas de 256 bytes (2^8 = 256), mas as linhas padrão x86-64 possuem rigorosamente 64 bytes."
-    },
-    {
-      id: "C",
-      label: "Offset: 6 bits | Set Index: 8 bits | Tag: 50 bits",
-      explanation: "Incorreto. 8 bits de índice exigiriam 256 conjuntos, totalizando 256 * 8 * 64 = 131.072 bytes (128 KiB), quatro vezes a capacidade da cache proposta."
-    }
-  ]}
-/>
 
 <CacheSimulator client:load />
 
@@ -354,29 +307,6 @@ Em arquitetura de computadores, toda falha de acesso à cache é formalmente cat
 2. **Falhas de Capacidade (Capacity Misses):** Ocorrem quando o conjunto de trabalho ativo do programa (working set) excede o tamanho total em bytes da memória cache. A cache simplesmente não possui espaço físico suficiente para reter todos os dados em uso simultâneo.
 3. **Falhas de Conflito (Conflict Misses):** Ocorrem em caches de mapeamento direto e associativas em conjunto quando múltiplos blocos de memória mapeiam para o mesmo conjunto, forçando a expulsão de uma linha mesmo quando ainda existem outras linhas e conjuntos totalmente vazios em outros setores da cache. Caches totalmente associativas não sofrem de falhas de conflito.
 
-<PredictionChallenge
-  client:load
-  question="Em uma cache de mapeamento direto (Direct-Mapped, 1-way), um laço de repetição lê alternadamente uma posição de dois vetores distintos: for (...) { soma += vetA[i] + vetB[i]; }. Por uma infeliz coincidência de alocação, vetA[i] e vetB[i] possuem exatamente os mesmos bits de Set Index. O que acontece na cache?"
-  correctOptionId="B"
-  technicalTakeaway="Ocorre a patologia de Thrashing por Falha de Conflito (Conflict Miss): cada leitura de vetA desaloja a linha de vetB e cada leitura de vetB desaloja a linha de vetA, resultando em 100% de faltas mesmo que a cache esteja quase toda vazia."
-  options={[
-    {
-      id: "A",
-      label: "A cache aloca dinamicamente uma via temporária extra para evitar que as duas linhas colidam.",
-      explanation: "Incorreto. Em mapeamento direto (1-way), o hardware possui apenas uma linha física por conjunto. Não existe alocação dinâmica de vias no hardware."
-    },
-    {
-      id: "B",
-      label: "Ocorre o fenômeno de Thrashing: a leitura de vetA expulsa vetB e a leitura de vetB expulsa vetA a cada volta do laço, gerando quase 100% de faltas na cache.",
-      explanation: "Exato! Como compartilham o mesmo Set Index e o conjunto só comporta 1 linha, as duas variáveis ficam competindo pela mesma vaga em um conflito destrutivo permanente."
-    },
-    {
-      id: "C",
-      label: "O sistema operacional detecta a colisão e move automaticamente um dos vetores para outra área da memória RAM.",
-      explanation: "Incorreto. O sistema operacional não monitora endereços de cache em tempo de execução. O conflito é tratado passivamente pelo hardware com penalidade de tempo."
-    }
-  ]}
-/>
 
 ### A Política de Substituição: <Term id="LRU">LRU</Term> (Least Recently Used)
 Quando a <Term id="CPU">CPU</Term> requisita um bloco de memória, o conjunto correspondente é consultado e todas as suas $N$ vias já estão ocupadas por linhas válidas, o hardware precisa decidir qual linha será expulsa para dar lugar ao novo dado.
@@ -425,29 +355,7 @@ Para consolidar a intuição de engenharia sobre o impacto de cada nível, a tab
 
 *(Nota de escopo: os números acima representam ordens de grandeza observadas em benchmarks de hardware padrão como SPEC CPU e medições de temporizadores de alta precisão; as latências reais em ciclos variam conforme a microarquitetura, o estado de energia e a topologia do barramento).*
 
-<PredictionChallenge
-  client:load
-  question="Em um programa em C, uma matriz de inteiros de 2048 x 2048 elementos (16 MiB) é percorrida coluna por coluna: matriz[j][i]. Por que essa travessia é dramaticamente mais lenta do que a travessia linha por linha matriz[i][j]?"
-  correctOptionId="B"
-  technicalTakeaway="Em C (Row-Major), os elementos da mesma linha são contíguos na memória. Ao avançar por coluna, cada iteração pula 2048 * 4 = 8192 bytes, saltando muito além da linha de 64 bytes e provocando uma falta de cache a cada acesso."
-  options={[
-    {
-      id: "A",
-      label: "Porque a instrução assembly gerada pelo compilador para o índice j consome mais ciclos de relógio na ALU.",
-      explanation: "Incorreto. As operações aritméticas de cálculo de índice consom rigorosamente o mesmo tempo em ambos os laços."
-    },
-    {
-      id: "B",
-      label: "Porque o avanço por coluna salta 8.192 bytes a cada iteração, destruindo a localidade espacial e desperdiçando 93% dos dados carregados a cada linha de cache.",
-      explanation: "Exato! Cada linha de 64 bytes carregada é aproveitada para apenas um inteiro antes de ser descartada, forçando a CPU a esperar a DRAM externa a cada leitura."
-    },
-    {
-      id: "C",
-      label: "Porque os chips de memória DRAM física só conseguem descarregar linhas horizontais de dados.",
-      explanation: "Incorreto. A DRAM endereça palavras independentes. A penalidade decorre do desperdício da transferência em blocos de 64 bytes da hierarquia de cache."
-    }
-  ]}
-/>
+
 
 ### Quatro Diretrizes e Heurísticas de Otimização de Software
 O desempenho de software em ambientes de produção depende fortemente do alinhamento entre o código e o comportamento mecânico da hierarquia de caches.

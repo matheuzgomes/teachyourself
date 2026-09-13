@@ -272,10 +272,11 @@ export default function EndToEndTransferSimulator() {
         </div>
 
         {/* Seletor de Cenario de Falha */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Cenários de falha na transferência fim-a-fim">
           <button
+            type="button"
             onClick={() => handleFaultSelect('NONE')}
-            className={`rounded px-3 py-1.5 font-mono text-xs font-semibold transition ${
+            className={`min-h-[44px] rounded-xl px-3.5 py-2 font-mono text-xs font-semibold transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-emerald-400 focus-visible:outline-none ${
               fault === 'NONE'
                 ? 'bg-emerald-600 text-white shadow'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -284,8 +285,9 @@ export default function EndToEndTransferSimulator() {
             1. Transito Normal
           </button>
           <button
+            type="button"
             onClick={() => handleFaultSelect('WIRE_NOISE')}
-            className={`rounded px-3 py-1.5 font-mono text-xs font-semibold transition ${
+            className={`min-h-[44px] rounded-xl px-3.5 py-2 font-mono text-xs font-semibold transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-amber-400 focus-visible:outline-none ${
               fault === 'WIRE_NOISE'
                 ? 'bg-amber-600 text-white shadow'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -294,8 +296,9 @@ export default function EndToEndTransferSimulator() {
             2. Ruido no Cabo
           </button>
           <button
+            type="button"
             onClick={() => handleFaultSelect('ROUTER_RAM')}
-            className={`rounded px-3 py-1.5 font-mono text-xs font-semibold transition ${
+            className={`min-h-[44px] rounded-xl px-3.5 py-2 font-mono text-xs font-semibold transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-rose-400 focus-visible:outline-none ${
               fault === 'ROUTER_RAM'
                 ? 'bg-rose-600 text-white shadow'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -304,8 +307,9 @@ export default function EndToEndTransferSimulator() {
             3. Bitflip em RAM de Roteador
           </button>
           <button
+            type="button"
             onClick={() => handleFaultSelect('DISK_FAULT')}
-            className={`rounded px-3 py-1.5 font-mono text-xs font-semibold transition ${
+            className={`min-h-[44px] rounded-xl px-3.5 py-2 font-mono text-xs font-semibold transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-purple-400 focus-visible:outline-none ${
               fault === 'DISK_FAULT'
                 ? 'bg-purple-600 text-white shadow'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -459,9 +463,10 @@ export default function EndToEndTransferSimulator() {
       {/* Botoes de Navegacao Passo a Passo */}
       <div className="mt-5 flex items-center justify-between pt-2">
         <button
+          type="button"
           onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
           disabled={currentStep === 0}
-          className="rounded border border-slate-700 bg-slate-800 px-4 py-2 font-mono text-xs text-slate-300 transition hover:bg-slate-700 disabled:opacity-40"
+          className="min-h-[44px] rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 font-mono text-xs font-medium text-slate-200 transition hover:bg-slate-700 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-slate-400 focus-visible:outline-none disabled:opacity-40 disabled:pointer-events-none"
         >
           &larr; Passo Anterior
         </button>
@@ -471,9 +476,10 @@ export default function EndToEndTransferSimulator() {
         </span>
 
         <button
+          type="button"
           onClick={() => setCurrentStep((prev) => Math.min(currentStates.length - 1, prev + 1))}
           disabled={currentStep === currentStates.length - 1}
-          className="rounded bg-amber-500 px-4 py-2 font-mono text-xs font-bold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
+          className="min-h-[44px] rounded-xl bg-amber-400 px-5 py-2.5 font-mono text-xs font-bold text-amber-950 transition hover:bg-amber-300 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-amber-400 focus-visible:outline-none disabled:opacity-40 disabled:pointer-events-none"
         >
           Proximo Passo &rarr;
         </button>

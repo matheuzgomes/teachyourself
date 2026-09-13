@@ -7,7 +7,6 @@ trackTitle: "02. Redes e Comunicação de Dados"
 ---
 
 import EndToEndTransferSimulator from "../../../components/EndToEndTransferSimulator";
-import PredictionChallenge from "../../../components/PredictionChallenge";
 import HistoricalIncident from "../../../components/HistoricalIncident.astro";
 import ObservationMission from "../../../components/ObservationMission.astro";
 import DeepDive from "../../../components/DeepDive.astro";
@@ -87,29 +86,7 @@ Experimente as quatro classes de falhas no simulador abaixo. Observe com atenç�
 
 <EndToEndTransferSimulator client:visible />
 
-<PredictionChallenge
-  client:load
-  question="No simulador, ative a falha 'Inversão de Bit na RAM do Roteador' e execute a transferência passo a passo. Por que a placa de saída do roteador transmite o dado corrompido sem emitir nenhum alerta de erro?"
-  correctOptionId="B"
-  technicalTakeaway="O checksum de enlace (FCS Ethernet) é recalculado do zero na porta de saída para cada quadro. A placa de rede calcula o FCS com base no dado corrompido que acabou de ler da memória, gerando um código matematicamente compatível com o erro."
-  options={[
-    {
-      id: "A",
-      label: "Porque a Ethernet desativa checagens de integridade quando detecta pacotes TCP na carga útil.",
-      explanation: "Incorreto. A placa de rede Ethernet sempre calcula o FCS de 32 bits sobre todos os quadros transmitidos, independentemente do protocolo de transporte contido na carga."
-    },
-    {
-      id: "B",
-      label: "Porque o FCS é descartado na recepção e um novo código é gerado sobre o conteúdo corrompido na porta de saída.",
-      explanation: "Exato! O enlace protege apenas o meio físico entre dois nós. Ao sair, a placa recalcula o FCS sobre o conteúdo presente na RAM, selando a corrupção com um código aparentemente legítimo."
-    },
-    {
-      id: "C",
-      label: "Porque o protocolo IP força o roteador a ignorar o FCS para reduzir a latência de encaminhamento.",
-      explanation: "Incorreto. Roteadores validam o FCS em hardware na chegada. O problema é que a inversão de bits ocorre na memória interna após essa validação e antes da nova transmissão."
-    }
-  ]}
-/>
+
 
 ### A.3 Corretude versus Otimização de Desempenho
 
@@ -237,36 +214,6 @@ Se um comutador intermediário sofresse uma pane, a sua chamada caía imediatame
 > Quando um aplicativo móvel estabelece uma sessão HTTPS com um servidor usando TLS 1.3, chaves de criptografia simétrica (como ChaCha20 ou AES-GCM) são negociadas diretamente entre as CPUs dos dois dispositivos através do algoritmo Diffie-Hellman em curvas elípticas.
 >
 > Todo o tráfego que trafega pelos roteadores e cabos de fibra óptica é composto por dados cifrados indecifráveis para qualquer intermediário. Essa arquitetura é a realização perfeita do princípio fim a fim aplicado à segurança: os nós do caminho realizam apenas o repasse cego de pacotes, enquanto confidencialidade, integridade e autenticidade são asseguradas exclusivamente nas extremidades.
-
----
-
-## Desafios de Reconstrução Ativa
-
-Teste seu modelo mental contra os mecanismos causais estudados:
-
-<PredictionChallenge
-  client:load
-  question="Considere um projeto corporativo onde a gerência propõe acelerar o sistema removendo a verificação de hash SHA-256 no destino, argumentando que a empresa agora utiliza roteadores de fibra óptica de última geração com detecção de erro em 100% dos cabos. Como você avalia essa proposta com base em Saltzer (1984)?"
-  correctOptionId="C"
-  technicalTakeaway="Corretude requer verificação fim a fim. Checagens de enlace cobrem apenas os cabos físicos, deixando desprotegidas as memórias dos roteadores, os barramentos de computador e os controladores de disco."
-  options={[
-    {
-      id: "A",
-      label: "A proposta é tecnicamente sólida, pois cabos de fibra modernos não sofrem interferência eletromagnética e tornam corrupções impossíveis.",
-      explanation: "Incorreto. Mesmo em meios físicos perfeitos, pacotes sofrem corrupção em memórias RAM de roteadores, controladores de barramento e drivers de sistema operacional."
-    },
-    {
-      id: "B",
-      label: "A proposta é válida, desde que o protocolo de transporte seja alterado de TCP para UDP para compensar o atraso.",
-      explanation: "Incorreto. UDP não adiciona confiabilidade nem verificação de arquivo; pelo contrário, desativa até as garantias mínimas de entrega ordenada do TCP."
-    },
-    {
-      id: "C",
-      label: "A proposta é matematicamente falha, pois a verificação de enlace protege apenas o cabo físico e não detecta corrupções na RAM dos comutadores ou discos.",
-      explanation: "Exato! Saltzer demonstrou que a confiabilidade perfeita nos enlaces intermediários não elimina as falhas silenciosas nos nós comutadores e no armazenamento das pontas."
-    }
-  ]}
-/>
 
 ---
 

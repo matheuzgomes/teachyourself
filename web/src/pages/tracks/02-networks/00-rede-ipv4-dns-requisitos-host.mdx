@@ -9,7 +9,6 @@ trackTitle: "02. Redes e Comunicação de Dados"
 import Ipv4HeaderInspector from "../../../components/Ipv4HeaderInspector";
 import TtlTracerouteSimulator from "../../../components/TtlTracerouteSimulator";
 import BitFieldLayout from "../../../components/diagrams/BitFieldLayout.astro";
-import PredictionChallenge from "../../../components/PredictionChallenge";
 import HistoricalIncident from "../../../components/HistoricalIncident.astro";
 import ObservationMission from "../../../components/ObservationMission.astro";
 import DeepDive from "../../../components/DeepDive.astro";
@@ -111,29 +110,6 @@ Decodifique byte a byte com a tabela de contrato da seção 3.1 da RFC 791:
 | 12 a 15 | `c0 a8 00 02` | Origem `192.168.0.2` em 4 octetos fixos |
 | 16 a 19 | `08 08 08 08` | Destino `8.8.8.8` em 4 octetos fixos |
 
-<PredictionChallenge
-  client:load
-  question="No hex dump acima, o byte 6 vale 0x40. Se ele valesse 0x20 em vez de 0x40, o que mudaria no destino deste pacote?"
-  correctOptionId="B"
-  technicalTakeaway="0x40 tem o bit DF ativo (não fragmentar) e 0x20 tem o bit MF ativo (primeiro fragmento de uma sequência). Um bit de diferença transforma um pacote indivisível no início de uma remontagem."
-  options={[
-    {
-      id: "A",
-      label: "Nada mudaria, porque os bytes 6 e 7 guardam o checksum e qualquer valor é recalculado no próximo salto.",
-      explanation: "Incorreto. Os bytes 6 e 7 guardam Flags e Fragment Offset, não checksum. O checksum ocupa os bytes 10 e 11. Flags decidem fragmentação, nunca são recalculadas como soma."
-    },
-    {
-      id: "B",
-      label: "O pacote passaria de não fragmentável (DF ativo) a primeiro fragmento de uma sequência (MF ativo), exigindo remontagem no destino.",
-      explanation: "Exato! 0x40 é 01000000 (bit DF) e 0x20 é 00100000 (bit MF) nos 3 bits de Flags. Com MF ativo e offset zero, o destino aguarda os fragmentos seguintes pela mesma quádrupla."
-    },
-    {
-      id: "C",
-      label: "O TTL cairia de 64 para 32 e o pacote morreria um salto antes, sem alcançar o destino.",
-      explanation: "Incorreto. O TTL ocupa o byte 8 (0x40 ali é coincidência de valor). O byte 6 pertence ao grupo de fragmentação e não altera o orçamento de saltos."
-    }
-  ]}
-/>
 
 O par mínimo abaixo extrai versão e tamanho no ponto exato onde o conceito aparece:
 
@@ -188,29 +164,6 @@ O terceiro grupo protege somente o envelope. `Header Checksum` tem 16 bits e cob
 
 Repare na ligação com a Trilha 01: os campos multibyte viajam em ordem big endian, a ordem de bytes da rede que o Módulo 01 apresentou com `htons`. O primeiro byte `0x45` só faz sentido porque emissor e receptor concordam sobre qual ponta do número chega primeiro.
 
-<PredictionChallenge
-  client:load
-  question="O primeiro byte de um cabeçalho IPv4 típico sem opções vale 0x45. Sem consultar a tabela, o que cada metade desse byte informa sobre o pacote?"
-  correctOptionId="B"
-  technicalTakeaway="O nibble alto é o Version (4) e o nibble baixo é o IHL em palavras de 32 bits (5, ou seja, 20 bytes de cabeçalho). Ler o primeiro byte entrega versão e tamanho do envelope de uma vez."
-  options={[
-    {
-      id: "A",
-      label: "O byte inteiro é o TTL inicial (69 saltos) e o protocolo é inferido pelo tamanho total do datagrama.",
-      explanation: "Incorreto. O TTL ocupa o nono byte do cabeçalho, não o primeiro. O primeiro byte divide Version (nibble alto) e IHL (nibble baixo), e o protocolo tem campo próprio de 8 bits."
-    },
-    {
-      id: "B",
-      label: "O nibble alto (4) é a versão do protocolo e o nibble baixo (5) é o IHL, indicando 5 palavras de 32 bits, ou seja, 20 bytes de cabeçalho.",
-      explanation: "Exato! 0x45 se divide em Version 4 e IHL 5. Multiplicar o IHL por 4 entrega o comprimento do cabeçalho em bytes e aponta onde começam os dados."
-    },
-    {
-      id: "C",
-      label: "Os 8 bits formam o checksum parcial do cabeçalho, recalculado pelo roteador antes de qualquer outra leitura.",
-      explanation: "Incorreto. O checksum tem 16 bits dedicados no meio do cabeçalho e cobre o cabeçalho inteiro. Nenhum roteador confere checksum antes de saber versão e tamanho."
-    }
-  ]}
-/>
 
 <DeepDive title="O algoritmo do checksum em complemento de um">
 O cálculo é o complemento de um de 16 bits da soma em complemento de um de todas as palavras de 16 bits do cabeçalho, com o campo de checksum zerado durante o cálculo. A seção 3.1 da RFC 791 define o algoritmo e a seção 1.4 exige a verificação a cada processamento. O detalhe que importa para o modelo mental: o checksum protege o roteamento (endereços, <Term id="TTL">TTL</Term>, tamanho), não a mensagem do usuário.
@@ -284,29 +237,6 @@ Agora o mesmo datagrama de 1500 bytes atravessa um enlace com <Term id="MTU">MTU
 
 Confira: 122 vezes 8 é 976. Os dados somam 976 mais 504, que é 1480. Se o segundo fragmento encontrar adiante outro enlace de 576, ele será refatiado com o mesmo `Identification` e offsets recalculados: fragmentação pode aninhar, e a remontagem final desfaz todas as camadas de uma vez pela mesma quádrupla.
 
-<PredictionChallenge
-  client:load
-  question="Um datagrama de 1500 bytes com DF igual a 0 chega a um enlace de MTU 1000. O segundo fragmento gerado carrega offset 122 e MF igual a 0. O que esses dois valores afirmam, e o que aconteceria se DF fosse 1?"
-  correctOptionId="C"
-  technicalTakeaway="Offset 122 significa byte 976 (122 vezes 8) e MF 0 marca o último fragmento. Com DF igual a 1 não há fatiamento em nenhuma hipótese: o datagrama seria descartado com aviso ICMP."
-  options={[
-    {
-      id: "A",
-      label: "Offset 122 significa o fragmento de número 122, e MF igual a 0 pede ao próximo roteador que remonte antes de repassar.",
-      explanation: "Incorreto. Offset conta unidades de 8 octetos a partir do início, não número de fragmento. E roteadores intermediários nunca remontam: a remontagem acontece somente no destino final."
-    },
-    {
-      id: "B",
-      label: "Offset 122 marca o byte 122 da carga e MF igual a 0 indica que há mais fragmentos a caminho.",
-      explanation: "Incorreto nas duas leituras. A unidade do offset é 8 octetos, então 122 equivale ao byte 976. E MF igual a 0 marca o último fragmento; continuação usa MF igual a 1."
-    },
-    {
-      id: "C",
-      label: "Offset 122 posiciona a carga no byte 976 e MF igual a 0 encerra a sequência; com DF igual a 1 o datagrama seria descartado em vez de fatiado.",
-      explanation: "Exato! 122 vezes 8 é 976, MF 0 fecha a remontagem, e DF igual a 1 proíbe fragmentação em qualquer hipótese, forçando o descarte com aviso ICMP quando o pacote não cabe."
-    }
-  ]}
-/>
 
 Pause e preveja além da tabela. Um emissor marca DF igual a 1 e o pacote não cabe no enlace. O que o roteador faz, e como o emissor descobre o tamanho certo? O roteador descarta e devolve <Term id="ICMP">ICMP</Term> informando que a fragmentação seria necessária. O emissor reduz o tamanho e tenta de novo: essa sondagem com DF ligado é a descoberta do <Term id="MTU">MTU</Term> do caminho, uma heurística operacional com dependência no <Term id="ICMP">ICMP</Term> não filtrado, não uma invariante do protocolo.
 
@@ -397,29 +327,6 @@ Leia em grupos: `03` anuncia 3 letras, `77 77 77` é `www`. `07` anuncia 7 letra
 
 A compressão evita repetir sufixos longos. Quando um sufixo de domínio já apareceu antes na mensagem, o emissor pode trocar a ocorrência seguinte por um ponteiro de 2 bytes cujos dois primeiros bits valem 1 e cujo restante indica o deslocamento a partir do início da mensagem. Entender ponteiros recebidos é obrigatório para todo resolvedor, ainda que gerar mensagens sem ponteiros seja permitido.
 
-<PredictionChallenge
-  client:load
-  question="Uma resposta DNS chega em UDP com 600 bytes e o bit TC ajustado. O solicitante suporta TCP. O que a norma manda fazer, e o que é proibido fazer com essa resposta?"
-  correctOptionId="B"
-  technicalTakeaway="TC significa truncamento: a resposta não coube nos 512 bytes do UDP. O solicitante deve repetir a consulta em TCP na porta 53, e é proibido guardar a resposta truncada em cache como se estivesse completa."
-  options={[
-    {
-      id: "A",
-      label: "Guardar os 600 bytes em cache até o TTL expirar e completar os registros faltantes na próxima consulta UDP.",
-      explanation: "Incorreto e proibido pela norma. Resposta truncada nunca pode ser guardada como se estivesse completa: o cache passaria a servir uma zona mutilada até o TTL expirar."
-    },
-    {
-      id: "B",
-      label: "Repetir a consulta em TCP na porta 53 para obter a resposta íntegra, sem guardar a versão truncada em cache.",
-      explanation: "Exato! O limite de 512 bytes do UDP com TC ajustado é o sinal mecânico de insuficiência. O TCP com prefixo de 2 bytes entrega a mensagem completa, e só ela pode alimentar o cache."
-    },
-    {
-      id: "C",
-      label: "Descartar em silêncio e devolver erro ao usuário, porque truncamento indica pacote corrompido no caminho.",
-      explanation: "Incorreto. Truncamento não é corrupção: é o servidor avisando honestamente que a resposta não coube. O caminho correto é o retorno em TCP, não o erro."
-    }
-  ]}
-/>
 
 <DeepDive title="Por que o ponteiro é inconfundível">
 Rótulos normais começam com os bits 00 porque o primeiro byte de um rótulo é seu comprimento, limitado a 63 (bits 00 mais 6 bits de tamanho). O ponteiro começa com os bits 11. As combinações 10 e 01 ficam reservadas. Essa codificação disjunta permite ao analisador decidir o tipo do campo inspecionando só os dois primeiros bits. A seção 4.1.4 da RFC 1035 define o formato.
@@ -478,29 +385,6 @@ A cadeia causal em cinco passos:
 A correção conteve sem eliminar: aleatorizar a porta <Term id="UDP">UDP</Term> de origem por consulta soma cerca de 16 bits de aleatoriedade ao identificador, movendo o ataque da faixa de 2 elevado a 16 para a faixa de 2 elevado a 26 a 32 (RFC 5452 seção 9.2). A eliminação definitiva exige autenticação criptográfica das respostas, que é o DNSSEC, fora do escopo deste módulo. Repare no padrão: cada parte do protocolo que este módulo apresentou como otimização (Additional como atalho, <Term id="TTL">TTL</Term> como economia, <Term id="UDP">UDP</Term> como barateza) era exatamente um degrau do ataque.
 </HistoricalIncident>
 
-<PredictionChallenge
-  client:load
-  question="Diante do Kaminsky 2008, qual combinação de propriedades tornava o envenenamento de cache factível, e qual contramedida a RFC 5452 prescreve?"
-  correctOptionId="A"
-  technicalTakeaway="TXID de 16 bits com porta de origem fixa dava ao atacante um espaço de busca pequeno e repetível, e a cola fora da zona sem crítica convertia uma resposta aceita em delegação sequestrada. A RFC 5452 manda aleatorizar porta e TXID e tratar dado fora da zona com desconfiança."
-  options={[
-    {
-      id: "A",
-      label: "Identificador curto e previsível com porta de origem reutilizada, mais aceite sem crítica de cola fora da zona; a resposta é aleatorizar porta e TXID e desconfiar de dado fora da zona.",
-      explanation: "Exato! 16 bits com porta fixa cabem em dezenas de milhares de tentativas dentro da janela de 100 milissegundos. A cola falsa na Additional trocava a delegação, e a RFC 5452 responde com aleatoriedade por consulta e crítica a dado fora da zona."
-    },
-    {
-      id: "B",
-      label: "Criptografia fraca do cabeçalho DNS com chave de 16 bits; a resposta é cifrar todas as consultas com TLS obrigatório.",
-      explanation: "Incorreto. Não há criptografia nem chave no DNS clássico: o TXID é um número de correlação público, não um segredo. A correção de 2008 foi aleatoriedade de parâmetros, e a autenticação criptográfica viria com o DNSSEC."
-    },
-    {
-      id: "C",
-      label: "Cache sem prazo que guardava registros para sempre; a resposta é zerar todos os TTLs e desabilitar o cache recursivo.",
-      explanation: "Incorreto. O cache tem prazo pelo TTL e funciona corretamente; o problema era aceitar dado falso, não guardar dado verdadeiro. Desabilitar cache destruiria a escalabilidade do sistema sem fechar a corrida."
-    }
-  ]}
-/>
 
 <DeepDive title="A matemática da contenção: de 2 elevado a 16 até 2 elevado a 32">
 Com porta fixa, o espaço de busca é o TXID: no máximo 65536 valores, média de 32768 tentativas por janela. Aleatorizando a porta de origem por consulta com cerca de 64512 opções teóricas (excluídas as abaixo de 1024), o espaço multiplica para a faixa de 2 elevado a 26 a 32 conforme as portas realmente disponíveis. A RFC 5452 registra que, com porta desconhecida, seria necessária vazão acima de 285 gigabits por segundo para taxa de sucesso comparável. Contenção, não eliminação: sem DNSSEC o ataque continua possível, apenas economicamente inviável. Todos os números aqui são parâmetros do mecanismo documentados nas seções 4.5, 7 e 8 da RFC 5452.

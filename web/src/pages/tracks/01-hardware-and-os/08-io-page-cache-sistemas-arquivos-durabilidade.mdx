@@ -11,7 +11,6 @@ import DmaTopology from '../../../components/diagrams/DmaTopology.astro';
 import WritePath from '../../../components/diagrams/WritePath.astro';
 import DeepDive from '../../../components/DeepDive.astro';
 import Term from '../../../components/Term.astro';
-import PredictionChallenge from '../../../components/PredictionChallenge';
 
 {/* Curriculum Ledger 08: KNOWN=[RAM volatil, cache, syscall, COW, troca de contexto, travas] CURRENT=[MMIO, DMA, page cache, fsync, journaling] DEFERRED=[] */}
 
@@ -108,29 +107,6 @@ O cenário bancário clássico: conta debitada, `write()` no log retorna 4096, c
 
 Por que o sistema arrisca? Porque `write()` síncrono sempre mataria o rendimento em mais de 99% neste padrão típico, e o Page Cache transforma centenas de escritas esparsas em descargas contíguas rápidas.
 
-<PredictionChallenge
-  client:load
-  question="Um programa grava no log, recebe sucesso do write() e a energia cai 2 segundos depois, antes de qualquer fsync. O registro sobrevive?"
-  correctOptionId="B"
-  technicalTakeaway="Sucesso de write() confirma cópia no Page Cache volátil. Sem fsync, a queda apaga o dado ainda não descarregado."
-  options={[
-    {
-      id: "A",
-      label: "Sim, porque o retorno de sucesso do kernel garante gravação na mídia permanente.",
-      explanation: "Incorreto. O retorno confirma a cópia na RAM com página suja. A mídia só recebe no descarregamento posterior."
-    },
-    {
-      id: "B",
-      label: "Não, porque o dado ainda estava como página suja na RAM volátil sem descarregamento.",
-      explanation: "Exato! Persistência exige fsync ou equivalente com barreira até a mídia. Retorno de write é recibo, não cofre."
-    },
-    {
-      id: "C",
-      label: "Sim, porque o Page Cache replica automaticamente para o SSD a cada syscall.",
-      explanation: "Incorreto. O descarregamento é assíncrono por threads de fundo. Nada replica a cada chamada."
-    }
-  ]}
-/>
 
 ---
 
@@ -177,29 +153,7 @@ Sistemas como ext4, XFS e NTFS usam **Journaling**, do Write-Ahead Logging de Mo
 
 Na volta da queda: sem commit, descarta os blocos incompletos do diário e segue íntegro. Com commit sem cópia, refaz do diário em milissegundos, sem varrer nada.
 
-<PredictionChallenge
-  client:load
-  question="A energia cai depois do commit no diário, mas antes da cópia definitiva. O arquivo fica corrompido?"
-  correctOptionId="B"
-  technicalTakeaway="Commit confirmado é transação atômica: o boot refaz do diário para o lugar definitivo."
-  options={[
-    {
-      id: "A",
-      label: "Sim, porque a cópia definitiva não terminou e metade foi perdida.",
-      explanation: "Incorreto. A cópia definitiva é refeita do diário, que tem tudo confirmado."
-    },
-    {
-      id: "B",
-      label: "Não, porque o diário tem a transação completa e o boot a recopia.",
-      explanation: "Exato! Commit no diário garante atomicidade. A recuperação é só copiar de novo."
-    },
-    {
-      id: "C",
-      label: "Sim, e é preciso varrer o disco inteiro para descobrir.",
-      explanation: "Incorreto. Essa era a era do fsck. Com diário, basta ler as transações confirmadas."
-    }
-  ]}
-/>
+
 
 ---
 

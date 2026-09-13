@@ -14,7 +14,6 @@ import DatapathStages from "../../../components/diagrams/DatapathStages.astro";
 import ForwardingDatapath from "../../../components/diagrams/ForwardingDatapath.astro";
 import SmithAutomaton from "../../../components/diagrams/SmithAutomaton.astro";
 import TimelineGrid from "../../../components/diagrams/TimelineGrid.astro";
-import PredictionChallenge from "../../../components/PredictionChallenge";
 import DeepDive from "../../../components/DeepDive.astro";
 import Term from "../../../components/Term.astro";
 
@@ -348,29 +347,6 @@ A literatura clássica de arquitetura de computadores divide os hazards em três
 
 Dizer que o conflito ocorre simplesmente "porque o dado ainda não foi gravado no registrador" descreve apenas o sintoma de um processador sem caminhos alternativos de dados. Se o circuito dispuser de fios dedicados para transportar o resultado da saída da ALU diretamente para a entrada da próxima instrução, o hazard é resolvido e o dado é consumido com sucesso antes mesmo de ser gravado no banco de registradores.
 
-<PredictionChallenge
-  client:load
-  question="Considere duas instruções consecutivas: addq %rax, %rbx seguido de subq %rbx, %rcx em um pipeline didático clássico de 5 estágios (IF, ID, EX, MEM, WB) sem circuito de data forwarding. Quantas bolhas de stall o hardware precisa injetar entre elas para que subq leia o valor correto de %rbx?"
-  correctOptionId="C"
-  technicalTakeaway="Sem forwarding, a instrução addq só grava o resultado no registrador na fase WB (ciclo 5). A instrução subq tenta ler os registradores na fase ID (ciclo 3). O hardware precisa injetar 2 bolhas de stall para sincronizar a leitura em ID após ou durante a escrita em WB."
-  options={[
-    {
-      id: "A",
-      label: "Zero bolhas, pois o registrador atualiza seu valor de forma combinacional imediata.",
-      explanation: "Incorreto. Em circuitos sequenciais com clock, os registradores só atualizam na borda de subida do estágio de gravação (WB). Sem fiação de atalho, a leitura prematura capturaria o valor antigo."
-    },
-    {
-      id: "B",
-      label: "Uma única bolha de stall, pois o estágio EX termina no ciclo 3.",
-      explanation: "Incorreto. O estágio EX calcula o resultado, mas esse valor fica temporariamente no registrador de pipeline EX/MEM, não no banco de registradores acessível pelo estágio ID."
-    },
-    {
-      id: "C",
-      label: "Duas bolhas de stall, adiando a leitura de subq em ID até que addq alcance o estágio de gravação WB.",
-      explanation: "Exato! A instrução subq deve ser retida no estágio ID durante os ciclos 3 e 4, avançando para EX somente no ciclo 5 quando addq estiver gravando em WB."
-    }
-  ]}
-/>
 
 #### 2. Conflito de Controle (Control Hazard)
 Ocorre quando o processador precisa buscar a próxima instrução na memória, mas a decisão sobre qual endereço deve ser lido depende do resultado de uma instrução anterior que ainda não completou sua avaliação.
@@ -567,29 +543,6 @@ Se a instrução consumidora `sub` avançasse consecutivamente pela esteira, ela
 
 Não existe atalho elétrico capaz de viajar no tempo dentro do circuito. O hardware não pode encaminhar no início do Ciclo 4 uma palavra de dados que a memória só terminará de ler e estabilizar no final do Ciclo 4.
 
-<PredictionChallenge
-  client:load
-  question="Mesmo com um processador equipado com toda a fiação de Data Forwarding possível, por que a sequência de instruções movq (%rdi), %rax seguida de addq %rax, %rbx ainda sofre compulsoriamente 1 ciclo de congelamento (stall)?"
-  correctOptionId="B"
-  technicalTakeaway="O dado lido da memória só emerge dos circuitos no final do estágio MEM (ciclo 4). A instrução dependente precisa do operando no início do seu estágio EX (ciclo 4). O circuito não pode encaminhar um sinal elétrico para trás no tempo."
-  options={[
-    {
-      id: "A",
-      label: "Porque o barramento PCIe bloqueia a transferência de registradores durante operações de load.",
-      explanation: "Incorreto. A operação de leitura ocorre na hierarquia de cache L1 integrada ao núcleo da CPU, não no barramento PCIe."
-    },
-    {
-      id: "B",
-      label: "Porque o dado só fica disponível no final da etapa MEM, enquanto a instrução consumidora precisaria dele no início da etapa EX no mesmo ciclo.",
-      explanation: "Exato! Nenhum circuito elétrico consegue encaminhar um sinal para o passado. O hardware é fisicamente forçado a atrasar a instrução dependente por 1 ciclo para que MEM termine antes de EX começar."
-    },
-    {
-      id: "C",
-      label: "Porque o registrador %rax é travado pelo sistema operacional até a instrução seguinte terminar.",
-      explanation: "Incorreto. O travamento não é feito por software nem pelo SO, mas sim pela Hazard Detection Unit no caminho de dados do hardware."
-    }
-  ]}
-/>
 
 ---
 
@@ -741,29 +694,6 @@ A penalidade de tempo desse erro varia profundamente conforme a profundidade do 
 * Em nosso pipeline didático in-order de cinco estágios, onde o desvio é avaliado no estágio `EX`, a penalidade de descarte é de apenas **1 a 2 ciclos de clock**.
 * Em microarquiteturas comerciais de alto desempenho com esteiras profundas (exemplo típico citado em literatura de núcleos x86 com 14 a 20 estágios), um erro de predição impõe penalidade medida empiricamente entre **14 e 20 ciclos de clock** para reiniciar o fluxo, conforme a profundidade e o projeto. Se um programa cometer muitos erros de salto, o processador passará grande parte do seu tempo descartando trabalho inútil.
 
-<PredictionChallenge
-  client:load
-  question="Em um processador comercial moderno com esteira profunda de 14 estágios, o que acontece no hardware quando o preditor de saltos comete um erro (Branch Misprediction) ao avaliar uma instrução condicional?"
-  correctOptionId="B"
-  technicalTakeaway="O processador realiza um Pipeline Flush: todas as instruções que entraram na esteira pelo caminho incorreto são invalidadas (convertidas em nops), o Program Counter é corrigido e a busca recomeça, desperdiçando 14 ou mais ciclos úteis."
-  options={[
-    {
-      id: "A",
-      label: "As instruções especuladas continuam executando até o fim e seus resultados são descartados pelo coletor de lixo da linguagem.",
-      explanation: "Incorreto. O hardware não depende de linguagens de programação. Permitir que instruções inválidas alterem registradores violaria as garantias de correção da ISA."
-    },
-    {
-      id: "B",
-      label: "Ocorre um Pipeline Flush: todas as instruções em voo na esteira pertencentes ao ramo errado são descartadas e o PC é recarregado com o endereço correto.",
-      explanation: "Exato! Todas as etapas intermediárias são limpas (squashed) e o processador perde cerca de 14 a 20 ciclos de trabalho útil até que a nova rota de instruções chegue ao estágio de execução."
-    },
-    {
-      id: "C",
-      label: "A CPU dispara uma interrupção de hardware não-mascarável (NMI) e transfere o controle para o kernel Linux.",
-      explanation: "Incorreto. Erros de predição de desvio ocorrem bilhões de vezes por dia em qualquer computador e são tratados inteiramente no hardware sem intervenção do kernel."
-    }
-  ]}
-/>
 
 ---
 
@@ -805,31 +735,7 @@ Para sintetizar o conhecimento em uma visão abrangente de engenharia, a matriz 
 | **Desvio Condicional** (Pipeline didático) | Incerteza do endereço de salto resolvida no estágio `EX` | Predição de saltos de 2 bits e esvaziamento de pipeline | **1 a 2 ciclos** (em caso de erro) |
 | **Desvio Condicional** (Esteiras profundas) | Esteiras com mais de uma dezena de estágios (ex: x86 comercial) | Preditores adaptativos complexos e descarte de instruções | **Dezenas de ciclos** (penalidade medida de 14 a 20 ciclos) |
 
----
 
-<PredictionChallenge
-  client:load
-  question="Um processador opera a uma frequência de clock fixa de 3,0 GHz (3 bilhões de ciclos por segundo). Um determinado programa executa 3 bilhões de instruções. Sob um regime ideal com CPI = 1,0, o programa roda em 1,0 segundo. Se uma alta taxa de stalls e branch-misses elevar o CPI efetivo para 1,5, qual será o novo tempo de execução real?"
-  correctOptionId="B"
-  technicalTakeaway="Tempo = (Instruções * CPI) / Frequência. Com CPI = 1,5, são necessários 4,5 bilhões de ciclos. A 3,0 GHz, o tempo real salta de 1,0s para 1,5s (um aumento de 50% no relógio de parede)."
-  options={[
-    {
-      id: "A",
-      label: "O tempo de execução permanece exatamente 1,0 segundo, pois a frequência da CPU (3,0 GHz) permaneceu constante.",
-      explanation: "Incorreto. O tempo total é o produto do número de instruções pelo CPI dividido pelo clock. Stalls aumentam os ciclos necessários para terminar o programa."
-    },
-    {
-      id: "B",
-      label: "1,5 segundo, pois o aumento de 50% no CPI exige 4,5 bilhões de ciclos de clock para concluir as mesmas instruções.",
-      explanation: "Exato! A equação fundamental do tempo de CPU é Tempo = N_instrucoes * CPI * Periodo_Clock. Quando o pipeline engasga com bolhas, o usuário espera mais tempo no mundo real."
-    },
-    {
-      id: "C",
-      label: "0,66 segundo, pois um CPI maior significa que a CPU completou mais instruções por ciclo.",
-      explanation: "Incorreto. CPI mede Ciclos Por Instrução (Cycles Per Instruction). Quanto maior o CPI, pior a eficiência da máquina (o inverso é o IPC, Instructions Per Cycle)."
-    }
-  ]}
-/>
 
 ### Quatro Heurísticas e Diretrizes de Otimização de Software
 
