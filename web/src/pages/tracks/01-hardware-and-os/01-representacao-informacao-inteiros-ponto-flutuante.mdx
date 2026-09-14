@@ -7,7 +7,6 @@ trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 ---
 
 import HistoricalIncident from '../../../components/HistoricalIncident.astro';
-import ObservationMission from '../../../components/ObservationMission.astro';
 import DeepDive from '../../../components/DeepDive.astro';
 import EndiannessNetworkInspector from '../../../components/EndiannessNetworkInspector';
 import MemoryRibbon from '../../../components/MemoryRibbon';
@@ -26,840 +25,367 @@ import AluBitSliceDiagram from '../../../components/diagrams/AluBitSliceDiagram.
 import BitFieldLayout from '../../../components/diagrams/BitFieldLayout.astro';
 
 
-{/* Curriculum Ledger 01: KNOWN=[operacoes basicas, variavel, chave, transistor, porta logica, soma, latch, flip-flop, registrador] CURRENT=[bit, byte, inteiro largura fixa, overflow, complemento de dois, hexadecimal, endianness, casting, shift, IEEE754] DEFERRED=[assembly, ISA, ABI, pipeline, cache, MMU, processos, concorrencia, GDB] */}
+{/* Curriculum Ledger 01: 
+KNOWN=[bit, patamar eletrico, porta logica, inversor CMOS, somador de 1 bit, cascata de somadores, flip-flop D, clock, registrador de largura fixa, anel modular] 
+CURRENT=[largura fixa, anel modular Z/2^wZ, descarte de transporte Cout, complemento de dois, peso posicional negativo do MSB, inversor programavel XOR, flags de condicao CF e OF, espaco linear de memoria, byte, base hexadecimal, little endian, big endian, semantica de casting em C, promocao implicita, barrel shifter, multiplicacao e divisao por potencias de 2, vies aritmetico em shifts negativos, notacao cientifica binaria IEEE 754, campos de sinal-expoente-fracao, vies de expoente, dízima periodica em base 2, cancelamento catastrofico, truncamento para zero ISO C11 §6.3.1.4, regras CERT C FLP34-C e INT31-C] 
+DEFERRED=[instrucoes de maquina x86-64, decodificador de instrucoes, modos de enderecamento, pilha de execucao, pipeline, hazards, caches L1/L2/L3, memoria virtual, MMU, TLB, chamadas de sistema, threads, GDB] 
+*/}
 
 # Como o Computador Enxerga Números: Bits, Memória e Circuitos Digitais
 
-> **O que você precisa aqui:** 1. Saber somar e dividir no papel. 2. Entender variável como valor guardado com nome. 3. Ter visto os interruptores e registradores do Módulo 00. Nada de programar, nada de terminal.
->
-> Neste módulo, código em C aparece só como ilustração curta de 3 a 8 linhas. Você não precisa compilar nem executar nada para entender a ideia central.
+> **Contrato Pedagógico:** Este módulo constrói a semântica de dados sobre os registradores e somadores deduzidos no Módulo 00. Não é assumido vocabulário de sistemas fora do ledger curricular. Trechos em linguagem C ilustram o comportamento observável no ponto exato de cada mecanismo, legíveis sem necessidade de compilação.
 
-Quando você escreve uma ordem simples em um programa, como guardar a idade em uma variável:
+O Módulo 00 entregou uma máquina física que computa e retém estados elétricos: somadores combinacionais que processam bits e registradores que capturam palavras de largura fixa a cada pulso de clock. Essa estrutura, no entanto, opera em um nível estritamente físico. O hardware manipula apenas tensões elétricas em vias condutoras; ele não sabe o que um número significa, não distingue quantidades positivas de saldos devedores e não enxerga grandezas fracionárias do mundo contínuo.
 
-```c
-int idade = 27;
-```
-
-o que realmente acontece dentro do computador?
-
-A memória física da máquina não possui prateleiras com rótulos decimais nem gavetas mágicas onde você guarda o número 27 desenhado no papel. No nível mais elementar da máquina, tudo o que existe são circuitos eletrônicos capazes de reconhecer apenas dois estados físicos: ligado ou desligado, presença de tensão elétrica ou ausência de tensão.
-
-A cada um desses estados damos o nome de **bit** (contração da expressão inglesa *binary digit*, ou dígito binário). Um bit só consegue assumir dois valores: `0` ou `1`.
-
-Um bit isolado não guarda muita informação: ele só responde perguntas de sim ou não. Mas quando agrupamos bits, as possibilidades se multiplicam. Com 2 bits, podemos formar 4 combinações diferentes (`00`, `01`, `10`, `11`). Com 8 bits agrupados, formamos 1 **byte**, que oferece $2^8 = 256$ combinações possíveis.
-
-Essa realidade física impõe a primeira grande lição: **números no computador têm limites estritos de tamanho**. Diferente da matemática do papel, onde os números podem crescer infinitamente, na memória do computador todo valor precisa caber em uma caixinha de largura fixa.
-
-No Módulo 00, vimos como interruptores de silício e portas lógicas constroem somadores e flip-flops capazes de processar sinais binários acionados por clock. Mas há um dilema físico inevitável: esses circuitos elétricos só conhecem dois estados (0 e 1, presença de tensão ou terra). Como representar números negativos se não existe um fio elétrico dedicado para transportar o sinal de menos? E como guardar frações decimais se a caixinha de bits é discreta e finita?
-
-Neste módulo, investigamos como essas caixinhas funcionam, como a máquina representa números negativos sem usar fios especiais, por que certos computadores guardam números de trás para frente na memória <Term id="RAM">RAM</Term> e por que contas decimais aparentemente óbvias produzem pequenas imperfeições quando executadas em circuitos digitais.
+Para que o processador execute algoritmos de engenharia, precisamos estabelecer uma convenção matemática determinística que mapeie grandezas do mundo real para o arranjo discreto de $w$ bits de um registrador. Esse mapeamento confronta imediatamente a primeira restrição física do silício: a largura finita das vias condutoras.
 
 ---
 
-## O Mapa da Aula: Três Capítulos e Sete Desafios da Arquitetura
+## O Mapa da Construção: Sete Degraus de Restrições
 
-Para reduzir a densidade e construir uma progressão sólida, este módulo está organizado em **três partes interdependentes**:
-
-### Parte 1A: Representação Inteira e Aritmética Modular
-1. **O que acontece quando um número não cabe na caixinha?**
-2. **Como representar negativos sem criar um circuito novo só para subtrair?**
-
-### Parte 1B: Organização dos Bytes, Memória Linear e Tipagem
-3. **Por que a máquina guarda dados em ordem invertida?**
-4. **O que ocorre quando misturamos tipos diferentes no mesmo teste?**
-5. **Como multiplicar e dividir empurrando bits para o lado?**
-
-### Parte 1C: Ponto Flutuante <Term id="IEEE">IEEE</Term> 754 e Geometria Discreta
-6. **Por que 0.1 + 0.2 não resulta exatamente em 0.3?**
-
-### Síntese de Arquitetura e Diretrizes de Engenharia
-7. **Quanto custa cada conta e como programar sem cair nas armadilhas?**
+1. **Campos de Largura Fixa e Estouro Modular:** O que acontece quando a soma de dois valores excede a quantidade física de fios de um registrador?
+2. **Complemento de Dois e Reaproveitamento da ALU:** Como representar grandezas negativas reutilizando o mesmo circuito somador, sem projetar uma unidade subtratora separada?
+3. **A Aritmética na ALU e Flags de Condição:** Como o circuito sinaliza se uma conta excedeu a capacidade de representação com sinal ou sem sinal?
+4. **Memória Linear, Hexadecimal e a Física do Endianness:** Como uma palavra atômica de múltiplos bytes é distribuída na fita contígua de endereços da memória RAM?
+5. **A Fronteira do Casting e Coerção de Tipos em C:** O que ocorre no hardware quando um programa lê os mesmos bytes da memória sob rótulos de tipo conflitantes?
+6. **Deslocamento de Bits e Aritmética de Alto Desempenho:** Como multiplicar e dividir por potências de dois em um único ciclo de clock sem pagar o custo de divisores seriais na ALU?
+7. **Ponto Flutuante IEEE 754, Validação e Custos de Hardware:** Como a notação científica binária acomoda grandezas contínuas e onde a aproximação quebra atuadores físicos de controle?
 
 ---
 
----
+<span id="largura-fixa"></span>
 
-## Parte 1A: Representação Inteira e Aritmética Modular
+## 1. Campos de Largura Fixa e o Anel Modular
 
-A primeira parte deste módulo investiga como grandezas inteiras são codificadas em arranjos discretos de bits, como o hardware lida com o transbordamento de capacidade e como a matemática modular permite realizar subtrações utilizando circuitos somadores unificados.
+Um registrador físico possui uma quantidade invariável de flip-flops D e vias condutoras de sinal, denominada largura de palavra ($w$). Em um registrador didático de 4 bits, as vias elétricas acomodam exatamente $2^4 = 16$ combinações distintas de tensão, mapeadas na base dois posicional de `0000` ($0$) a `1111` ($15$). Cada posição de bit $i$ (indexada da direita para a esquerda de $0$ a $w-1$) possui peso aritmético fixo $2^i$: pesos 1, 2, 4 e 8.
 
-## 1. O Problema das Caixinhas Finitas: Conversões e Overflow
+Quando a cascata de somadores completos soma dois valores cuja grandeza total excede o teto de representação de $w$ bits, o circuito confronta o limite físico do barramento. Considere a adição de $15 + 1$:
 
-Imagine que você possui uma pequena caixinha numerada capaz de guardar exatamente 16 interruptores (16 bits).
+$$1111_2 + 0001_2 = \mathbf{1}0000_2$$
 
-Com 16 bits, podemos formar $2^{16} = 65.536$ combinações distintas de zeros e uns. Se decidirmos utilizar essa caixinha para representar números inteiros positivos e negativos (um tipo de dado chamado tradicionalmente de `short` ou `int16_t`), dividimos essa capacidade pela metade:
+A propagação do transporte combinacional atravessa todos os quatro estágios de 1 bit. Na última coluna (bit 3), a soma gera um quinto bit: o sinal de transporte de saída $C_{out}$. Como o registrador físico de destino possui estritamente 4 pinos de entrada para captura, esse quinto bit não encontra via condutora para ser retido no banco de registradores. O registrador captura unicamente os 4 bits inferiores: `0000`.
 
-* O menor valor negativo que a caixinha comporta é **$-32.768$**;
-* O maior valor positivo que a caixinha comporta é **$+32.767$**.
+O hardware não paralisa a máquina nem gera interrupção de erro; ele conclui a operação sob as leis da aritmética modular no anel de inteiros $\mathbb{Z}/2^w\mathbb{Z}$. Ao atingir $2^w$, o contador elétrico retorna ciclicamente a zero:
 
-### 1.1 O Momento da Colisão: Somando 1 ao Limite Máximo
+$$X + Y \pmod{2^w}$$
 
-O que acontece se uma variável inteira de 16 bits já armazena o valor $+32.767$ e você tenta somar $+1$ a ela?
+Esse descarte silencioso de transporte constitui o **estouro de capacidade sem sinal** (*unsigned overflow*). O bit excedente que não coube no registrador é roteado para o registrador de estado da CPU, ativando o sinalizador de transporte (<Term id="CF">Carry Flag</Term>).
 
-No papel, $32.767 + 1 = 32.768$. Mas vejamos o que acontece com os bits dentro da caixinha:
+### A Tensão de Engenharia: A Necessidade de Subtrair
 
-* O número $+32.767$ em binário é representado por um bit zero seguido de quinze bits um:
-  $$\mathbf{0111\ 1111\ 1111\ 1111_2}$$
-* Ao somarmos $1$, a sequência de transporte elétrico percorre todas as casas até a posição mais à esquerda:
-  $$\mathbf{1000\ 0000\ 0000\ 0000_2}$$
+A aritmética modular em campos sem sinal resolve adições sobre grandezas puramente positivas no intervalo $[0, 2^w - 1]$. No entanto, sistemas computacionais precisam processar grandezas relativas, saldos devedores e decrementos de controle.
 
-Na convenção de inteiros com sinal de Complemento de Dois utilizada no hardware digital, esse novo padrão de bits com o dígito mais à esquerda ativado representa o valor negativo **$-32.768$**!
+Construir uma unidade subtratora separada exigiria duplicar as cascatas de portas lógicas construídas no Módulo 00, dobrando a área de silício do chip e elevando o consumo estático de energia. A restrição de projeto é direta: **como realizar subtrações e representar números negativos reutilizando rigorosamente a mesma cascata de somadores já existente no hardware?**
 
-A variável ultrapassou o limite superior da largura de 16 bits, completou a volta no anel modular e assumiu o valor negativo extremo.
+<span id="complemento-de-dois"></span>
 
-Quando um cálculo gera um resultado que não cabe no espaço reservado para ele, dizemos que ocorreu um **estouro de capacidade** (ou **estouro aritmético**), conhecido tecnicamente pelo termo em inglês **overflow**.
+## 2. Complemento de Dois: A Geometria do Anel e o Reúso da ALU
 
-O cartão abaixo responde: o que acontece ao somar 1 no limite?
-1. Coloque 32767 e some 1.
-2. Observe os bits virarem 1000 0000 0000 0000.
-3. Leia o novo valor como menos 32768.
-Conclusão em 1 frase: passar do teto dá a volta no mostrador circular.
+A resposta para a subtração sem duplicação de silício repousa nas propriedades geométricas do próprio anel modular $\mathbb{Z}/2^w\mathbb{Z}$. Como o registrador de $w$ bits descarta qualquer transporte na magnitude $2^w$, a adição de múltiplos inteiros de $2^w$ a qualquer cálculo preserva o padrão de bits final:
 
-<ByteInspector client:visible />
+$$X + 2^w \equiv X \pmod{2^w}$$
 
-Preste muita atenção neste detalhe que separa o hardware das linguagens de programação:
-* **No circuito digital (<Term id="ALU">ALU</Term>):** A soma física opera estritamente módulo $2^{16}$. O circuito não para a execução e não quebra a máquina; ele simplesmente descarta o bit de transporte excedente e sinaliza a ocorrência ativando a flag de estouro com sinal (*Overflow Flag*, <Term id="OF">OF</Term>) no registrador de estado da <Term id="CPU">CPU</Term>.
-* **Nas linguagens C e C++:** Pela norma internacional ISO C11 (§6.5), o estouro de inteiros com sinal é classificado como Comportamento Indefinido (<Term id="UB">UB</Term>). O compilador assume que esse estouro nunca acontece e pode eliminar checagens de segurança posteriores durante a otimização de código.
-* **Em linguagens de alta integridade (como Ada):** O ambiente de execução insere verificações automáticas de limites. Quando uma operação ultrapassa o intervalo permitido do tipo, o sistema dispara uma exceção em tempo de execução.
+Subtrair uma grandeza $B$ equivale matematicamente a somar o seu complemento aritmético $2^w - B$:
 
-E o que acontece se tentarmos forçar um número ainda maior, digamos $36.842$, diretamente para dentro dessa caixinha de 16 bits? A parte que excede a capacidade física não tem onde ser gravada. Em nível de circuito puro sem checagem de limites, o hardware descarta os bits excedentes (truncamento de bits). Mas quando o software ou o ambiente de execução monitora ativamente as faixas de valores, essa violação dispara uma exceção. Se o software não possui uma rotina de tratamento para essa exceção, a execução do sistema é interrompida.
+$$A - B \equiv A + (2^w - B) \pmod{2^w}$$
 
----
+Para que essa equivalência se traduza em circuitos eletrônicos simples, decompõe-se $2^w$ como $(2^w - 1) + 1$. A constante $2^w - 1$ em binário é uma sequência ininterrupta de $w$ bits iguais a 1 (como `1111` em 4 bits). Subtrair qualquer número $B$ de uma palavra formada inteiramente por 1s consiste em inverter cada um de seus bits individualmente ($\sim B$):
 
-### 1.2 O Impacto no Mundo Real: O Desastre do Voo 501 do Ariane 5
+$$2^w - B = (2^w - 1 - B) + 1 = \sim B + 1$$
 
-Essa limitação física das variáveis não é uma teoria de laboratório: ela causou um dos acidentes mais caros e emblemáticos da história da engenharia de software aeroespacial.
+Portanto, a subtração transforma-se em uma adição pura:
 
-<HistoricalIncident 
-  title="Voo 501 do Ariane 5: O Custo de um Cast Inseguro"
-  location="Kourou, Guiana Francesa"
-  date="4 de Junho de 1996"
-  impact="Perda total do foguete e de quatro satélites científicos, prejuízo estimado em US$ 370 milhões"
->
-Em 4 de junho de 1996, a Agência Espacial Europeia lançava o primeiro voo do foguete Ariane 5. Aos 36,65 segundos após a decolagem, o foguete desintegrou-se no ar sobre a base de Kourou, na Guiana Francesa, causando a perda total da carga útil avaliada em centenas de milhões de dólares.
+$$A - B = A + \sim B + 1$$
 
-O relatório oficial da comissão de inquérito, presidida pelo professor Jacques-Louis Lions, revelou a cadeia exata de causalidade do desastre:
+Essa formulação é o sistema de **Complemento de Dois**. O processador não requer um circuito subtrator: ele utiliza um somador convencional, inverte as entradas do operando $B$ através de portas XOR e injeta o $+1$ pendente através do pino de transporte inicial $C_0$ da primeira coluna.
 
-1. **A Variável de Velocidade Horizontal:** O computador de navegação inercial (Sistema de Referência Inercial, <Term id="SRI">SRI</Term>) media a velocidade e a inclinação lateral do lançador, registrando a variável denominada `Horizontal_Bias` em ponto flutuante de 64 bits.
-2. **A Conversão para 16 Bits:** Em um ponto da rotina de alinhamento, o código precisava converter essa grandeza para uma variável inteira de 16 bits com sinal (cujo teto máximo é $+32.767$).
-3. **O Reaproveitamento de Código Antigo:** Esse trecho de software havia sido escrito originalmente para o foguete antecessor, o Ariane 4. No modelo antigo, a trajetória física do voo nunca produzia acelerações laterais superiores a $32.767$. Para economizar processamento na época, mantendo a carga da <Term id="CPU">CPU</Term> abaixo de 80%, os engenheiros desativaram intencionalmente a proteção contra estouro nessa variável específica.
-4. **A Colisão Matemática:** O motor do novo Ariane 5 era substancialmente mais potente e sua trajetória mais agressiva. Aos 36,65 segundos de subida, a aceleração lateral atingiu o valor de **$36.842$**.
-5. **A Parada em Cascata:** Ao tentar converter $36.842$ para o tipo de 16 bits, o mecanismo de checagem em tempo de execução da linguagem Ada detectou a violação de faixa e disparou a exceção `CONSTRAINT_ERROR`. Como os engenheiros haviam desativado a proteção e não incluíram uma rotina de tratamento de erro para essa variável, a exceção não capturada provocou a parada do processador do computador inercial primário (<Term id="SRI">SRI</Term> 2). Exatos 72 milissegundos depois, o computador inercial de reserva (<Term id="SRI">SRI</Term> 1), executando o software idêntico sob as mesmas forças aerodinâmicas, disparou a mesma exceção e desligou-se.
-6. **A Deflexão Máxima:** Sem dados válidos dos computadores inerciais, o computador de bordo principal interpretou os sinais de diagnóstico de erro gravados no barramento MIL-STD-1553B como se fossem dados reais de atitude, ordenando a deflexão de 20 graus nas tubeiras dos motores. O foguete curvou-se abruptamente a mais de 3.000 km/h e rompeu-se sob forças aerodinâmicas violentas.
-</HistoricalIncident>
+### O Modelo Mental: O Peso Negativo do Bit Mais Significativo
 
-<ArianeCrashVisualizer client:visible />
+Para que o Complemento de Dois seja consistente, o bit mais significativo ($MSB$, na posição $w-1$) assume um papel aritmético definitivo: **ele possui peso posicional estritamente negativo: $-2^{w-1}$**. Todos os demais bits mantêm seus pesos positivos convencionais. Em uma palavra de 4 bits, o bit 3 pesa $-8$:
 
----
+$$\text{Valor}(b_3 b_2 b_1 b_0) = (b_3 \times \mathbf{-8}) + (b_2 \times 4) + (b_1 \times 2) + (b_0 \times 1)$$
 
-### 1.3 Par Mínimo de Contraste: O Erro de Conversão e a Prática Segura
+O bit $MSB$ não é um rótulo de sinal colado a posteriori nem uma flag decorativa: ele é parte integrante do somatório ponderado do número. Quando $MSB = 0$, a faixa estende-se de $0$ a $+7$ (`0111`). Quando $MSB = 1$, o peso negativo de $-8$ ancora o valor no semiplano inferior, permitindo representar de $-8$ (`1000`) a $-1$ (`1111`).
 
-A norma internacional da linguagem C (Padrão ISO C11, §6.3.1.4) estabelece a regra de conversão: quando um número com casas decimais é convertido para inteiro, sua parte fracionária é descartada. Se o valor não couber no destino, o comportamento é indefinido (<Term id="UB">UB</Term>).
+### Bancada de Laboratório: O Diagrama Topológico do Anel
 
-Você não precisa executar nada. Leia os dois trechos curtos e compare o risco.
-
-```c
-// NÃO-EXEMPLO: força 36842.0 em 16 bits sem checar
-int16_t converter_inseguro(double v) {
-  return (int16_t)v;
-}
-```
-
-```c
-// EXEMPLO: valida antes, devolve falso se não couber
-bool converter_seguro(double v, int16_t *r) {
-  if (v < -32768.0 || v >= 32768.0) return false;
-  *r = (int16_t)v;
-  return true;
-}
-```
-
-A regra SEI CERT C `FLP34-C` exige exatamente isso: validar limites antes de converter. O primeiro trecho reproduz o padrão que derrubou o Ariane 5. O segundo aciona contingência em vez de corromper o voo.
-
-> [!IMPORTANT]
-> **REGRA CENTRAL (Core Principle):** Aritmética de computador opera na geometria circular de um anel modular finito ($2^w$). Quando um valor ultrapassa o limite da largura $w$, não há saturação automática: o estouro descarta os bits superiores fora da caixinha física.
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Caixinha finita:** inteiro de largura w tem teto fixo e dá a volta ao estourar;
-> 2. **Hardware contra linguagem:** o circuito descarta e sinaliza <Term id="OF">OF</Term>, C chama de <Term id="UB">UB</Term> e Ada dispara exceção;
-> 3. **Conversão segura:** validar limites antes de forçar valor em tipo menor.
-
----
-
-## 2. Números Negativos: Complemento de Dois e a Unificação de Circuitos
-
-Como ensinar um computador a fazer contas com números negativos se os circuitos só conhecem `0` e `1`, e não existe um fio elétrico dedicado para transportar o sinal de menos?
-
-### 2.1 A Tentativa Ingênua: O Bit de Sinal Isolado
-
-A primeira ideia intuitiva de qualquer programador seria reservar o primeiro bit da esquerda apenas para indicar o sinal: `0` para positivo e `1` para negativo.
-
-Essa abordagem (chamada de sinal-magnitude) foi testada em computadores primitivos, mas revelou dois graves defeitos de projeto:
-
-1. **A Existência de Dois Zeros:** Teríamos o zero positivo (`0000 0000`) e o zero negativo (`1000 0000`). Em testes como `se x é zero`, a máquina precisaria de passos extras para checar duas formas do mesmo valor.
-2. **Duplicação de Circuitos:** Para somar e subtrair, os circuitos precisariam olhar os sinais antes de decidir entre somar ou subtrair, exigindo duas unidades separadas na <Term id="CPU">CPU</Term>.
-
----
-
-### 2.2 A Intuição Mecânica do Relógio e do Odômetro
-
-Para encontrar uma solução elegante, podemos recorrer a um mostrador circular, como as roletas do odômetro de um carro ou os ponteiros de um relógio de parede:
-
-* Imagine um relógio de 12 horas marcando exatamente 12h.
-* Se você deseja retroceder 1 hora, você pode girar o ponteiro **1 hora para trás**, parando nas 11h.
-* Mas e se o mecanismo estiver travado e só conseguir girar para a frente? Você pode girar o ponteiro **11 horas para a frente** e chegará exatamente às mesmas 11h!
-
-Em um mostrador fechado e circular, **subtrair 1 passo equivale a somar o seu complemento** (no caso do relógio, somar 11).
-
-O mostrador abaixo responde: como andar para trás andando para frente?
-1. Marque 0 e some 11 para chegar em 11.
-2. Subtraia 1 de 0 e veja o mesmo 11.
-3. Gire 256 passos em 8 bits e volte ao zero.
-Conclusão em 1 frase: em anel fechado, subtrair é somar o complemento.
+O instrumento abaixo mapeia a topologia física do registrador de 4 bits no anel de classes de equivalência. Observe como o mesmo padrão de 4 bits gera simultaneamente a interpretação sem sinal (na escala externa de 0 a 15) e a interpretação em complemento de dois (na escala interna de -8 a +7):
 
 <TwosComplementDial client:visible />
 
-Na memória do computador, uma variável de 8 bits comporta 256 combinações possíveis ($2^8$). Quando um contador atinge 255 e soma 1, ele transborda e volta a marcar 0.
+Ao inspecionar a bancada do anel, observe a fronteira crítica entre o padrão `0111` ($+7$) e `1000` ($-8$):
+1. **Continuidade Mecânica:** No hardware combinacional, somar $+1$ a `0111` move o registrador para `1000` de forma contínua, sem chaveamento especial de modo.
+2. **Inversão Semântica:** Sob a ótica de complemento de dois, essa transição unitária faz o número saltar do máximo positivo ($+7$) para o mínimo negativo ($-8$), provocando um estouro com sinal (<Term id="OF">Overflow Flag</Term>).
+3. **Ausência de Duplo Zero:** Ao contrário do sistema de sinal e magnitude, existe apenas um padrão para o zero (`0000`). Como contrapartida matemática, a escala é assimétrica: possui um número negativo a mais ($-2^{w-1}$) do que positivos ($+2^{w-1} - 1$).
 
-> **Ponto de Quebra da Analogia:**
-> Odômetros de veículos usam base decimal ($10^3$) e relógios operam em base 12. Além disso, nenhum deles possui uma divisão formal de sinal negativo fixada exatamente na metade da escala, como acontece no hardware binário com sinal ($2^{w-1}$).
-
----
-
-### 2.3 A Regra Prática do Complemento de Dois
-
-Essa mecânica circular originou o sistema padrão de todos os computadores modernos: o **Complemento de Dois**, proposto pelo matemático John von Neumann em 1945 durante a concepção do computador EDVAC.
-
-A regra prática para transformar qualquer número positivo em seu equivalente negativo é direta e infalível:
-
-1. **Inverta todos os bits do número:** transforme todos os zeros em uns, e todos os uns em zeros;
-2. **Some 1 ao resultado.**
-
-Vejamos como transformar o número $+5$ em $-5$ em uma gaveta de 8 bits:
-
-1. Escreva o $+5$ em binário:
-   $$+5 = \mathbf{0000\ 0101_2}$$
-2. Inverta todos os bits:
-   $$\sim(+5) = \mathbf{1111\ 1010_2}$$
-3. Some 1 ao resultado obtido:
-   $$1111\ 1010_2 + 0000\ 0001_2 = \mathbf{1111\ 1011_2}$$
-
-Esse padrão `1111 1011` é exatamente a representação do número $-5$ na memória do processador.
+<DeepDive title="Dedução formal no anel modular">
+Em $w$ bits, $B + \sim B$ soma $0 + 1$ ou $1 + 0$ em cada posição, resultando em $w$ uns: $B + \sim B = 2^w - 1$. Logo $\sim B = (2^w - 1) - B$, e $\sim B + 1 = 2^w - B$. Somando $A$: $A + (\sim B + 1) = (A - B) + 2^w$. O termo $2^w$ é um transporte para fora da largura $w$, descartado na aritmética modular, de modo que $(A - B) + 2^w \equiv A - B \pmod{2^w}$. Subtrair é somar o complemento.
+</DeepDive>
 
 > [!TIP]
-> **Pausa Reflexiva Ativa: Teste o mecanismo antes de rolar a página**
-> Se você somar $+5$ (`0000 0101`) com $-5$ (`1111 1011`) usando as regras de transporte do somador que você conheceu no Módulo 00, o que acontece na caixinha de 8 bits?
-> Faça o cálculo mental coluna por coluna: na primeira coluna da direita, $1 + 1 = 0$ com vai-um. O vai-um viaja propagando transporte elétrico por todas as posições até alcançar a oitava coluna.
-> O resultado da soma dá `1 0000 0000` (o dígito 1 seguido de oito zeros). Mas como a caixinha física possui exatamente 8 bits de largura, o 9º bit transborda e é descartado pelo circuito.
-> O que sobra dentro da gaveta? Exatamente `0000 0000`, o zero absoluto. É por essa razão que o Complemento de Dois funciona: somar $-5$ cancela $+5$ sem precisar de nenhum circuito subtrator separado.
+> **Checkpoint de retenção:** 1. Sinal e magnitude custa dois zeros e lógica separada. 2. O bit à esquerda pesa $-2^{w-1}$. 3. A <Term id="ALU">ALU</Term> subtrai somando $A$ mais o inverso de $B$ mais 1.
 
----
+## 3. O Caso Com Sinal em 16 Bits: 32767 + 1
 
-### 2.4 Por Que Essa Conta Funciona? O Peso Negativo do Primeiro Bit
+Com 16 bits com sinal, a faixa representável estende-se de $-32.768$ a $+32.767$. O que acontece em um somador de 16 bits quando o registrador guarda $+32.767$ e a CPU incrementa $+1$? A soma decimal ordinária resulta em $32.768$. Em binário, $+32.767$ é um zero seguido de quinze uns:
 
-Por que o padrão binário `1111 1011` equivale a $-5$?
+$$\mathbf{0111\ 1111\ 1111\ 1111_2}$$
 
-No sistema de Complemento de Dois, **o bit mais à esquerda recebe um peso aritmético formal negativo**, enquanto todos os outros bits conservam seus pesos positivos convencionais.
+Ao somar $1$, o transporte elétrico percorre em cascata todas as colunas até a posição mais à esquerda:
 
-Em uma palavra de 8 bits, o bit mais à esquerda (bit 7) possui peso formal de **$-128$** ($-2^7$). Vamos somar as colunas ativadas:
+$$\mathbf{1000\ 0000\ 0000\ 0000_2}$$
 
-$$\text{Valor} = (1 \times \mathbf{-128}) + (1 \times 64) + (1 \times 32) + (1 \times 16) + (1 \times 8) + (0 \times 4) + (1 \times 2) + (1 \times 1)$$
-$$\text{Valor} = -128 + 64 + 32 + 16 + 8 + 2 + 1 = -128 + 123 = \mathbf{-5}$$
+Esse padrão representa **$-32.768$** na leitura em complemento de dois. Aqui manifesta-se uma distinção de engenharia determinante: **nenhum transporte saiu do bit 15 ($C_{out} = 0$)**. A última coluna somou $0 + 0$ mais o transporte que chegou do estágio anterior, produziu 1 e reteve 0 na linha de saída externa. O circuito não descartou carry; contudo, a operação extrapolou a capacidade da representação com sinal. Quem sinaliza essa anomalia é a flag de estouro com sinal (<Term id="OF">Overflow Flag</Term>), que monitora a divergência entre o transporte que entra no bit de sinal e o que sai dele.
 
-A conta fecha com precisão matemática absoluta.
-
-> [!IMPORTANT]
-> **REGRA CENTRAL (Core Principle):** Em complemento de dois, o bit de sinal não é um interruptor isolado: ele é uma casa posicional com peso aritmético negativo ($-2^{w-1}$).
+No anel modular, o somador opera módulo $2^{16}$: o circuito descarta o transporte excedente quando há e conclui o pulso de clock sem interromper a máquina. O tratamento desse evento (garantir o wrap-around, desconsiderar garantias ou disparar exceção) pertence ao contrato da linguagem de programação.
 
 > [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Dois zeros custam caro:** sinal e magnitude exige circuito dobrado;
-> 2. **Peso negativo:** o bit à esquerda vale menos $2^{w-1}$ e elimina o zero duplo;
-> 3. **Subtrair sem subtrator:** a <Term id="ALU">ALU</Term> soma $A$ mais inverso de $B$ mais 1.
+> **Checkpoint de retenção:** 1. Sem sinal, o estouro descarta o transporte de saída ($C_{out}=1$) e o anel retorna a zero. 2. Com sinal, $32.767+1$ não emite $C_{out}$, mas inverte o sinal indevidamente, ativando a flag <Term id="OF">OF</Term>. 3. O somador opera estritamente no anel $\mathbb{Z}/2^w\mathbb{Z}$.
 
-#### Sequência de Negação Aritmética em Complemento de Dois
+## 4. Como o Somador Subtrai na ALU
 
-Para transformar um número inteiro positivo $X$ em seu oposto aditivo $-X$ dentro de um anel modular de $w$ bits:
-1. Obtenha a palavra binária de $w$ bits correspondente ao valor positivo original $X$.
-2. Inverta todos os bits da palavra através de portas XOR de controle, computando $\sim X = (2^w - 1) - X$.
-3. Injete o nível lógico 1 no pino de transporte inicial $C_0$ do circuito somador digital.
-4. Some o padrão invertido ao transporte inicial na ALU, obtendo o inverso aditivo $-X = \sim X + 1$.
-5. Comprove o fechamento no anel modular: $X + (\sim X + 1) = X + (2^w - X) = 2^w \equiv 0 \pmod{2^w}$. A grandeza atinge $2^w - X$, transbordando a largura física da palavra e deixando zero nos bits remanescentes.
+### 4.1 Propagação de Transporte e a Cascata
 
----
+A adição binária posicional processa entradas coluna a coluna. Quando a soma local totaliza $2_{10}$ ($10_2$), o dígito `0` permanece como soma local e o valor `1` é conduzido como **transporte** (*carry*) para a coluna adjacente à esquerda. Cada estágio expõe dois sinais de transporte: o **Carry-Out ($C_{out}$)**, emitido pela coluna atual, e o **Carry-In ($C_{in}$)**, recebido da coluna anterior de menor peso.
 
-### 2.5 Como a CPU Subtrai Sem Circuito Subtrator: Cin, Cout e o Inversor Controlado
+O somador completo integra três entradas booleanas ($A$, $B$, $C_{in}$) e satisfaz a relação de equivalência:
 
-A grande vitória de engenharia do Complemento de Dois é que a Unidade Lógica e Aritmética (<Term id="ALU">ALU</Term>) **não precisa de circuitos subtratores dedicados**. Toda operação de subtração $A - B$ é executada pelo mesmo circuito somador digital que realiza adições ordinárias.
+$$A + B + C_{in} = S + 2 \times C_{out}$$
 
-Para entender como esse mecanismo acontece sem gastar transistores extras nem exigir circuitos duplicados, precisamos primeiro compreender com precisão mecânica como o transporte elétrico de dados viaja entre os somadores: os sinais de **Carry-In (Cin)** e **Carry-Out (Cout)**.
+O fator 2 decorre da base posicional: o sinal de transporte avança para a coluna imediatamente à esquerda, cujo peso relativo vale o dobro da coluna de origem. Ao encadear somadores completos, ligando o $C_{out}$ de cada estágio ao $C_{in}$ do estágio subsequente, constrói-se a **cascata de transporte** (*ripple-carry adder*).
 
-#### A Física e a Intuição do "Vai-Um": O que são Cin e Cout
+### 4.2 O Pino C0 e o Inversor Programável SUB
 
-Desde a escola primária, quando somamos dois números com papel e lápis na base 10, seguimos uma regra estrita de colunas: somamos as unidades, somamos as dezenas e somamos as centenas.
+Na primeira coluna (bit 0), não há coluna anterior para fornecer transporte, e um meio somador realizaria somas convencionais. Ao posicionar um somador completo também no estágio inicial, os arquitetos de hardware deixam acessível o pino de transporte inicial **$C_0$**. Essa escolha de projeto é a chave para o reúso do circuito: adições utilizam $C_0 = 0$; subtrações utilizam $C_0 = 1$, injetando diretamente o $+1$ exigido pela regra do complemento de dois ($A + \sim B + 1$).
 
-Quando somamos $7 + 5$ na casa das unidades, o total é $12$. Como a casa das unidades só comporta um único algarismo (de 0 a 9), escrevemos o $2$ na coluna atual e enviamos o $1$ para o topo da coluna vizinha à esquerda (as dezenas). Essa grandeza que transborda para a próxima casa é o conhecido **"vai-um"**.
-
-Em hardware digital binário, a matemática opera exatamente sob o mesmo princípio, mas a base é 2:
-* Cada coluna só pode armazenar os dígitos `0` ou `1`.
-* Se somarmos $1 + 0$, o resultado é $1$ e não sobra nada para a coluna seguinte.
-* Mas se somarmos $1 + 1$, o resultado na base decimal é 2, que em binário se escreve como **$10_2$**.
-* O bit `0` permanece na coluna atual como resultado da **Soma (Sum)**.
-* O bit `1` precisa ser transportado eletricamente para a coluna vizinha imediatamente mais significativa à esquerda: isso é o **transporte aritmético**, ou em inglês, o **Carry**.
-
-Nos circuitos digitais da <Term id="CPU">CPU</Term>, esse transporte é mediado por dois pinos com papéis simétricos:
-
-* **Carry-Out (Cout - Transporte de Saída):** É o fio por onde sai o "vai-um" gerado pela coluna atual. Se a soma realizada pelos transistores da coluna ultrapassou o que 1 bit suporta, o fio Cout assume nível elétrico alto (`Cout = 1`). Caso contrário, permanece em repouso (`Cout = 0`).
-* **Carry-In (Cin - Transporte de Entrada):** É o fio por onde a coluna atual recebe o "vai-um" emitido pela coluna vizinha à sua direita. O somador precisa obrigatoriamente incluir essa tensão de entrada na sua conta local.
-
-#### Por Que o Meio Somador Não Basta e o Somador Completo é Obrigatório
-
-No Módulo 00, vimos dois circuitos somadores combinacionais:
-
-1. **O Meio Somador (Half Adder):** Possui apenas 2 fios de entrada ($A$ e $B$) e 2 fios de saída (Soma e Cout). Ele funciona perfeitamente para somar dois bits isolados, mas tem uma limitação fatal: **ele não possui pino de entrada para receber o Carry-In**. Se uma coluna anterior enviou um vai-um, o Meio Somador não tem onde conectar esse fio. É por essa incapacidade que ele é chamado de "Meio" Somador.
-2. **O Somador Completo (Full Adder):** Resolve essa lacuna fornecendo 3 fios de entrada: os dois operandos locais ($A$ e $B$) e o fio de transporte de entrada (**$Cin$**). Ele executa internamente a equação aritmética exata:
-   $$A + B + Cin = 2 \times Cout + Sum$$
-
-Para somar números de vários bits (por exemplo, 4 bits, 32 bits ou 64 bits), a <Term id="CPU">CPU</Term> conecta vários Somadores Completos em fila indiana. O fio de saída `Cout` de cada somador é soldado diretamente no pino de entrada `Cin` do somador da coluna à sua esquerda:
-* O Cout do Bit 0 vira o Cin do Bit 1 ($Cout_0 \rightarrow Cin_1$);
-* O Cout do Bit 1 vira o Cin do Bit 2 ($Cout_1 \rightarrow Cin_2$);
-* O Cout do Bit 2 vira o Cin do Bit 3 ($Cout_2 \rightarrow Cin_3$).
-
-Esse arranjo em linha é chamado de **Cascata de Transporte (Ripple-Carry Chain)**: o sinal elétrico de vai-um ondula de estágio em estágio, da direita para a esquerda, como o efeito dominó.
-
-#### O Segredo Arquitetural do Bit 0: Onde Nasce a Subtração
-
-Agora observe com atenção a primeira coluna da direita: o **Bit 0** (as unidades).
-
-Em uma soma comum, a primeira coluna da direita nunca recebe transporte vindo de trás. Poderíamos cogitar usar um simples Meio Somador no Bit 0 para economizar algumas portas lógicas. No entanto, se fizéssemos isso, esse estágio não teria como receber nenhum sinal vindo de fora. Ao utilizar um Somador Completo também na primeira coluna, os projetistas deixam uma entrada física exposta e controlável: o pino inicial **$C_0$ (o Carry-In inicial do Bit 0)**.
-
-Esse pino exposto pode ser controlado pelo sinal da operação:
-* Quando a <Term id="CPU">CPU</Term> quer executar uma **Adição ($A + B$)**, ela conecta esse fio ao nível lógico baixo: **$C_0 = 0$**. A soma começa limpa.
-* Quando a <Term id="CPU">CPU</Term> quer executar uma **Subtração ($A - B$)**, ela ativa esse fio com nível lógico alto: **$C_0 = 1$**.
-
-Esse pino $C_0 = 1$ é a chave que destrava o complemento de dois em hardware: ele fornece exatamente o $+1$ exigido pela transformação $\sim B + 1$.
-
-> [!IMPORTANT]
-> **REGRA CENTRAL (Core Principle):** A CPU não possui circuito subtrator dedicado. Na implementação didática apresentada, portas XOR controlam a inversão dos bits de $B$, e o mesmo sinal de controle mestre `SUB` fornece o transporte inicial $C_0 = 1$ ao somador digital. O circuito reaproveita o somador existente na ALU para calcular $A + \sim B + 1 = A - B$, em vez de exigir uma unidade subtratora separada com lógica independente de empréstimo.
-
-#### O Inversor Controlado por Portas XOR e a Linha SUB
-
-Se a <Term id="CPU">CPU</Term> precisasse de um circuito específico para subtrair, ela precisaria construir um subtrator com portas lógicas dedicadas a calcular empréstimos (*borrow*), duplicando circuitos na <Term id="ALU">ALU</Term> e inserindo chaves seletoras na saída.
-
-Para evitar essa duplicação, o circuito utiliza a porta lógica <Term id="XOR">XOR</Term> (OU-Exclusivo) como um inversor programável:
-* $b \oplus 0 = b$ (se a segunda entrada for 0, o sinal passa inalterado);
-* $b \oplus 1 = \sim b$ (se a segunda entrada for 1, o sinal é invertido).
-
-Coloca-se uma porta XOR na entrada de cada bit do segundo operando ($B$) e conecta-se a segunda entrada de todas essas portas a um único fio de controle chamado **`SUB`**:
+A porta <Term id="XOR">XOR</Term> atua como inversor condicional programável ($B \oplus 0 = B$ e $B \oplus 1 = \sim B$). Ao conectar uma porta XOR por bit do operando $B$, todas controladas pela linha de comando `SUB`, a ALU alterna entre adição e subtração com custo mínimo de silício:
 
 <AluBitSliceDiagram />
 
-A sincronia do circuito combinacional opera em duas etapas diretas:
-
-1. **Modo Adição (`SUB = 0`):**
-   * As portas XOR recebem 0: cada bit de $B$ passa intacto ($b_i \oplus 0 = b_i$).
-   * O fio `SUB` leva 0 ao pino inicial de transporte ($C_0 = 0$).
-   * O somador calcula: $A + B + 0 = \mathbf{A + B}$.
-
-2. **Modo Subtração (`SUB = 1`):**
-   * As portas XOR recebem 1: todos os bits de $B$ são invertidos ($b_i \oplus 1 = \sim b_i$).
-   * O fio `SUB` leva 1 ao pino inicial de transporte ($C_0 = 1$).
-   * O somador calcula: $A + \sim B + 1 = \mathbf{A - B}$.
-
-> [!NOTE]
-> **Aprofundamento de Engenharia: A Dedução Formal no Anel Modular**
->
-> A equivalência entre somar o inverso com $+1$ e subtrair decorre da álgebra dos anéis modulares $\mathbb{Z} / 2^w \mathbb{Z}$.
->
-> Em uma palavra de $w$ bits, quando somamos qualquer número $B$ ao seu inverso bit a bit ($\sim B$), cada posição soma $0 + 1$ ou $1 + 0$. O resultado é invariavelmente uma sequência de $w$ bits 1:
-> $$B + \sim B = \underbrace{1111\dots1111_2}_{w \text{ bits}} = 2^w - 1$$
->
-> Isolando $\sim B$:
-> $$\sim B = (2^w - 1) - B$$
->
-> Somando 1 em ambos os membros da igualdade:
-> $$\sim B + 1 = 2^w - B$$
->
-> Por fim, somamos o primeiro operando $A$ a ambos os lados:
-> $$A + (\sim B + 1) = A + (2^w - B) = (A - B) + 2^w$$
->
-> Observe o termo $+ 2^w$. Ele representa um bit 1 exatamente na posição $(w+1)$, ou seja, um transporte que transborda para fora da largura de $w$ bits do registrador. Como o registrador descarta esse bit excedente na aritmética modular de tamanho fixo, temos:
-> $$(A - B) + 2^w \equiv A - B \pmod{2^w}$$
->
-> Isso prova com rigor absoluto: **calcular $A - B$ é rigorosamente idêntico a somar $A$ com o inverso de $B$ e adicionar 1 ao resultado.**
+1. **Modo Adição (`SUB = 0`):** $B$ atravessa as portas XOR inalterado, $C_0 = 0$, e o circuito computa $A + B$.
+2. **Modo Subtração (`SUB = 1`):** $B$ é invertido bit a bit pelas portas XOR, $C_0 = 1$, e o circuito computa $A + \sim B + 1 = A - B$.
 
 <AluCircuitVisualizer client:visible />
 
-<ObservationMission
-  title="Missão de Observação: Inspecionando o Fio SUB, Cin e as Flags da ALU"
-  action="1. Ative o modo 'Subtração (SUB = 1)' no simulador acima. 2. Observe o pino Cin do Bit 0: repare como ele recebe C0 = 1 diretamente da linha SUB. 3. Clique em 'Propagar Carry' e veja o vai-um ondulando estágio por estágio até o Bit 3. 4. Experimente a conta 3 - 7: confira a saída 1100 (-4 em complemento de dois) e veja como a flag CF ativa indicando empréstimo (Borrow)."
-  takeaway="A CPU não possui subtrator. Uma única linha elétrica SUB inverte o segundo operando através de portas XOR e injeta +1 no pino Carry-In do Bit 0. O mesmo somador digital realiza a subtração e atualiza o registrador de flags em tempo real."
-/>
+### 4.3 Caso Trabalhado: 5 menos 3 em 4 Bits
 
-#### Rastreamento Passo a Passo de Bits e Elétrons em Quatro Casos Concretos
+Em uma <Term id="ALU">ALU</Term> didática de 4 bits (faixa de $-8$ a $+7$), com $A = 0101_2$ ($+5$), $B = 0011_2$ ($+3$) e a linha `SUB = 1`, o operando $B$ é invertido para $1100_2$ e o pino $C_0$ recebe 1:
 
-Imagine, de forma simplificada, que a CPU possui uma <Term id="ALU">ALU</Term> de 4 bits (cujos números inteiros com sinal cobrem a faixa de $-8$ a $+7$). Vamos acompanhar o fluxo elétrico em 4 situações fundamentais:
+* **Bit 0:** $1 + 0 + 1 = 2 \implies S_0 = 0$, $C_{out} = 1$.
+* **Bit 1:** $0 + 0 + 1 = 1 \implies S_1 = 1$, $C_{out} = 0$.
+* **Bit 2:** $1 + 1 + 0 = 2 \implies S_2 = 0$, $C_{out} = 1$.
+* **Bit 3:** $0 + 1 + 1 = 2 \implies S_3 = 0$, $C_{out} = 1$.
 
-##### Caso 1: Subtração Direta Positiva ($5 - 3 = +2$)
-* Entradas: $A = 5 = 0101_2$, $B = 3 = 0011_2$, `SUB = 1`.
-* Inversão XOR de $B$: $B \oplus 1 = \sim(0011_2) = 1100_2$.
-* Carry-in inicial: $Cin_0 = SUB = 1$.
-* Propagação coluna a coluna:
-  * **Bit 0:** $A_0(1) + \text{XOR}_0(0) + Cin_0(1) = 2 \implies S_0 = 0$, gera $Cout_0 = 1$.
-  * **Bit 1:** $A_1(0) + \text{XOR}_1(0) + Cin_1(1) = 1 \implies S_1 = 1$, gera $Cout_1 = 0$.
-  * **Bit 2:** $A_2(1) + \text{XOR}_2(1) + Cin_2(0) = 2 \implies S_2 = 0$, gera $Cout_2 = 1$.
-  * **Bit 3:** $A_3(0) + \text{XOR}_3(1) + Cin_3(1) = 2 \implies S_3 = 0$, gera $Cout_3 = 1$.
-* Resultado final: Barramento de saída $S = 0010_2$, que em decimal vale exatamente **$+2$**.
-* Observe o transporte que saiu do último somador ($Cout_3 = 1$): houve transporte final para fora da palavra de 4 bits, sendo descartado pelo registrador.
+O padrão de saída `0010_2` equivale a **$+2$**, e o transporte final $C_{out}$ que escapou da palavra é descartado no anel modular. A presença do transporte inicial $C_0 = 1$ é indispensável: sem ele, o cálculo produziria $A + \sim B = 0101_2 + 1100_2 = 0001_2$ ($+1$), uma unidade aquém do resultado exato.
 
-> [!TIP]
-> **Previsão Ativa: O papel indispensável do Carry Inicial**
-> Se as portas XOR invertessem $B$, mas mantivéssemos o carry inicial em zero ($Cin_0 = 0$), o resultado ainda seria $A - B$?
-> Sem o carry inicial, a conta somaria apenas $A + \sim B$. Para $5 - 3$, teríamos $0101_2 + 1100_2 + 0 = 10001_2$, restando `0001` ($+1$) na saída de 4 bits. O resultado ficaria uma unidade abaixo da resposta correta ($+2$), revelando que o $+1$ injetado pelo pino $C_0$ é indispensável para completar a regra do complemento de dois.
+### 4.4 Tabela de Sinais e Flags de Condição
 
-##### Caso 2: Subtração com Resultado Negativo ($3 - 5 = -2$)
-* Entradas: $A = 3 = 0011_2$, $B = 5 = 0101_2$, `SUB = 1`.
-* Inversão XOR de $B$: $B \oplus 1 = \sim(0101_2) = 1010_2$.
-* Carry-in inicial: $Cin_0 = 1$.
-* Propagação coluna a coluna:
-  * **Bit 0:** $A_0(1) + \text{XOR}_0(0) + Cin_0(1) = 2 \implies S_0 = 0$, gera $Cout_0 = 1$.
-  * **Bit 1:** $A_1(1) + \text{XOR}_1(1) + Cin_1(1) = 3 \implies S_1 = 1$, gera $Cout_1 = 1$.
-  * **Bit 2:** $A_2(0) + \text{XOR}_2(0) + Cin_2(1) = 1 \implies S_2 = 1$, gera $Cout_2 = 0$.
-  * **Bit 3:** $A_3(0) + \text{XOR}_3(1) + Cin_3(0) = 1 \implies S_3 = 1$, gera $Cout_3 = 0$.
-* Resultado final: Barramento de saída $S = 1110_2$.
-* Decodificando $1110_2$ em complemento de dois:
-  $$1110_2 = (1 \times -8) + (1 \times 4) + (1 \times 2) + (0 \times 1) = -8 + 6 = \mathbf{-2}$$
-* Observe dois detalhes conceituais importantes:
-  1. O bit mais significativo com valor 1 **faz parte do próprio valor** (possui peso posicional negativo de $-8$), e não é um sinal adicionado a posteriori pelo circuito.
-  2. A ausência de transporte final ($Cout_3 = 0$) **não é o critério para identificar um resultado negativo**. Em processadores reais, o sinal negativo é detectado pela flag de sinal ($SF = 1$). A conta fecha com precisão absoluta.
+A ALU opera sobre as vias de bits sem inspecionar a semântica do programa. Quem traduz o resultado numérico para o software são as **flags de condição**:
 
-##### Caso 3: Negativo Menos Positivo ($(-5) - (+2) = -7$)
-* Entradas: $A = -5 = 1011_2$, $B = +2 = 0010_2$, `SUB = 1`.
-* Inversão XOR de $B$: $\sim(0010_2) = 1101_2$, com $Cin_0 = 1$.
-* Propagação coluna a coluna:
-  * **Bit 0:** $1 + 1 + 1 = 3 \implies S_0 = 1, Cout_0 = 1$.
-  * **Bit 1:** $1 + 0 + 1 = 2 \implies S_1 = 0, Cout_1 = 1$.
-  * **Bit 2:** $0 + 1 + 1 = 2 \implies S_2 = 0, Cout_2 = 1$.
-  * **Bit 3:** $1 + 1 + 1 = 3 \implies S_3 = 1, Cout_3 = 1$.
-* Resultado final: $S = 1001_2 \implies -8 + 1 = \mathbf{-7}$.
+| Caso | Operação | A | B | $C_{in}$ inicial | $C_{in}$ no bit 3 | Saída S | $C_{out}$ final | ZF | SF | CF (x86) | OF |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | $7 - 3$ | `0111` | `0011` | 1 | 1 | `0100` (+4) | 1 | 0 | 0 | 0 | 0 |
+| 2 | $3 - 7$ | `0011` | `0111` | 1 | 0 | `1100` (-4) | 0 | 0 | 1 | 1 | 0 |
+| 3 | $(-5) - (+2)$ | `1011` | `0010` | 1 | 1 | `1001` (-7) | 1 | 0 | 1 | 0 | 0 |
+| 4 | $(-5) - (+6)$ | `1011` | `0110` | 1 | 0 | `0101` (+5) | 1 | 0 | 0 | 0 | 1 |
 
-##### Caso 4: Estouro de Capacidade com Sinal ($(-5) - (+6) = -11 \rightarrow$ Overflow)
-* Entradas: $A = -5 = 1011_2$, $B = +6 = 0110_2$, `SUB = 1`.
-* Inversão XOR de $B$: $\sim(0110_2) = 1001_2$, com $Cin_0 = 1$.
-* Propagação coluna a coluna:
-  * **Bit 0:** $1 + 1 + 1 = 3 \implies S_0 = 1, Cout_0 = 1$.
-  * **Bit 1:** $1 + 0 + 1 = 2 \implies S_1 = 0, Cout_1 = 1$.
-  * **Bit 2:** $0 + 0 + 1 = 1 \implies S_2 = 1, Cout_2 = 0$.
-  * **Bit 3:** $1 + 1 + 0 = 2 \implies S_3 = 0, Cout_3 = 1$.
-* Resultado final: $S = 0101_2 = \mathbf{+5}$!
-* Dois números negativos subtraídos produziram um valor positivo absurdo. O limite inferior de 4 bits é $-8$, e $-11$ não cabe.
-
-
-#### Tabela de Rastreamento de Sinais da ALU (Code & Circuit Tracing)
-
-Para consolidar o modelo mental da máquina nocional, rastreamos o comportamento elétrico dos pinos internos e das flags de condição para uma ALU de 4 bits durante a execução dos quatro casos:
-
-| Caso | Operação | A (bin) | B (bin) | XOR(B, SUB) | Cin_0 | Cin_3 | Saída S | Cout_3 | ZF | SF | CF (x86) | OF | Interpretação Física |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **1. Positivo - Positivo** | $7 - 3$ | `0111` | `0011` | `1100` | 1 | 1 | `0100` (+4) | 1 | 0 | 0 | 0 | 0 | $7 \ge 3$: sem empréstimo, sem overflow |
-| **2. Menor - Maior** | $3 - 7$ | `0011` | `0111` | `1000` | 1 | 0 | `1100` (-4) | 0 | 0 | 1 | 1 | 0 | $3 < 7$: empréstimo unsigned ($CF = 1$) |
-| **3. Negativo - Positivo** | $(-5) - (+2)$ | `1011` | `0010` | `1101` | 1 | 1 | `1001` (-7) | 1 | 0 | 1 | 0 | 0 | Magnitude dentro do limite de 4 bits |
-| **4. Estouro de Sinal** | $(-5) - (+6)$ | `1011` | `0110` | `1001` | 1 | 0 | `0101` (+5) | 1 | 0 | 0 | 0 | 1 | $Cin_3 \ne Cout_3 \implies OF = 1$ |
-
-> **Leitura de Sinais:** Observe a coluna $OF$: ela só ativa quando $Cin_3 \ne Cout_3$ ($0 \oplus 1 = 1$). Observe também a coluna $CF$ (x86): ela atua como flag de empréstimo (*Borrow*), invertendo o valor de $Cout_3$ para que $CF = 1$ indique que o minuendo era menor que o subtraendo.
-
-#### A Anatomia das Flags de Condição: Carry, Borrow e Overflow
-
-O somador digital realiza exatamente a mesma operação elétrica sobre os bits, independentemente de representarem grandezas com sinal ou sem sinal. Quem traduz o resultado elétrico para a lógica do software é o **Registrador de Flags de Condição** da <Term id="CPU">CPU</Term> (como o registrador EFLAGS/RFLAGS na arquitetura x86):
+* **Zero Flag (ZF):** acionada quando todos os bits do registrador de saída são nulos.
+* **Sign Flag (SF):** réplica exata do bit $MSB$; indica valor negativo quando interpretado em complemento de dois.
+* **Carry Flag (<Term id="CF">CF</Term>):** na adição, indica transporte além do bit mais significativo. Na subtração x86, atua como empréstimo invertido ($CF = 1$ indica que o minuendo era menor).
+* **Overflow Flag (<Term id="OF">OF</Term>):** acionada quando o resultado extrapola o intervalo com sinal: $OF = C_{in,MSB} \oplus C_{out,MSB}$.
 
 <CpuFlagsVisualizer client:visible />
 
-1. **Zero Flag (ZF):** É ativada (`ZF = 1`) se todos os bits de saída da Soma forem zero ($S = 0000_2$). É detectada em hardware por uma simples porta NOR conectada a todos os fios de saída.
-2. **Sign Flag (SF):** É uma cópia direta do bit mais significativo ($S_{w-1}$, o bit de sinal). Se $SF = 1$, o resultado é formalmente negativo na interpretação com sinal.
-3. **Carry Flag (CF) e a Sutileza do Empréstimo (Borrow):**
-   * Na **adição**, <Term id="CF">CF</Term> é simplesmente o transporte que saiu do bit mais significativo ($CF = Cout_{final}$). Se $Cout = 1$, a soma estourou a capacidade sem sinal da palavra.
-   * Na **subtração**, a física nos apresenta uma regra fascinante:
-     * No Caso 1 ($7 - 3 = 4$), o cálculo produziu $Cout_3 = 1$. O valor $7 \ge 3$ era suficiente: **não foi necessário nenhum empréstimo**.
-     * No Caso 2 ($3 - 7 = -4$), o cálculo produziu $Cout_3 = 0$. O valor $3 < 7$ era insuficiente: **foi necessário um empréstimo externo**.
-     * Na subtração, um transporte de saída $Cout = 1$ significa que **NÃO houve empréstimo**, enquanto $Cout = 0$ significa que **HOUVE empréstimo**!
-
-> [!NOTE]
-> **Aprofundamento de Engenharia: A Divergência de Microarquitetura entre Intel x86 e ARM**
->
-> Na subtração, o somador elétrico produz $Cout = 1$ quando o minuendo é maior ou igual ao subtraendo ($A \ge B$, sem empréstimo) e $Cout = 0$ quando ocorre empréstimo ($A < B$).
->
-> Os arquitetos da **Intel x86** priorizaram a intuição de software: para que a Carry Flag atuasse diretamente como indicador de empréstimo (*Borrow Flag*), incluíram um inversor na saída do somador durante subtrações, definindo $CF = \sim Cout_{final}$. Assim, $CF = 1$ indica que houve empréstimo.
->
-> Já os arquitetos da **ARM** e da PowerPC optaram pela fidelidade direta ao hardware sem portas adicionais: mantiveram $C = Cout_{final}$. Em processadores ARM, $C = 1$ significa que a subtração não precisou de empréstimo, e instruções de desvio condicional como `BLS` (*Branch if Lower or Same*) testam $C = 0$. Ambas as abordagens realizam a mesma aritmética, divergindo apenas na convenção de polaridade do sinal elétrico.
-
-4. **Overflow Flag (OF - Estouro com Sinal):**
-   * A flag <Term id="OF">OF</Term> sinaliza quando o resultado ultrapassou os limites representáveis no anel com sinal ($[-2^{w-1}, 2^{w-1}-1]$).
-   * Em termos de regra de sinais:
-     * Positivo menos Negativo deveria resultar em Positivo. Se resultar em Negativo, houve estouro ($OF = 1$).
-     * Negativo menos Positivo deveria resultar em Negativo. Se resultar em Positivo, houve estouro ($OF = 1$).
-     * Subtrair números de mesmo sinal (positivo menos positivo ou negativo menos negativo) **nunca pode causar overflow**, pois a magnitude da diferença é sempre menor ou igual à magnitude dos termos originais.
-   * **A Fórmula Física em Hardware:** Como a <Term id="ALU">ALU</Term> calcula o overflow em uma única porta lógica ultrarrápida? Comparando o transporte que entrou no bit de sinal com o transporte que saiu dele:
-     $$OF = Cin_{MSB} \oplus Cout_{MSB}$$
-     No Caso 4 anterior ($(-5) - (+6)$), tivemos $Cin_3 = 0$ e $Cout_3 = 1$. A porta <Term id="XOR">XOR</Term> calcula $0 \oplus 1 = \mathbf{1}$, disparando a flag $OF$ de imediato!
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
->
-> 1. **Cin é o transporte que entra, Cout é o transporte que sai:** cada Somador Completo propaga o vai-um para a coluna vizinha através da cascata ripple-carry.
-> 2. **O pino C0 ativa a subtração sem custo:** a linha de controle `SUB = 1` inverte os bits de $B$ via portas XOR e injeta o $+1$ diretamente no transporte inicial do Bit 0.
-> 3. **As flags interpretam o resultado cego do somador:** a ALU apenas calcula bits; as flags $ZF$ (zero), $SF$ (sinal negativo), $CF$ (empréstimo unsigned) e $OF$ (estouro signed) informam ao software o que aconteceu.
-
----
-
-### 2.6 Aprofundamento de Linguagem: A Armadilha de INT_MIN em C
-
-<DeepDive title="A Pegadinha do INT_MIN em C e Compiladores">
-Se você inspecionar o arquivo de cabeçalho padrão `<limits.h>` da biblioteca C em sistemas de 32 bits, notará uma definição curiosa para o menor número negativo:
-
-```c
-#define INT_MAX  2147483647
-#define INT_MIN  (-INT_MAX - 1)
-```
-
-Por que o padrão define `(-INT_MAX - 1)` em vez de escrever diretamente `-2147483648`?
-
-Isso acontece por causa das regras de análise gramatical da linguagem C:
-1. O compilador C não possui constantes negativas literais na sua gramática. Ao encontrar `-2147483648`, o compilador enxerga um operador unário de menos `-` aplicado sobre o número positivo `2147483648`.
-2. Como o maior número positivo representável em 32 bits com sinal é $+2.147.483.647$, a constante positiva `2147483648` excede a capacidade do tipo e é promovida automaticamente para **unsigned int** (sem sinal).
-3. Ao aplicar a negação sobre um número sem sinal, a regra de módulo avalia $2^{32} - 2147483648$, resultando no próprio valor sem sinal $2147483648\text{U}$.
-4. Por consequência, uma checagem defensiva como `if (-2147483648 < 0)` seria avaliada como **falsa**, pois números sem sinal nunca são menores que zero. A fórmula `(-INT_MAX - 1)` contorna essa armadilha avaliando operações dentro do intervalo seguro de tipos com sinal.
+<DeepDive title="Por que x86 e ARM discordam na flag de carry da subtração">
+O somador produz $C_{out} = 1$ quando não há empréstimo e $C_{out} = 0$ quando há. O x86 inverte o sinal na flag para que $CF = 1$ signifique empréstimo, priorizando a leitura do software. ARM mantém a polaridade do hardware ($C = C_{out}$), e seus desvios testam a condição correspondente. Mesma aritmética, convenções opostas de polaridade.
 </DeepDive>
 
----
+### A Tensão de Engenharia: Da Palavra Interna ao Barramento de Memória
+
+A combinação do somador em cascata com o inversor programável resolve as operações aritméticas dentro dos registradores da CPU. Contudo, os registradores fornecem armazenamento volátil e restrito a poucas palavras. Para persistir estruturas complexas e trocar dados com periféricos, o processador precisa transferir essas palavras para a memória principal.
+
+A memória física, no entanto, não possui barramentos de palavras unificadas: ela opera como um **espaço linear de endereçamento indexado estritamente byte a byte**. A restrição espacial impõe uma escolha mandatória de arquitetura: **quando uma palavra inteira de 4 ou 8 bytes é descarregada em endereços contíguos de 1 byte, em qual ordem espacial os bytes devem ser alinhados?**
 
 ---
 
-## Parte 1B: Organização dos Bytes, Memória Linear e Tipagem
+<span id="bytes"></span>
 
-Depois de compreender como os números inteiros são representados nos circuitos somadores, examinamos como eles se acomodam no espaço linear da memória <Term id="RAM">RAM</Term> física, como a ordem dos bytes afeta a comunicação em rede e como o compilador altera a semântica de tipos sem mover um único bit de lugar.
+## 5. A Memória <Term id="RAM">RAM</Term> como Espaço Linear e a Física do Endianness
 
-## 3. A Memória <Term id="RAM">RAM</Term> como Espaço Linear e a Física do Endianness
-
-Para entender como os computadores organizam dados na memória, imagine a memória <Term id="RAM">RAM</Term> como uma fita métrica milimetrada estendida sobre uma bancada:
-
-* A fita possui marcações numeradas sequencialmente: são os **endereços de memória** (`0x1000`, `0x1001`, `0x1002`, `0x1003`...);
-* Cada centímetro dessa fita guarda exatamente **1 Byte** (um conjunto de 8 bits).
-
-Para a <Term id="CPU">CPU</Term> e para o programa, a memória opera conceitualmente como um **espaço de endereçamento linear**. A arquitetura não enxerga funções ou variáveis complexas na memória bruta: ela expõe apenas uma fileira sequencial de células indexadas de 8 bits.
-
-A fita abaixo responde: onde mora cada byte?
-1. Localize o endereço base `0x1000`.
-2. Avance 1 casa e veja o próximo byte.
-3. Confira que cada casa guarda exatamente 2 dígitos hex.
-Conclusão em 1 frase: endereço é posição, byte é conteúdo.
+A memória principal organiza-se fisicamente como uma fita unidimensional de células de 8 bits (1 byte), onde cada célula é identificada por um endereço numérico sequencial (`0x1000`, `0x1001`, `0x1002`...). O processador e o controlador de memória comunicam-se através desse mapa contíguo:
 
 <MemoryRibbon client:visible />
 
-> **Ponto de Quebra da Analogia:**
-> Uma fita métrica real é contínua e feita de tecido flexível. Na máquina real, a fita é uma abstração lógica: a memória física dinâmica (<Term id="DRAM">DRAM</Term>) é organizada internamente em canais, bancos matriciais, linhas e colunas. O controlador de memória gerencia essas coordenadas elétricas e apresenta para o processador a ilusão de um espaço linear contínuo, onde cada célula de 8 bits é acessada individualmente por meio de barramentos elétricos de endereçamento.
+### 5.1 Notação Hexadecimal e Alinhamento de Nibbles
 
----
+Inspecionar uma palavra de 32 ou 64 bits em binário puro impõe severa fadiga visual e induz a erros de contagem de posições. A base decimal, por outro lado, fragmenta a correspondência com o hardware porque 10 não é potência de 2.
 
-### 3.1 Por Que Usamos Hexadecimal?
-
-Se quisermos inspecionar o conteúdo de uma variável de 32 bits em binário puro, teríamos diante dos olhos uma cadeia visualmente densa como:
-
-`11001010111111101011101010111110`
-
-O cérebro humano tem grande dificuldade em ler e memorizar uma sequência contínua de 32 zeros e uns sem cometer erros de contagem.
-
-Poderíamos tentar exibir esse número em formato decimal tradicional. No entanto, a base decimal possui um inconveniente grave para o programador de sistemas: **10 não é uma potência de 2** ($10 \neq 2^k$). Ao converter números binários para decimais, a correspondência direta com os circuitos elétricos da máquina desaparece por completo.
-
-A solução clássica da computação é adotar a base 16, denominada **Hexadecimal**.
-
-Como $16 = 2^4$, existe uma relação matemática exata: **cada grupo de 4 bits mapeia diretamente para exatamente 1 único caractere hexadecimal** (usando os dígitos de `0` a `9` e as letras de `A` a `F`):
-
-O cartão abaixo responde: quantos bits cabem em 1 dígito?
-1. Ligue 4 bits e veja 1 hex mudar.
-2. Desligue 1 bit e veja o hex cair pela metade do peso.
-3. Monte 1 byte e confira 2 dígitos hex.
-Conclusão em 1 frase: 4 bits viram 1 hex, 8 bits viram 2 hex.
+A base 16 (**hexadecimal**) soluciona a representação física porque $16 = 2^4$: **cada dígito hexadecimal mapeia rigorosamente um grupo de 4 bits (1 nibble)**. Como 1 byte é constituído por 8 bits, **todo byte da memória é expresso por exatamente 2 dígitos hexadecimais**. Uma sequência binária como `11001010111111101011101010111110` colapsa de forma compacta e exata em `0xCAFEBABE`.
 
 <NibbleVisualizer client:visible />
 
-Um grupo de 4 bits é chamado de **nibble**. Como 1 byte possui 8 bits:
+### 5.2 Endianness: A Disposição Espacial da Palavra na Memória
 
-$$\frac{8 \text{ bits}}{4 \text{ bits por dígito hexadecimal}} = \mathbf{2\text{ dígitos hexadecimais}}$$
+Em uma palavra escalar de 32 bits como `0x12345678`, os bytes possuem pesos aritméticos distintos: o byte `0x12` é o byte mais significativo ($MSB$, peso $2^{24}$) e `0x78` é o byte menos significativo ($LSB$, peso $2^0$). 
 
-Portanto, **qualquer byte na memória <Term id="RAM">RAM</Term> cabe com precisão matemática em exatamente 2 caracteres hexadecimais**.
+Ao persistir essa palavra a partir do endereço base `0x1000`, duas convenções dividem a arquitetura de computadores:
 
-A longa sequência binária de 32 bits do início deste tópico colapsa de forma limpa e legível em **`0xCAFEBABE`**.
+| Endereço Físico | Little Endian (x86 / ARM) | Big Endian (Rede TCP/IP) | Função Estrutural |
+| :--- | :---: | :---: | :--- |
+| `0x1000` | `0x78` (LSB) | `0x12` (MSB) | Endereço Base |
+| `0x1001` | `0x56` | `0x34` | Byte Intermediário |
+| `0x1002` | `0x34` | `0x56` | Byte Intermediário |
+| `0x1003` | `0x12` (MSB) | `0x78` (LSB) | Endereço Final |
 
----
+* **Little Endian:** armazena o byte de menor peso ($LSB$) no menor endereço físico (`0x1000`).
+* **Big Endian:** armazena o byte de maior peso ($MSB$) no menor endereço físico (`0x1000`), espelhando a ordem tradicional da leitura humana.
 
-### 3.2 O Que São MSB e LSB (A Mesma Lógica do Dinheiro)
+<ByteInspector client:visible />
 
-Quando juntamos vários bytes seguidos na memória para formar um número de tamanho maior (como um inteiro de 32 bits, que ocupa 4 bytes), cada byte possui um peso ponderado diferente no valor total.
+A convenção de endianness define estritamente o mapeamento entre os bytes e os endereços da RAM; ela não altera a ordem dos bits dentro do registrador interno da CPU, onde o bit mais significativo permanece com o maior peso ponderado.
 
-Pense no número decimal **R$ 1.482,00**:
-* O algarismo **1** é a nota de mil reais. Ele é o dígito mais importante (*Most Significant Digit*), pois qualquer mudança nele altera radicalmente o valor total.
-* O algarismo **2** representa apenas duas moedas de um real. Ele é o dígito menos importante (*Least Significant Digit*).
+<DeepDive title="A razão de sobrevivência histórica do Little Endian">
+Nos microprocessadores de 8 bits da década de 1970 (Intel 8008 e 8080), uma operação aritmética sobre 16 bits exigia dois ciclos sucessivos de barramento. Como o byte menos significativo repousava no primeiro endereço, o processador carregava o byte baixo, somava-o na ALU e propagava o carry diretamente durante a leitura do segundo byte, sem necessidade de armazenar temporariamente o byte alto. Em processadores modernos com barramentos paralelos de 64 bits, essa restrição de propagação serial desapareceu. A vantagem prática remanescente é de endereçamento: um ponteiro para um inteiro de 32 bits pode ser desreferenciado diretamente como um tipo de 8 ou 16 bits sem recalcular o endereço de memória.
+</DeepDive>
 
-Na memória do computador, aplicamos exatamente o mesmo raciocínio:
-* **<Term id="MSB">MSB</Term> (Most Significant Byte):** É o byte de maior peso aritmético (os "milhares" do número).
-* **<Term id="LSB">LSB</Term> (Least Significant Byte):** É o byte de menor peso aritmético (as "unidades" do número).
+### 5.3 O Contrato de Barramento e a Rede TCP/IP
 
-No número hexadecimal de 4 bytes `0x12345678`:
-* O byte `0x12` é o **<Term id="MSB">MSB</Term>** (ele vale $0x12 \times 2^{24}$, ou seja, milhões);
-* O byte `0x78` é o **<Term id="LSB">LSB</Term>** (ele vale apenas $0x78$, ou seja, 120 em decimal).
+A divergência entre formatos torna-se crítica na comunicação entre sistemas heterogêneos. Na pilha de protocolos da Internet, o padrão normativo exige a ordem Big Endian (RFC 9293). 
 
-> **Ponto de Quebra da Analogia:**
-> Notas e moedas podem ser misturadas livremente na carteira sem perder o valor. Na memória do computador, a posição física e a ordem em que os bytes são gravados nos endereços é rígida e determina como o processador executa cálculos aritméticos.
-
----
-
-### 3.3 Endianness: A Ordem dos Bytes na Memória RAM
-
-Se precisamos gravar esse número de 4 bytes `0x12345678` na memória <Term id="RAM">RAM</Term> a partir do endereço `0x1000`, em qual ordem física os quatro bytes devem entrar nas casinhas da fita (`0x1000`, `0x1001`, `0x1002`, `0x1003`)?
-
-Existem duas convenções dominantes na história da computação:
-
-1. **Big Endian:** Grava na ordem da leitura textual humana tradicional. O byte mais valioso (<Term id="MSB">MSB</Term>, `0x12`) fica na primeira casa de memória (`0x1000`), seguido por `0x34`, `0x56` e finalmente `0x78`. Esta é a convenção padrão para transmissão de dados nas redes da Internet (*Network Byte Order*, RFC 9293).
-2. **Little Endian:** Grava da direita para a esquerda. O byte menos valioso (<Term id="LSB">LSB</Term>, `0x78`) fica na primeira casa de memória (`0x1000`), seguido por `0x56`, `0x34` e finalmente `0x12`. Esta é a convenção física utilizada pelos processadores das famílias **x86** (Intel e AMD) e **ARM** (em computadores e smartphones modernos).
-
-| Endereço Físico | Formato Little Endian (x86 / ARM) | Formato Big Endian (Redes TCP/IP) | Posição Ponderada |
-| :--- | :--- | :--- | :--- |
-| **`0x1000`** | `0x78` | `0x12` | Primeiro endereço da variável |
-| **`0x1001`** | `0x56` | `0x34` | Segundo endereço |
-| **`0x1002`** | `0x34` | `0x56` | Terceiro endereço |
-| **`0x1003`** | `0x12` | `0x78` | Quarto endereço |
-
----
-
-### 3.4 O Conflito no Mundo Real: A Comunicação em Rede TCP/IP
-
-Se o seu computador pessoal grava dados em Little Endian, mas os protocolos da Internet conversam em Big Endian, o que acontece quando o seu programa envia um número pela rede?
-
-O inspetor abaixo responde: qual porta o roteador lê?
-1. Envie 80 sem converter e veja 20480 chegar.
-2. Ative `htons` e veja 80 chegar intacto.
-3. Inverta a ordem e confira os 2 bytes trocados.
-Conclusão em 1 frase: sem conversão, o primeiro byte vira o mais pesado no destino.
+Caso um host x86 grave a porta de rede `80` (`0x0050`) em Little Endian na RAM (`0x50` seguido de `0x00`) e envie esses bytes sem conversão, a extremidade receptora lerá `0x5000` (porta decimal 20.480), descartando a conexão. As funções da biblioteca padrão POSIX (`htons`, `htonl`, `ntohs`, `ntohl`) executam a permutação física dos bytes antes da transmissão pela interface de rede.
 
 <EndiannessNetworkInspector client:visible />
 
-Imagine que seu navegador deseja se conectar a um servidor web na porta de rede **80** (que em hexadecimal de 16 bits vale `0x0050`):
+### A Tensão de Engenharia: Memória Bruta versus Semântica de Tipos
 
-1. Na memória <Term id="RAM">RAM</Term> do seu processador x86 (Little Endian), esses dois bytes estão gravados na ordem invertida: primeiro `0x50` e depois `0x00`.
-2. Se o seu programa enviar esses bytes brutos diretamente para a placa de rede sem conversão, o roteador da internet (que lê os pacotes em Big Endian) lerá primeiro `0x50` e depois `0x00`.
-3. Para o roteador, `0x5000` representa em decimal a porta **20.480**!
-4. O roteador procurará por um serviço na porta 20.480, não encontrará nada e descartará a sua conexão imediatamente.
+A convenção de endianness alinha os bytes nas células lineares da RAM. No entanto, o hardware de memória é agnóstico ao significado dos dados armazenados: uma sequência de 4 bytes gravada em `0x1000` representa apenas padrões de tensão elétrica; ela não possui etiquetas que indiquem se contas contêm um número inteiro com sinal, um valor sem sinal ou um endereço de ponteiro.
 
-Para evitar esse problema clássico, a biblioteca de rede <Term id="POSIX">POSIX</Term> fornece funções padronizadas como `htons()` (da máquina para a rede, *Host to Network Short*), que invertem a ordem dos bytes antes de transmiti-los pela rede.
-
-> **REGRA CENTRAL (Core Principle):** Memória <Term id="RAM">RAM</Term> é endereçada em bytes, mas valores escalares ocupam múltiplos bytes contíguos. Endianness define apenas qual ponta (<Term id="MSB">MSB</Term> ou <Term id="LSB">LSB</Term>) fica no endereço mais baixo. Redes TCP/IP padronizam Big Endian; CPUs x86 usam Little Endian para propagação direta de carry.
+Quando linguagens de sistemas como C manipulam esses endereços, o compilador precisa atribuir uma regra semântica de interpretação aos bits. **O que ocorre no silício quando um programa converte um tipo de dado para outro sem alterar os bits físicos na memória RAM?**
 
 ---
 
-### 3.5 Aprofundamento de Engenharia: A Origem e a Razão do Little Endian
+## 5. A Fronteira do Casting e Coerção de Tipos em C
 
-<DeepDive title="Por Que a CPU Prefere Little Endian?">
-Por que engenheiros da Intel e da ARM decidiram adotar uma ordem que parece invertida e contraintuitiva à primeira vista?
+Até aqui o texto operou sobre campos e palavras sem avaliar o compilador. As linguagens de sistemas necessitam de três conceitos operacionais:
+* **Variável:** um rótulo simbólico que referencia um intervalo contíguo de bytes na memória RAM.
+* **Tipo de Dado:** a largura física desse campo (em bits) somada à regra semântica de interpretação (com sinal, sem sinal ou ponto flutuante).
+* **Comparação:** a subtração dos operandos na ALU e a inspeção das flags resultantes, onde o compilador seleciona desvios sem sinal (`jb`/`jbe`) ou com sinal (`jl`/`jle`).
 
-A explicação divide-se em duas camadas: a gênese histórica nos primeiros microprocessadores e a elegância de projeto mantida nas arquiteturas modernas.
+O contraste físico das seções anteriores manifesta-se no padrão ISO C11: enquanto a soma na ALU opera sempre sob aritmética modular no anel $\mathbb{Z}/2^w\mathbb{Z}$, o estouro de inteiros com sinal em C é classificado como Comportamento Indefinido (<Term id="UB">Undefined Behavior</Term>, ISO C11 §6.5). O compilador assume que o estouro com sinal nunca ocorre e descarta checagens defensivas posteriores. Para inteiros sem sinal, o estouro é estritamente definido e modular.
 
-**1. A Origem Histórica nos Primeiros Processadores:**
-Na década de 1970, processadores pioneiros como o Datapoint 2200, o Intel 8008 e o Intel 8080 operavam com barramentos de dados de apenas 8 bits. Para processar valores de 16 bits (como endereços de salto na memória), a máquina precisava realizar leituras e cálculos em dois passos consecutivos de 8 bits. Ao armazenar o byte menos significativo (<Term id="LSB">LSB</Term>) no primeiro endereço de memória, a <Term id="ALU">ALU</Term> podia iniciar a soma do <Term id="LSB">LSB</Term> imediatamente no primeiro ciclo de leitura e propagar o transporte elétrico (*carry*) para o byte seguinte no ciclo posterior, sem exigir circuitos temporários de retenção e reordenação de bytes. Essa convenção estabeleceu a compatibilidade binária mantida no lançamento do processador 8086, consolidando a linhagem x86.
+O que ocorre quando o código em C converte um `signed int` para `unsigned int` de mesma largura? **Nenhum bit é movido ou alterado na memória RAM.** O compilador preserva o padrão de bits intacto e altera apenas as instruções de desvio condicional subsequentes.
 
-O visual abaixo responde: por que começar pelo byte leve?
-1. Some o byte baixo primeiro.
-2. Veja o carry subir para o byte alto.
-3. Compare com a ordem inversa exigindo espera.
-Conclusão em 1 frase: começar pelo leve permite calcular em fluxo contínuo.
+### 5.1 Par Mínimo de Contraste: A Comparação Mista
 
-<CarryAdditionVisualizer client:visible />
+Quando uma expressão compara os tipos correspondentes `int` e `unsigned int` de mesma largura, a norma ISO C promove silenciosamente o operando com sinal para sem sinal antes de disparar a comparação na ALU:
 
-**2. A Vantagem de Endereçamento em Processadores Modernos (Narrowing Cast):**
-Em processadores modernos de 32 e 64 bits, os barramentos de memória e os somadores da <Term id="ALU">ALU</Term> trabalham em paralelo sobre palavras completas em um único ciclo de clock. No entanto, o formato Little Endian preserva uma propriedade de projeto indispensável para compiladores e sistemas operacionais: **a conversão de ponteiros para tipos menores (*narrowing cast*) sem alteração de endereço base**.
+```c
+int x = -1;
+unsigned int y = 0;
+if (x < y) { /* Este ramo nunca executa */ }
+```
 
-Se você armazena um inteiro de 64 bits (`uint64_t`) no endereço `0x1000` e o seu programa realiza um casting de ponteiro para acessar esse número como um `uint32_t`, `uint16_t` ou `uint8_t`, o endereço de memória inicial da porção de menor peso continua sendo rigorosamente **`0x1000`**. O processador e o compilador utilizam exatamente o mesmo endereço base sem a necessidade de somar deslocamentos de ajuste (*offsets*).
+O padrão binário de $-1$ em 32 bits é composto inteiramente por 1s (`0xFFFFFFFF`). Ao ser interpretado como sem sinal, o bit mais significativo deixa de pesar $-2.147.483.648$ e passa a pesar $+2.147.483.648$. O valor decimal resultante atinge **$4.294.967.295$**, superando zero e invertendo a avaliação lógica do teste.
 
-Em uma máquina Big Endian, o endereço `0x1000` guardaria o byte mais significativo (<Term id="MSB">MSB</Term>); para acessar os 16 bits de menor peso do mesmo número de 64 bits, o compilador seria forçado a somar 6 bytes ao endereço base (`0x1000 + 6 = 0x1006`), exigindo instruções adicionais de cálculo de ponteiro.
-</DeepDive>
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Endereço é posição:** cada casa guarda 1 byte, 2 dígitos hex;
-> 2. **Ordem importa:** Little Endian começa pelo <Term id="LSB">LSB</Term>, Big Endian pelo <Term id="MSB">MSB</Term>;
-> 3. **Casting não move bit:** muda a regra de leitura, e mistura signed com unsigned promove para gigante.
-
----
-
-## 4. A Fronteira do Casting: Mudança Semântica sem Mutação de Bits
-
-O que acontece no interior da máquina quando um programa em linguagem C executa uma conversão forçada de tipo (*casting*), transformando uma variável de `signed int` para `unsigned int` de mesma largura?
-
-**Invariante Fundamental de Hardware:** A operação de casting não altera nenhum bit na memória <Term id="RAM">RAM</Term> e não aciona nenhuma instrução de transformação de dados na <Term id="CPU">CPU</Term>. O compilador limita-se a modificar as tabelas de símbolos internas e as instruções comparativas subsequentes.
-
-Os mesmos 32 bits permanecem estritamente intactos no mesmo lugar físico da memória. O que muda é apenas o conjunto de regras que o compilador utiliza para interpretar aquele bloco de informação.
-
----
-
-### 4.1 Par Mínimo de Contraste: A Armadilha da Comparação Mista (conversão com sinal para sem sinal, <Term id="CWE">CWE</Term>-195)
-
-Quando expressões condicionais comparam variáveis com sinal e sem sinal de mesmo tamanho, a norma ISO C estipula que o valor com sinal seja promovido automaticamente para o formato sem sinal antes da comparação.
-
-O visual abaixo responde: por que menos 1 vira gigante?
-1. Marque menos 1 e veja `0xFFFFFFFF`.
-2. Reinterprete como unsigned e veja 4294967295.
-3. Compare com 0 e veja o teste inverter.
-Conclusão em 1 frase: o bit de sinal vira peso positivo gigante.
+Se um parâmetro de comprimento `len` com valor $-1$ vindo de uma entrada externa passa pela verificação `if (len < sizeof(buf))` e alimenta uma chamada como `memcpy(dest, src, len)`, a promoção implícita converte $-1$ em $4.294.967.295$, a verificação aprova a condição e a cópia transborda a memória física. Essa vulnerabilidade clássica de engenharia é classificada como **<Term id="CWE">CWE</Term>-195** (*Signed to Unsigned Conversion Error*).
 
 <CastingTrapVisualizer client:visible />
 
-Leia o par mínimo. Você não precisa compilar.
-
-```c
-// NÃO-EXEMPLO: -1 promove para 4294967295U, teste falha
-if (x < y) { /* esperado */ } else { /* executado */ }
-```
-
-O padrão binário de $-1$ em 32 bits em Complemento de Dois é composto inteiramente por bits 1 (`0xFFFFFFFF`).
-
-Ao interpretar esse mesmo bloco de bits como um número sem sinal (`unsigned`), o bit mais à esquerda deixa de ter peso negativo e passa a valer $+2.147.483.648$. A soma de todos os bits atinge o valor de **$4.294.967.295$**!
-
-Essa conversão silenciosa é a fonte de uma das falhas clássicas da indústria, catalogada como **<Term id="CWE">CWE</Term>-195** (*Signed to Unsigned Conversion Error*). Se uma checagem de tamanho de buffer avaliar um índice negativo vindo de fora, a promoção para unsigned transforma o valor em número gigantesco e permite acesso indevido à memória.
-
----
-
-### 4.2 Aprofundamento de Engenharia: A Otimização do Compilador e a Flag nsw
-
-<DeepDive title="Otimizações do Compilador e a Flag nsw">
-Na linguagem C, o overflow de variáveis com sinal é classificado como Comportamento Indefinido (*Undefined Behavior*).
-
-Quando compiladores modernos como o Clang/LLVM traduzem operações aritméticas com sinal para código intermediário, eles anexam a flag `nsw` (*No Signed Wrap*):
-
-```llvm
-%resultado = add nsw i32 %a, %b
-```
-
-Essa diretiva autoriza o otimizador a assumir que a soma nunca ultrapassará os limites do tipo. Se um estouro ocorrer em tempo de execução, o compilador gera um valor abstrato denominado **poison** na sua árvore interna de instruções.
-
-Por essa razão, checagens ingênuas escritas após a soma para tentar detectar o erro, como:
-
-```c
-if (a + b < a) // Tentativa ingênua de checar overflow
-```
-
-são **completamente eliminadas e apagadas pelo compilador** durante a compilação com níveis de otimização (`-O2` ou `-O3`). Como o compilador assume que overflow com sinal é impossível na semântica da linguagem, ele conclui que a condição é sempre falsa.
+<DeepDive title="Por que checar overflow depois da soma falha em C">
+Estouro com sinal é comportamento indefinido, e compiladores como o Clang/LLVM marcam somas com sinal com a flag `nsw` (*no signed wrap*): o otimizador assume que a soma nunca estoura. Sob a hipótese explícita de ausência de overflow, `x + 1 < x` é sempre falso, então uma checagem escrita depois da soma resulta sempre falsa sob essa premissa e some em `-O2` ou `-O3`. A defesa correta valida antes de operar, nunca depois de estourar.
 </DeepDive>
 
-> **REGRA CENTRAL (Core Principle):** Na fronteira de casting em expressões C com tipos signed e unsigned de mesma largura, o valor signed é promovido automaticamente para unsigned. O bit de sinal vira magnitude astronômica ($2^w - 1$), subvertendo testes condicionais de segurança.
+### A Tensão de Engenharia: O Custo de Portas da Multiplicação e Divisão
+
+A conversão de tipos em C não altera os bits na RAM; ela altera as instruções de desvio emitidas para a ALU. Uma vez estabelecidos os tipos dos dados, o processador precisa executar as contas aritméticas solicitadas pelos algoritmos.
+
+No entanto, instruções de multiplicação inteira (`imul`) exigem múltiplos ciclos de clock (3 a 4 ciclos em árvores de somadores de Wallace), e instruções de divisão inteira (`idiv`) utilizam algoritmos iterativos seriais que bloqueiam a unidade de execução por 20 a 80 ciclos de clock. Para laços de repetição intensivos e cálculo de índices de vetores, essa latência paralisa o pipeline da CPU. A restrição de desempenho impõe uma alternativa de hardware: **como multiplicar e dividir inteiros por potências de dois em um único ciclo de clock?**
 
 ---
 
-## 5. Deslocamento de Bits (Shifts) e a Correção do Viés
+## 6. Deslocamento de Bits e Aritmética de Alto Desempenho
 
-A multiplicação e a divisão de números inteiros por potências de 2 ($2, 4, 8, 16$) são operações extremamente comuns em qualquer programa. Imagine, de forma simplificada, que um divisor tradicional leve dezenas de ciclos enquanto empurrar bits leva 1 ciclo: por isso o processador prefere deslocar quando o divisor é potência de 2.
+O deslocador em barril (*barrel shifter*) da CPU executa deslocamentos de bits em um único ciclo combinacional. O compilador aproveita essa velocidade física substituindo operações aritméticas caras por deslocamentos sempre que o operando multiplicador ou divisor é uma potência de dois ($2^k$) constante:
 
-Para acelerar essas operações, o processador emprega um recurso elétrico instantâneo executado em apenas 1 ciclo de clock: **empurrar os bits para os lados**.
+1. **Multiplicação por $2^k$ (`<<`):** desloca os bits $k$ posições para a esquerda, preenchendo as casas desocupadas com zeros.
+   $$5_{10} \ll 1 \implies 0000\ 0101_2 \to 0000\ 1010_2 = \mathbf{10_{10}}$$
+2. **Divisão de Não-Negativos por $2^k$ (`>>`):** desloca os bits $k$ posições para a direita, descartando os bits que ultrapassam o limite inferior.
+   $$14_{10} \gg 1 \implies 0000\ 1110_2 \to 0000\ 0111_2 = \mathbf{7_{10}}$$
 
-1. **Multiplicação por $2^k$ (Shift para a Esquerda `<<`):**
-   Desloca o padrão de bits $k$ posições para a esquerda, preenchendo as posições liberadas à direita com zeros:
-   $$5_{10} \ll 1 \implies 0000\ 0101_2 \text{ transforma-se em } 0000\ 1010_2 = \mathbf{10_{10}}$$
-2. **Divisão por $2^k$ para Números Positivos (Shift Lógico para a Direita `>>`):**
-   Desloca o padrão de bits $k$ posições para a direita, descartando os bits que caem pela borda:
-   $$14_{10} \gg 1 \implies 0000\ 1110_2 \text{ transforma-se em } 0000\ 0111_2 = \mathbf{7_{10}}$$
+### 6.1 Deslocamento Aritmético e a Injeção de Viés
 
----
+Valores negativos em complemento de dois não admitem preenchimento com zero à esquerda: $-4$ (`1111 1100`) preenchido com zero viraria `0111 1110` ($+126$). O **deslocamento aritmético à direita** replica o bit de sinal ($MSB$), conservando a polaridade negativa do número: `1111 1100` deslocado de 1 posição vira `1111 1110` ($-2$).
 
-### 5.1 O Deslocamento Aritmético e a Divergência de Arredondamento
+Contudo, surge uma divergência semântica de arredondamento:
+* O deslocamento aritmético trunca os valores **em direção a $-\infty$** (por exemplo, $-7 \gg 1 = \mathbf{-4}$).
+* A norma ISO C11 (§6.5.5) exige divisão inteira truncada **em direção a zero** ($-7 / 2 = \mathbf{-3}$).
 
-Para números negativos em Complemento de Dois, o deslocamento para a direita não pode simplesmente preencher as vagas liberadas com zeros, pois isso converteria o número imediatamente em um valor positivo.
+Para harmonizar o circuito com o contrato da linguagem, o compilador injeta um **viés aritmético** prévio (`bias = 2^k - 1`) antes de disparar o deslocamento sobre valores negativos:
 
-Utiliza-se o **deslocamento aritmético**, que replica o bit de sinal mais à esquerda para preencher as casas abertas:
-* Considere o número $-4_{10}$, codificado em 8 bits como `1111 1100`.
-* No **deslocamento aritmético à direita** de 1 posição, a vaga aberta à esquerda é preenchida com `1`: o resultado torna-se `1111 1110`, que corresponde exatamente a $\mathbf{-2_{10}}$. O sinal e o valor foram preservados.
-* Se o circuito utilizasse o **deslocamento lógico** e preenchesse a vaga com `0`, o padrão se tornaria `0111 1110`, que vale $+126_{10}$, corrompendo completamente o cálculo.
+$$\text{Fórmula do Viés: } (x + 2^k - 1) \gg k$$
+$$-7 + 1 = -6, \quad -6 \gg 1 = \mathbf{-3}$$
 
-O visual abaixo responde: por que empurrar negativo arredonda para baixo?
-1. Desloque menos 7 e veja menos 4.
-2. Some o viés de 1 e desloque de novo.
-3. Confira menos 3 conforme a norma C.
-Conclusão em 1 frase: o viés corrige o arredondamento antes do shift.
+Em binário: $-6 = 1111\ 1010_2$. Ao deslocar 1 posição replicando o sinal, obtém-se $1111\ 1101_2 = \mathbf{-3_{10}}$, satisfazendo rigorosamente a semântica da linguagem em 1 único ciclo de clock.
 
 <BitShiftVisualizer client:visible />
 
-Contudo, surge uma divergência matemática sutil:
-* A norma ISO C11 exige que a divisão inteira trunque o resultado **em direção a zero**: $-7 / 2$ deve produzir obrigatoriamente **$-3$**.
-* O deslocamento aritmético puro na <Term id="CPU">CPU</Term> trunca a operação **em direção a $-\infty$**:
-  $$-7_{10} = 1111\ 1001_2 \implies (-7 \gg 1) = 1111\ 1100_2 = \mathbf{-4_{10}} \quad (\text{Arredondou para baixo!})$$
+### A Tensão de Engenharia: A Barreira dos Números Discretos
 
-Para compatibilizar a instrução rápida de shift com a norma de linguagem, o compilador injeta um valor numérico de correção denominado **viés** (*bias*) antes de acionar o deslocamento:
+O deslocador em barril associado ao viés aritmético resolve multiplicações e divisões por potências de 2 na cadência de 1 ciclo de clock. Essa aritmética, contudo, opera estritamente sobre números inteiros discretos.
 
-$$\text{Fórmula com Viés: } (x + 2^k - 1) \gg k$$
-
-Para a operação $-7 / 2$ ($k = 1$, viés $2^1 - 1 = 1$):
-$$\frac{-7 + 1}{2} = \frac{-6}{2} = \mathbf{-3_{10}}$$
-
-Em binário:
-$$-6_{10} = 1111\ 1010_2 \implies (-6 \gg 1) = 1111\ 1101_2 = \mathbf{-3_{10}} \quad (\text{Resultado perfeito!})$$
+Sistemas computacionais do mundo real precisam processar grandezas físicas contínuas: frações de segundo, coeficientes aerodinâmicos e trajetórias orbitais. Um registrador inteiro de 32 ou 64 bits não consegue expressar frações infinitesimais nem acomodar ordens de magnitude extremas sem estourar sua capacidade física. Essa barreira geométrica exige uma arquitetura onde a vírgula numérica possa flutuar ao longo da palavra de bits.
 
 ---
 
-## Parte 1C: Ponto Flutuante <Term id="IEEE">IEEE</Term> 754 e Geometria Discreta
+## 7. Ponto Flutuante IEEE 754, Validação e Custos de Hardware
 
-Com o modelo mental de inteiros e memória estabelecido, enfrentamos a barreira das frações: como representar valores contínuos em meio finito através da geometria discreta do padrão <Term id="IEEE">IEEE</Term> 754.
+### 7.1 Frações Binárias: A Origem da Dízima na Base 2
 
-## 6. Ponto Flutuante <Term id="IEEE">IEEE</Term> 754: Geometria Discreta e Teoremas Numéricos
+Inteiros cobrem contagem. Medidas contínuas pedem frações, e frações binárias seguem a mesma lógica posicional dos inteiros, espelhada para a direita da vírgula: as posições valem $1/2$, $1/4$, $1/8$, e assim por diante. Com isso, $1,5$ é exato em binário ($1 + 1/2 = \mathbf{1,1_2}$) e $1,25$ também ($1 + 1/4 = \mathbf{1,01_2}$). Uma fração termina em binário exatamente quando o denominador, já reduzido, é potência de 2: dividir por 2 repetidas vezes chega a 1, e qualquer fator restante (como o 5 de $1/10$) repete para sempre:
 
-Experimente no console do navegador, sem instalar nada:
+$$\frac{1}{10} = 0,00011001100110011..._2$$
+
+Representável não significa que toda operação acumula erro. Some $1,5 + 0,25$: ambos são exatos, e o resultado $1,75$ também é. A <Term id="FPU">FPU</Term> alinha as vírgulas antes de somar: $1,5 = 1,10_2 \times 2^0$ e $0,25 = 1,00_2 \times 2^{-2}$, então ela desloca a mantissa do menor em 2 casas ($0,01_2 \times 2^0$) e soma $1,10_2 + 0,01_2 = 1,11_2 \times 2^0 = \mathbf{1,75}$. Nenhum dígito caiu no alinhamento, nenhum arredondamento entrou. A condição correta envolve o resultado, não os operandos: a operação sai exata quando o resultado verdadeiro é representável no formato. Operandos representáveis não bastam. Declare um modelo com 3 bits significativos: $1,0$ ($1,00_2$) e $0,125$ ($1,00_2 \times 2^{-3}$) são representáveis, mas a soma verdadeira $1,125$ ($1,001_2$) pede 4 bits. Os vizinhos de 3 bits na escala $2^0$ são $1,00_2$ ($1,0$) e $1,01_2$ ($1,25$), e $1,125$ cai exatamente no meio: empate. O modo padrão escolhe o vizinho par, de último bit 0, e devolve $1,00_2$ ($1,0$). O empate ensina o par na prática, sem prometer que ele anule o viés em qualquer distribuição: ele evita o desvio sistemático para cima da regra de sempre arredondar para cima, como formaliza o Teorema 5 de Goldberg (Reiser e Knuth). O resíduo de $0,1 + 0,2$ nasce antes: cada parcela já chega arredondada da dízima, e a soma carrega o resíduo para a última casa. Experimente no console do navegador, sem instalar nada (passo opcional, saída já mostrada):
 
 ```javascript
 0.1 + 0.2
 // Resultado: 0.30000000000000004
 ```
 
-Essa discrepância não é um erro de programação do seu código e não é um defeito do navegador. Trata-se de uma consequência física inevitável da codificação em base binária discreta finita.
+### 8.1 Anatomia do Padrão <Term id="IEEE">IEEE</Term> 754
 
-Pense na fração $1/3$ na nossa matemática decimal cotidiana:
-$$\frac{1}{3} = 0,333333... \quad (\text{Uma dízima periódica infinita})$$
-Você não consegue registrar a fração $1/3$ com precisão infinita em um pedaço finito de papel sem colocar reticências no final.
-
-No computador, **a fração decimal $0,1$ ($1/10$) constitui uma dízima periódica infinita na base 2**:
-
-$$\frac{1}{10} = 0,00011001100110011..._2$$
-
-Como a memória física do computador é finita, os circuitos precisam cortar a dízima e arredondar o valor no último bit disponível. Ao somar duas frações arredondadas como $0,1$ e $0,2$, os pequenos resíduos de arredondamento acumulam-se e tornam-se visíveis na última casa decimal.
-
----
-
-### 6.1 Anatomia do Padrão <Term id="IEEE">IEEE</Term> 754
-
-Para representar frações decimais e grandezas astronômicas com eficiência, a indústria padronizou a norma **<Term id="IEEE">IEEE</Term> 754** (criada pelo matemático William Kahan e ratificada em 1985).
-
-O inspetor abaixo responde: onde mora cada parte do decimal?
-1. Mude o sinal e veja o bit inicial inverter.
-2. Mude a escala e veja o expoente com viés.
-3. Mude a precisão e veja a fração truncar.
-Conclusão em 1 frase: sinal mais escala com viés mais fração definem o valor.
-
-<Float754Inspector client:visible />
-
-Um número de ponto flutuante é dividido em três campos físicos de bits:
+A norma **<Term id="IEEE">IEEE</Term> 754** divide cada valor em três campos:
 
 $$\text{Valor} = (-1)^s \times M \times 2^E$$
 
-1. **Bit de Sinal ($s$):** 1 bit que define se o número é positivo (`0`) ou negativo (`1`).
-2. **Campo de Expoente ($e$):** Determina a escala de grandeza (a posição da vírgula). Para permitir expoentes negativos sem precisar de um segundo bit de sinal, o valor é gravado com um deslocamento de viés (*bias*):
-   * Em precisão simples (`float` de 32 bits): 8 bits de expoente, viés de $127$;
-   * Em precisão dupla (`double` de 64 bits): 11 bits de expoente, viés de $1023$.
-3. **Campo de Fração ou Mantissa ($f$):** Registra os dígitos significativos do número (23 bits em float32; 52 bits em double64).
+O exemplo condutor é $1,75 = 1,11_2 \times 2^0$, já somado na seção anterior.
 
-Em regime normalizado, o primeiro dígito significativo é sempre 1. Por isso, os engenheiros economizam espaço no hardware tornando esse 1 **implícito** (não gravado na memória). A mantissa real avaliada pela máquina é $M = 1 + f$.
+#### O Significando e a Escala
+
+O **significando** $M$ carrega os dígitos ($1,11$) e o **expoente real** $E$ carrega a escala ($0$). Como todo binário normalizado começa com `1,`, o formato não grava esse 1: ele fica **implícito** e os bits gravados guardam só o que vem depois da vírgula.
+
+#### O Sinal
+
+O bit de **sinal** $s$ decide o fator $(-1)^s$: `0` mantém o valor positivo, `1` o torna negativo. Zeros com sinal nascem aqui: mesmos expoente e fração zerados, só $s$ muda.
+
+#### Do Expoente Real ao Armazenado
+
+Escalas negativas precisam de representação sem segundo sinal, então o formato grava o **expoente armazenado** $e$ deslocado de um **viés**: $e = E + \text{viés}$, com viés $127$ em `float` (8 bits de expoente) e $1023$ em `double` (11 bits). Para $1,75$, $E = 0$ vira $e = 127$, ou `01111111_2` em 8 bits.
+
+#### O Campo F e a Fração f
+
+Os 23 bits gravados (52 em `double`) formam o **campo inteiro** $F$; a **fração** reconstruída vale $f = F / 2^{23}$ e o significando volta como $M = 1 + f$. Para $1,75$, $f = 0,75$ e $F = 0,75 \times 2^{23} = 6.291.456$, ou seja, `110` seguido de vinte zeros. O que se grava de $1,75$ em 32 bits: $s = 0$, $e = 127$ (`01111111`), $F = 6.291.456$ (`11000000000000000000000`).
+
+Para explorar, pressione um dos presets do inspetor (incluindo 0.1, zeros com sinal, infinito e NaN), clique nos 32 botões de bit e leia nos três dutos a reconstrução (sinal, expoente menos viés, regime da mantissa) mais o valor decimal decodificado e o hexadecimal.
+
+<Float754Inspector client:visible />
 
 <BitFieldLayout
   caption="Formato IEEE 754 de Precisão Simples (32 bits / float)"
   fields={[
     { name: "Sinal (s)", detail: "1 bit [31]", span: 1 },
     { name: "Expoente com Viés (e)", detail: "8 bits [30:23] (viés 127)", span: 8 },
-    { name: "Fração / Mantissa (f)", detail: "23 bits [22:0] (1 implícito)", span: 23 }
+    { name: "Fração (F)", detail: "23 bits [22:0], vale f = F/2²³ (1 implícito)", span: 23 }
   ]}
 />
 
@@ -868,130 +394,185 @@ Em regime normalizado, o primeiro dígito significativo é sempre 1. Por isso, o
   fields={[
     { name: "Sinal (s)", detail: "1 bit [63]", span: 1 },
     { name: "Expoente com Viés (e)", detail: "11 bits [62:52] (viés 1023)", span: 11 },
-    { name: "Fração / Mantissa (f)", detail: "52 bits [51:0] (1 implícito)", span: 52 }
+    { name: "Fração (F)", detail: "52 bits [51:0], vale f = F/2⁵² (1 implícito)", span: 52 }
   ]}
 />
 
-> **REGRA CENTRAL (Core Principle):** No padrão <Term id="IEEE">IEEE</Term> 754, a base é 2: frações com fator primo 5 (como 0.1 e 0.2) são dízimas periódicas infinitas. Em mantissas finitas, arredondamentos são inevitáveis e acumulam erro a cada operação.
+Na base 2, frações com fator 5 (como 0.1 e 0.2) são dízimas infinitas. Em mantissas finitas, arredondar é inevitável quando o valor não é representável, e cada arredondamento desses pode acumular erro, sem direção garantida: ora para cima, ora para baixo.
 
-#### Tabela de Rastreamento de Formatos e Casos Especiais (IEEE 754)
+#### Arredondamento: O Modo Padrão e o Empate
 
-| Categoria | Expoente com Viés ($e$) | Fração ($f$) | Equação do Valor | Significado Físico |
+Arredondar não é lei única: a norma oferece modos (para o mais próximo, para zero, para $+\infty$, para $-\infty$) e o modo padrão escolhido pelas linguagens é o **round-to-nearest-even** (para o mais próximo, desempate para o par). No empate exato entre dois vizinhos, o hardware escolhe o vizinho par (último bit 0). O par existe para não viciar as contas sempre para cima: no vaivém do Teorema 5 de Goldberg, arredondar para cima faz a conta derivar, enquanto o par mantém o ciclo.
+
+#### Adição em Ponto Flutuante: Seis Etapas do Modelo
+
+As seis etapas abaixo são o modelo lógico da operação, não seis estágios físicos presentes em toda <Term id="FPU">FPU</Term>:
+
+1. **Desempacotar:** extrair sinal, expoente com viés e mantissa com o 1 implícito.
+2. **Comparar expoentes:** $\Delta E = |E_1 - E_2|$.
+3. **Alinhar mantissas:** deslocar a fração do menor em $\Delta E$ bits.
+4. **Somar ou subtrair** as frações alinhadas conforme os sinais.
+5. **Renormalizar:** deslocar a mantissa e ajustar o expoente ao 1 implícito.
+6. **Arredondar e sinalizar:** arredonda no modo ativo, com flags de estouro e perda.
+
+#### Formatos e Casos Especiais (IEEE 754)
+
+Em cada linha, $f$ é o valor da fração ($f = F/2^p$) e $F$ são os bits gravados no campo.
+
+| Categoria | Expoente ($e$) | Fração (bits de $F$) | Valor | Sentido físico |
 | :--- | :---: | :---: | :---: | :--- |
-| **Zero Positivo / Negativo** | `00...00` ($0$) | `00...00` ($0$) | $(-1)^s \times 0.0$ | Magnitude nula com sinal preservado |
-| **Número Subnormal** | `00...00` ($0$) | $\ne 0$ | $(-1)^s \times (0 + f) \times 2^{1 - \text{bias}}$ | Underflow gradual próximo de zero |
-| **Número Normalizado** | $1 \le e \le 2^{\text{bits}}-2$ | Qualquer | $(-1)^s \times (1 + f) \times 2^{e - \text{bias}}$ | Notação científica padrão com 1 implícito |
-| **Infinito ($\pm \infty$)** | `11...11` ($255 / 2047$) | `00...00` ($0$) | $(-1)^s \times \infty$ | Estouro de magnitude (*overflow*) |
-| **Não-Número (NaN)** | `11...11` ($255 / 2047$) | $\ne 0$ | Indefinido | Operação inválida ($0/0$, $\sqrt{-1}$) |
+| **Zero** | `00...00` | `00...00` | $(-1)^s \times 0.0$ | Nulo com sinal preservado |
+| **Subnormal** | `00...00` | $\ne 0$ | $(-1)^s \times (0 + f) \times 2^{1 - \text{viés}}$ | Aproximação gradual de zero |
+| **Normalizado** | intermediário | qualquer | $(-1)^s \times (1 + f) \times 2^{e - \text{viés}}$ | Notação científica com 1 implícito |
+| **Infinito** | `11...11` | `00...00` | $(-1)^s \times \infty$ | Estouro de magnitude ou $1,0/0,0$ |
+| **<Term id="NAN">NaN</Term>** | `11...11` | $\ne 0$ | não numérico | Operação inválida ($0/0$, $\sqrt{-1}$) |
 
-#### Pipeline de Adição em Ponto Flutuante IEEE 754
+NaN é um valor definido pela norma, não comportamento indefinido: nas operações aritméticas usuais, ele se propaga pelas contas seguintes em vez de travar o programa. Comportamento indefinido aparece na linguagem C ao converter NaN ou infinito para inteiro fora da faixa, como formaliza a unidade 9. Infinito nasce de excesso de magnitude no modo padrão e também de $1,0/0,0$.
 
-Os seis estágios físicos executados pela unidade de ponto flutuante (FPU) para somar dois números normalizados de formato IEEE 754 ocorrem na seguinte ordem:
-1. **Desempacotar os operandos:** extrair os bits de sinal, o expoente com viés e a mantissa com o dígito 1 implícito.
-2. **Comparar os expoentes:** calcular a diferença de grandeza $\Delta E = |E_1 - E_2|$.
-3. **Alinhar as mantissas:** deslocar a fração do menor operando para a direita em $\Delta E$ bits para igualar as escalas.
-4. **Somar ou subtrair:** operar as frações alinhadas no circuito somador de acordo com os sinais dos operandos.
-5. **Renormalizar o resultado:** deslocar a mantissa e ajustar o expoente para restaurar o bit 1 na posição implícita.
-6. **Arredondamento e flags:** aplicar o arredondamento (round-to-nearest-even) e atualizar as flags de estouro (*overflow* ou *underflow*).
+### 8.2 Números Subnormais (Gradual Underflow)
 
----
+Sem o padrão, valores abaixo do menor expoente despencavam direto a zero (*flush-to-zero*), quebrando a equivalência $x = y \iff x - y = 0$ para valores finitos: dois valores distintos podiam subtrair zero e provocar divisão por zero espúria. O padrão reserva o expoente zerado para **subnormais**: o 1 implícito desliga, a mantissa vale $M = 0 + f$ e o valor desce a zero de forma gradual, mantendo o espaçamento entre vizinhos até os valores finitos mais próximos de zero. Com isso, para $x$ e $y$ finitos, $x - y = 0$ ocorre somente quando $x$ iguala $y$. A garantia não se estende a NaN e infinitos, que seguem suas próprias regras de propagação.
 
-### 6.2 O Mecanismo de Números Subnormais (Gradual Underflow)
+### 8.3 Cancelamento Catastrófico e o Lema de Sterbenz
 
-O que acontece quando um cálculo gera um número tão minúsculo que o expoente atinge o valor mínimo possível (`0000 0000`)?
+Subtrair dois valores próximos e já arredondados cancela os dígitos da frente e promove o resíduo escondido às posições principais. Esse é o **cancelamento catastrófico**: o erro não nasce na subtração, e sim nas contas anteriores, e ela o revela. Com os valores reais computados: $a$ é o flutuante mais próximo de $0,1 + 0,2$ ($0,30000000000000004$) e $b$ é o flutuante mais próximo de $0,3$ ($0,29999999999999999$). A diferença calculada $d = a - b$ vale $5,55 \times 10^{-17}$, enquanto o valor verdadeiro de $(0,1 + 0,2) - 0,3$ é $0$. A subtração saiu exata, como garante o lema abaixo, mas o resultado é erro herdado puro: os dígitos bons se anularam e só restou o resíduo das dízimas.
 
-Em sistemas antigos sem o padrão <Term id="IEEE">IEEE</Term> 754, qualquer valor menor que o menor expoente despencava imediatamente para zero (*flush-to-zero*). Isso quebrava a propriedade matemática básica:
+O modelo prático termina aqui: subtrair vizinhos anula os dígitos bons e deixa o ruído herdado dominar. O teorema abaixo é a garantia formal para projetistas de bibliotecas numéricas; o leitor não precisa memorizar a demonstração.
 
-$$x = y \iff x - y = 0$$
-
-Dois números diferentes podiam ser subtraídos e resultar em zero absoluto, introduzindo divisões por zero imprevisíveis no código.
-
-O padrão <Term id="IEEE">IEEE</Term> 754 resolveu esse problema criando o regime de **números subnormais**:
-* Quando o campo de expoente contém apenas zeros, o bit implícito 1 é desligado;
-* A mantissa passa a ser calculada diretamente como $M = 0 + f$;
-* O número aproxima-se de zero de forma suave e contínua (*gradual underflow*); com isso, a igualdade $x - y = 0$ ocorre estritamente quando $x$ é igual a $y$.
-
----
-
-### 6.3 Cancelamento Catastrófico e o Lema de Sterbenz
-
-A principal causa de perda de precisão numérica em ponto flutuante ocorre quando subtraímos dois números muito próximos entre si que já sofreram pequenas imprecisões de arredondamento em etapas anteriores do programa.
-
-Quando os dois valores são subtraídos, os dígitos significativos mais à esquerda (que coincidiam) cancelam-se mutuamente e tornam-se zero. A máquina é obrigada a deslocar os bits restantes para a esquerda para renormalizar o número.
-
-Ao fazer isso, os pequenos resíduos de arredondamento prévios que estavam escondidos nas casas menos significativas da mantissa são promovidos para as posições principais. Esse fenômeno é denominado **Cancelamento Catastrófico**.
-
-> [!NOTE]
-> **Estrada Principal e Aprofundamento de Engenharia:**
-> O modelo mental que você precisa levar para a vida prática é simples: quando você subtrai dois números de ponto flutuante muito parecidos, os dígitos significativos da frente se anulam e sobram apenas os pequenos ruídos de arredondamento herdados de contas anteriores (o cancelamento catastrófico). O Lema de Sterbenz a seguir é a prova formal de engenharia que demonstra quando a subtração em si não introduz nenhum erro novo. É uma garantia vital para projetistas de bibliotecas numéricas, mas você não precisa memorizar a demonstração para entender a arquitetura do computador.
-
-A operação de subtração em si não cria erro novo. Pelo contrário, ela é exata sob condições bem definidas, como estabelece o teorema clássico de Sterbenz:
-
-> **Teorema: O Lema de Sterbenz (Pat H. Sterbenz, 1974)**
-> Se $x$ e $y$ forem números de ponto flutuante com o mesmo sinal e estiverem próximos o suficiente para satisfazer a proporção:
-> $$\frac{y}{2} \le x \le 2y$$
-> então a subtração $x - y$ é **estritamente exata**, calculada sem nenhum novo erro de arredondamento pelo circuito da <Term id="FPU">FPU</Term>.
-
-O perigo do cancelamento não está no cálculo da subtração, mas na amplificação do erro relativo: como os dígitos exatos se cancelaram, o resultado final passa a ser dominado exclusivamente pelo ruído numérico herdado das operações anteriores.
+> **Lema de Sterbenz (1974):** para $x$ e $y$ flutuantes finitos e não negativos com $y/2 \le x \le 2y$, a subtração $x - y$ sai **exata**, sem novo arredondamento na <Term id="FPU">FPU</Term>, desde que o hardware sustente o regime gradual de underflow.
 
 > [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Dízima binária:** 0.1 é infinito na base 2 e trunca na mantissa;
-> 2. **Quase zero gradual:** subnormal evita pulo direto para zero;
-> 3. **Perto demais amplia ruído:** subtrair vizinhos é exato, mas revela erro antigo.
+> **Checkpoint de retenção:** 1. 1.5 e 1.25 são exatos; 0.1 é dízima e trunca. 2. Subnormal desce a zero gradualmente. 3. Subtrair vizinhos é exato, mas amplia o ruído antigo.
 
----
+## 9. Conversões Entre Mundos: Validação, Ariane e Patriot
 
-### 6.4 O Desastre do Míssil Patriot em Dhahran (1991)
+Variável, tipo e comparação já apareceram na unidade 6; aqui eles reaparecem com flutuantes. Nos trechos, `double` é o tipo de ponto flutuante de 64 bits, e cada `#include` traz um nome da biblioteca padrão: `stdbool.h` para `bool`, `stdint.h` para `int16_t`. A norma C (ISO C11 §6.3.1.4) fixa a regra: ao converter ponto flutuante para inteiro, a parte fracionária se descarta em direção a zero; se o valor não couber no destino, o comportamento é indefinido. Operandos estreitos sobem para `int` antes de operar (promoções, C11 §6.3.1.1). Leia os dois trechos sem compilar. O primeiro recebe um `double v` e converte sem checar a faixa:
+
+```c
+int16_t converter_inseguro(double v) {
+  return (int16_t)v;
+}
+```
+
+O segundo valida antes e recusa se não couber. Nele, `bool` é o tipo de verdadeiro ou falso, `int16_t *r` é o endereço do objeto do chamador onde a resposta será guardada, e cada `return` devolve o veredito:
+
+```c
+#include <stdbool.h>
+#include <stdint.h>
+bool converter_seguro(double v, int16_t *r) {
+  if (!(v >= -32768.0 && v < 32768.0)) return false;
+  *r = (int16_t)v;
+  return true;
+}
+```
+
+O teste único rejeita tudo que não cabe. Com NaN, a comparação interna `v >= -32768.0` resulta falsa (com NaN, só `!=` resulta verdadeiro), então o `&&` falha, a negação do teste resulta verdadeira e a função entra no `return false`. Infinito positivo e infinito negativo reprovam porque ficam além dos limites. O endereço `r` precisa apontar para um `int16_t` válido do chamador; a escrita `*r = (int16_t)v` deposita o valor convertido nesse objeto, e devolvendo falso a função retorna antes de escrever, de modo que esse objeto segue intacto. A fração $-32768,9$ também reprova embora o truncamento caiba: escolha conservadora documentada, que prefere recusar a borda a discutir décimos. A regra SEI CERT C `FLP34-C` exige exatamente essa validação prévia (e `INT31-C` cobre as conversões entre inteiros). O comportamento acima passa por teste executável real em `tests/pilot/test_numeric_examples.py`, com NaN, infinitos, limites, frações e sentinela no ponteiro de saída. Os tipos `int16_t` e `uint16_t` existem nas plataformas cujo hardware os suporta.
+
+### 9.1 O Impacto no Mundo Real: O Voo 501 do Ariane 5
+
+O mecanismo da seção anterior derrubou um foguete. Os fatos abaixo seguem exclusivamente o relatório oficial da comissão presidida por Jacques-Louis Lions (Paris, 19 de julho de 1996), com tempos referenciados a H0, o início da sequência de ignição.
 
 <HistoricalIncident
-  title="A Bateria Patriot em Dhahran: O Custo de uma Dízima Periódica"
+  title="Voo 501 do Ariane 5: Conversão Sem Proteção"
+  location="Kourou, Guiana Francesa"
+  date="4 de Junho de 1996"
+  impact="Perda total do lançador e da carga científica"
+>
+Em 4 de junho de 1996, o primeiro voo do Ariane 5 voou nominal até cerca de 37 segundos após H0 e perdeu toda a navegação nesse ponto. O sistema autônomo de terminação destruiu o veículo cerca de 40 segundos após H0, a cerca de 3,7 km de altitude.
+
+A cadeia apurada pela comissão:
+
+1. **A variável de alinhamento:** o Sistema de Referência Inercial (<Term id="SRI">SRI</Term>) calculava o viés horizontal (*Horizontal Bias*, `BH`) em ponto flutuante de 64 bits e o convertia para inteiro com sinal de 16 bits (teto $+32.767$).
+2. **Código reaproveitado:** a rotina vinha do Ariane 4, onde a dinâmica de voo nunca levava `BH` além do teto. A função de alinhamento só fazia sentido antes da decolagem, mas permanecia ativa cerca de 40 segundos de voo por herança de um requisito do lançador antigo. Três conversões do módulo, incluindo a do `BH`, rodavam sem proteção porque a análise de risco as julgava incapazes de estourar, com margens calibradas só na dinâmica do Ariane 4.
+3. **A colisão:** a trajetória mais agressiva do Ariane 5 levou `BH` além de $+32.767$ ainda na subida. A conversão disparou erro de operando, mapeado em Ada para exceção numérica não tratada, e o processador desligou a navegação.
+4. **A queda em cascata:** o reserva (<Term id="SRI">SRI</Term> 1) parou no ciclo de dados anterior; o ativo (<Term id="SRI">SRI</Term> 2), executando o mesmo software sob os mesmos estímulos, declarou a mesma falha cerca de 72 ms depois. Redundância idêntica protege contra pane física aleatória, não contra defeito sistemático de especificação.
+5. **O diagnóstico lido como atitude:** sem navegação válida, o padrão de diagnóstico despejado pelo <Term id="SRI">SRI</Term> 2 ativo trafegou no barramento; o computador de bordo principal (<Term id="OBC">OBC</Term>), sem validação do conteúdo, interpretou esses bits como atitude real e comandou deflexão extrema das tubeiras. As cargas aerodinâmicas romperam o veículo e a terminação de voo o destruiu.
+</HistoricalIncident>
+
+O relatório público não fixa em número canônico o valor exato de `BH` no instante da falha; valores como 36842 que circulam em textos didáticos ilustram "pouco acima do teto", nunca leitura de telemetria. A destruição não ocorreu no instante da conversão: entre a falha dos SRIs e a destruição passaram-se segundos de voo sob comando calculado sobre diagnóstico. Para explorar a linha do tempo, avance a reprodução do visual e localize a conversão que dispara a exceção, o intervalo de cerca de 72 ms entre as falhas dos dois SRIs e o ponto de destruição comandada segundos depois.
+
+<ArianeCrashVisualizer client:visible />
+
+### 9.2 O Míssil Patriot em Dhahran (1991)
+
+<HistoricalIncident
+  title="Bateria Patriot em Dhahran: Dízima Acumulada"
   location="Dhahran, Arábia Saudita"
   date="25 de Fevereiro de 1991"
-  impact="28 soldados mortos e cerca de 100 feridos devido ao desvio de 0,34s no cálculo do radar"
+  impact="Falha de interceptação com 28 mortos"
 >
-Durante a Guerra do Golfo, em 25 de fevereiro de 1991, uma bateria de defesa aérea americana Patriot posicionada em Dhahran, na Arábia Saudita, falhou em interceptar um míssil iraquiano Scud. O míssil atingiu um alojamento militar, provocando a morte de 28 soldados e ferindo mais de 100 pessoas.
+Durante a Guerra do Golfo, uma bateria Patriot falhou ao interceptar um Scud. A apuração do GAO (relatório GAO/IMTEC-92-26, de fevereiro de 1992) identificou o acúmulo de erro na conta do tempo:
 
-A investigação oficial do GAO (General Accounting Office) identificou uma falha clássica de acúmulo de erro em ponto flutuante:
-1. **O Relógio do Sistema:** O computador interno do radar media o tempo de operação em décimos de segundo (inteiros contados a cada 0,1s).
-2. **A Conversão da Dízima:** Para calcular o tempo em segundos, o sistema multiplicava a contagem pelo valor $1/10$.
-3. **A Perda por Truncamento:** O registrador interno de ponto flutuante possuía apenas 24 bits de fração. A dízima periódica binária de $1/10$ foi truncada, introduzindo um minúsculo erro de $0,000000095$ segundos por décimo de segundo.
-4. **O Acúmulo no Tempo:** A bateria em Dhahran permaneceu ligada ininterruptamente por mais de 100 horas. Multiplicando o erro minúsculo por centenas de milhares de passos:
-   $$\text{Erro Acumulado} = 100 \text{ horas} \times 3.600 \text{ s/hora} \times 10 \text{ passos/s} \times 0,000000095 \approx \mathbf{0,34\text{ segundos}}$$
-5. **A Janela de Alcance Deslocada:** Um míssil Scud viaja a aproximadamente $1.676 \text{ m/s}$ (Mach 5). Em 0,34 segundos, o Scud deslocou-se mais de **570 metros** em relação à posição que o computador do Patriot calculou.
-6. **O Alvo Invisível:** O radar abriu a janela de detecção no ponto previsto pelo cálculo, não encontrou o míssil (que já havia passado daquela coordenada) e concluiu que se tratava de um eco falso, abortando a interceptação.
+1. **O relógio:** o sistema contava o tempo em décimos de segundo inteiros.
+2. **A conversão:** para segundos, multiplicava a contagem por $1/10$, dízima periódica em binário.
+3. **O truncamento:** o computador operava com registradores de 24 bits, e a conversão de décimos inteiros para segundos não passava dessa precisão: a cada passo, o truncamento da aproximação binária de $1/10$ deixava um pequeno resíduo.
+4. **O acúmulo:** a bateria operou mais de 100 horas seguidas, e o resíduo cresceu com o tempo ligado.
+5. **A tabela do relatório:** o Apêndice II registra, para 100 horas (360.000 s), tempo calculado de 359.999,6667 s, imprecisão de **0,3433 s** e deslocamento de **687 m** na janela de busca.
+6. **A janela vazia:** o radar procurou na posição calculada, não encontrou o míssil e tratou o retorno como eco falso.
 </HistoricalIncident>
+
+Os valores do item 5 vêm da tabela do Apêndice II do relatório, não de medição deste módulo. A causa pertence à aritmética do sistema (contar em décimos inteiros e converter com aproximação binária de $1/10$ truncada em 24 bits), não a um rótulo genérico de ponto flutuante: resíduo por passo vezes horas de operação desloca a janela de busca.
 
 ## Síntese de Arquitetura e Diretrizes de Engenharia
 
-Para encerrar, consolidamos custos comparativos e regras de segurança. Números abaixo são valores típicos observados em núcleos x86-64 e ARM64 de alto desempenho classe desktop e servidor, medidos em suítes como SPEC CPU 2017 e tabelas de Agner Fog. Não são constantes universais: variam por microarquitetura, frequência e carga.
+Cada operação abaixo depende do seu mecanismo físico; a tabela descreve dependências do modelo, sem tempos medidos e sem ordenação de rapidez.
 
-### 7.1 Tabela de Custos e Latências no Processador (x86-64 / ARM64, valores típicos)
+### 10.1 Dependências por Operação
 
-| Operação | Mecanismo Físico | Latência Típica | Vazão (Throughput) |
-| :--- | :--- | :---: | :---: |
-| **Soma / Subtração Inteira** | Somador digital unificado da ALU | 1 ciclo | 4 por ciclo |
-| **Bitwise AND / OR / XOR** | Portas lógicas combinacionais diretas | 1 ciclo | 4 por ciclo |
-| **Shifts (`<<`, `>>`)** | Deslocador em barril (*Barrel Shifter*) | 1 ciclo | 2 por ciclo |
-| **Multiplicação Inteira** | Árvore de somadores Wallace/Dadda | 3 a 4 ciclos | 1 por ciclo |
-| **Divisão Inteira** | Algoritmos iterativos de restauração | 15 a 40 ciclos | 1 a cada 15 ciclos |
-| **Adição em Ponto Flutuante** | Alinhamento, soma e renormalização | 3 a 4 ciclos | 1 a 2 por ciclo |
-| **Divisão em Ponto Flutuante** | Algoritmo iterativo SRT ou Newton-Raphson | 12 a 25 ciclos | 1 a cada 10 ciclos |
+| Operação | Mecanismo físico | Dependência no modelo |
+| :--- | :--- | :--- |
+| **Soma / subtração inteira** | Somador da <Term id="ALU">ALU</Term> | Cada coluna combina os operandos com o transporte vindo da vizinha |
+| **AND / OR / <Term id="XOR">XOR</Term>** | Portas combinacionais | Cada bit de saída depende só dos bits de entrada da mesma posição, sem transporte entre colunas |
+| **Shifts** | Deslocador em barril | O resultado depende só da entrada e da contagem; serve à multiplicação por constante |
+| **Multiplicação inteira** | Árvore de somadores | O resultado depende das somas parciais combinadas em árvore |
+| **Divisão inteira** | Algoritmo iterativo | Cada passo refina o quociente a partir do resto deixado pelo anterior |
+| **Adição em ponto flutuante** | Alinhar, somar, renormalizar | Alinhamento, operação e renormalização em sequência; cada etapa consome a anterior |
+| **Divisão em ponto flutuante** | Iterativo (SRT / Newton-Raphson) | Iterações de convergência; cada iteração depende da anterior |
 
----
+### 10.2 Garantias Normativas e Recomendações Derivadas
 
-### 7.2 Invariantes normativos e heurísticas de produção
+**Garantias (propriedades da linguagem e da norma, valem no escopo citado):**
 
-**Invariantes (garantias da norma, valem sempre no escopo citado):**
-1. **Overflow com sinal em C é <Term id="UB">UB</Term> (ISO C11 §6.5):** o compilador pode apagar checagem tardia. Valide limites antes da conta.
-2. **Rede exige Big Endian (RFC 9293):** use `htons`, `htonl`, `ntohs`, `ntohl` ao serializar para a rede.
-3. **Comparação mista promove para unsigned (<Term id="CWE">CWE</Term>-195):** nunca misture signed e unsigned sem validação explícita.
+1. **Estouro com sinal em C é <Term id="UB">UB</Term> (ISO C11 §6.5).**
+2. **Estouro sem sinal em C é modular (redução módulo $2^N$).**
+3. **Comparação entre `int` e `unsigned int` correspondentes de mesma largura promove o operando com sinal para sem sinal (<Term id="CWE">CWE</Term>-195):** o escopo é o par correspondente do exemplo, não qualquer expressão com tipos distintos.
+4. **Conversão ponto flutuante para inteiro fora da faixa é <Term id="UB">UB</Term> (ISO C11 §6.3.1.4).**
+5. **Campos numéricos dos cabeçalhos TCP/IPv4 usam big endian (RFC 9293);** o payload da aplicação segue o protocolo de cada aplicação.
+6. **Excesso em ponto flutuante no modo padrão entrega infinito (IEEE 754);** nos modos dirigidos a zero o hardware entrega o finito máximo.
 
-**Heurísticas (dependem de compilador, carga e medição, meça antes de aplicar):**
-1. **Prefira shifts para potências de 2** quando o perfil mostrar divisão quente, pois divisor genérico custa dezenas de ciclos nos núcleos medidos.
-2. **Moeda fora de float binário:** prefira inteiros em centavos ou decimal fixo para saldos, pois dízima binária acumula resíduo. Valide com teste financeiro antes de trocar.
+**Recomendações derivadas (seguem das garantias, dependem de medição no seu alvo):**
 
-Com isso, a caixinha guarda. Mas quem manda somar, decidir e pular entre funções? No Módulo 02, as funções viram ordens de máquina que a CPU executa gaveta a gaveta.
+1. **Valide limites antes de operar,** nunca depois de estourar.
+2. **Serialize campos de cabeçalho** com `htons`, `htonl`, `ntohs`, `ntohl`.
+3. **Não misture com sinal e sem sinal sem validação explícita;** cheque a faixa antes de converter, e NaN e infinito sempre reprovam.
+4. **Observe o modo de arredondamento ativo** antes de contar com infinito ou finito máximo.
+5. **Dinheiro fora de float binário:** some em centavos inteiros ou decimal fixo, e valide com teste financeiro.
+
+### A Próxima Barreira: Da Representação Passiva à Execução Ativa
+
+Com os mecanismos consolidados neste módulo, a máquina domina a representação determinística dos dados: inteiros em complemento de dois operando no anel $\mathbb{Z}/2^w\mathbb{Z}$, alinhamento espacial de palavras na memória linear sob a convenção Little-Endian e representação científica contínua em ponto flutuante IEEE 754.
+
+No entanto, todos esses dados residem de forma passiva nas células de memória e nos registradores. Eles não se movem nem se transformam sozinhos. Para que o sistema execute algoritmos reais, a CPU necessita de um repertório de **instruções de controle**: ordens codificadas em bytes que instruem o caminho de dados a buscar operandos, disparar a ALU, manipular a pilha de execução e desviar o fluxo do programa.
+
+Como o compilador traduz a lógica de alto nível em sequências de bytes de máquina? Como a CPU gerencia contextos de chamada e variáveis locais em uma estrutura contígua de memória?
+
+Essa barreira da computação ativa transfere o bastão para o **Módulo 02: Representação de Programas: Assembly x86-64, Registradores e a Pilha**.
+
+## Fontes
+
+**Principal (espinha dorsal do módulo):**
+
+* Bryant, R. E.; O'Hallaron, D. R. *Computer Systems: A Programmer's Perspective*. 3. ed. 2016. Capítulo 2 (bits, inteiros, aritmética modular, complemento de dois, overflow, ponto flutuante). Progressão e exemplos numéricos deste módulo seguem esse capítulo. Portal oficial com erratas e material do capítulo: https://csapp.cs.cmu.edu/
+
+**Apoio pontual:**
+
+* IEEE Std 754-2019. *Standard for Floating-Point Arithmetic*. Formatos, arredondamento e casos especiais.
+* Relatório Lions (ESA/CNES, 19 jul. 1996). *Ariane 5 Flight 501 Failure: Report by the Inquiry Board*. Cadeia causal do Voo 501. Página da ESA sobre o relatório: https://sci.esa.int/web/cluster/-/38889-ariane-501-report-by-board-of-inquiry
+* Goldberg, D. *What Every Computer Scientist Should Know About Floating-Point Arithmetic*. 1991. Erro, arredondamento e dígitos de guarda. https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
+* Sterbenz, P. H. *Floating-Point Computation*. 1974. Lema da subtração exata.
+* SEI CERT C (INT31-C, FLP34-C). Conversões seguras entre inteiros e de ponto flutuante para inteiro.
+* U.S. GAO (relatório sobre a falha do Patriot em Dhahran, 1992, GAO/IMTEC-92-26). Acúmulo de erro na conversão de décimos de segundo.
+* RFC 9293 (set. 2022). *Transmission Control Protocol (TCP)*, ordem de bytes da rede. https://www.rfc-editor.org/rfc/rfc9293.html
 
 <div class="mt-16 pt-8 border-t border-ash flex justify-end">
   <a

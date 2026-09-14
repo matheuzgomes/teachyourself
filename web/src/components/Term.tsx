@@ -45,11 +45,12 @@ export default function Term({ id, children }: TermProps) {
         <span>{children || id}</span>
       </button>
 
-      {/* Floating Monad Tooltip Card */}
+      {/* Floating Monad Tooltip Card (fechado nem renderiza; aberto cabe na
+          viewport: lâmina fixa com margens no mobile, ancoragem no desktop) */}
       {isOpen && (
         <div
           role="tooltip"
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 sm:w-80 rounded-card border border-ash bg-white p-4 shadow-xl text-left font-sans animate-in fade-in zoom-in-95 duration-150"
+          className="z-50 rounded-card border border-ash bg-white p-4 shadow-xl text-left font-sans max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:bottom-2 max-sm:top-auto max-sm:w-auto max-sm:translate-x-0 sm:absolute sm:bottom-full sm:left-1/2 sm:-translate-x-1/2 sm:mb-2 sm:w-80 w-72"
         >
           {/* Header */}
           <div className="flex items-start justify-between gap-2 border-b border-ash/70 pb-2.5 mb-2.5">
@@ -74,9 +75,9 @@ export default function Term({ id, children }: TermProps) {
             {info.description}
           </p>
 
-          {/* Tooltip Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-ash" />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[2px] border-4 border-transparent border-t-white" />
+          {/* Tooltip Arrow (só no desktop ancorado) */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-ash max-sm:hidden" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[2px] border-4 border-transparent border-t-white max-sm:hidden" />
         </div>
       )}
     </span>

@@ -63,6 +63,15 @@
   ol { @apply list-decimal list-outside pl-6 my-5 space-y-2 text-graphite font-sans text-base leading-[1.65]; }
   li { @apply leading-[1.65]; }
 
+  /* Quebra de strings inquebráveis (URLs longas) só quando transbordariam.
+     Sem isso, uma referência estica a página no mobile. Não altera layout. */
+  #main-content p, #main-content li { overflow-wrap: break-word; }
+
+  /* Ilhas interativas nunca esticam a página: simulador mais largo que o
+     contêiner rola localmente em vez de criar rolagem global. Inerte quando
+     o conteúdo cabe. Não corta: todo o conteúdo segue acessível por rolagem. */
+  #main-content astro-island { display: block; max-width: 100%; overflow-x: auto; }
+
   /* Accessible Interactive Focus & Tactile Active States */
   button, summary, [role="button"] {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue focus-visible:ring-offset-2 focus-visible:ring-offset-parchment;

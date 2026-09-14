@@ -1,134 +1,50 @@
 ---
 import TrackLayout from '../../../layouts/TrackLayout.astro';
+import ContinueReading from '../../../components/ContinueReading.astro';
 import { withBase } from '../../../utils/paths';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { NetworkIcon, ArrowRight01Icon, ShieldCheckIcon, PlayIcon, BookOpen01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
+import {
+  getModulesByTrack,
+  getPrimarySourceForModule,
+  getTrack,
+  moduleHref,
+} from '../../../data/curriculum';
 
-const modules = [
-  {
-    id: '00',
-    slug: '00-rede-ipv4-dns-requisitos-host',
-    title: 'Módulo 00: Camada de Rede e Nomeação: Datagramas IPv4, Fragmentação e Resolução DNS',
-    subtitle: 'O envelope comum da internetwork: cabeçalho IPv4, TTL, fragmentação, mensagem DNS e requisitos de host.',
-    status: 'active',
-    sectionsCount: '4 Partes (10 Seções)',
-    simulatorsCount: '2 Simuladores Interativos',
-    testStatus: 'RFCs 791, 1034, 1035, 1122, 1123 e 5452',
-    description: 'Descubra como pacotes atravessam hardwares incompatíveis: traces reais de ping e dig, hex dump de cabeçalho IPv4 decodificado, TTL salto a salto, dois exemplos conferidos de fragmentação, caminhada completa de resolução DNS, o incidente Kaminsky de 2008 e os requisitos que todo host obedece.',
-    topics: [
-      { num: '0A', name: 'O Envelope Comum: Cabeçalho IPv4, TTL e Checksum só do Cabeçalho' },
-      { num: '0B', name: 'Fragmentação: DF, MF, Offset em Unidades de 8 e Remontagem no Destino' },
-      { num: '0C', name: 'DNS: Hierarquia, Mensagem de 12 Bytes, Compressão e Transporte UDP/TCP' },
-      { num: '0D', name: 'Requisitos de Host: RFCs 1122 e 1123 e Interoperabilidade Obrigatória' }
-    ]
-  },
-  {
-    id: '01',
-    slug: '01-principio-fim-a-fim-internetworking',
-    title: 'Módulo 01: O Princípio Fim a Fim e a Arquitetura de Internetworking',
-    subtitle: 'Saltzer, Reed e Clark (1984), Padlipsky (1982) e Cerf e Kahn (1974): onde as garantias realmente residem.',
-    status: 'active',
-    sectionsCount: '3 Partes (8 Seções)',
-    simulatorsCount: '1 Simulador Fim a Fim + 2 Desafios de Predição',
-    testStatus: 'Saltzer 1984, Padlipsky 1982, Cerf-Kahn 1974 e RFC 1122',
-    description: 'O experimento da transferência cuidadosa de arquivos, a falácia da verificação hop-by-hop no enlace, a crítica ao modelo OSI de 7 camadas, Common Intermediate Representation (CIR), o Princípio do Menor Mecanismo, gateways sem estado e Fate-Sharing.',
-    topics: [
-      { num: '1A', name: 'Onde Colocar a Função: O Dilema de Saltzer e os Pontos Cegos de Enlace' },
-      { num: '1B', name: 'Por que 4 Camadas: A Burocracia OSI, o Modelo ARPANET e o CIR' },
-      { num: '1C', name: 'Internetworking e Fate-Sharing: Roteadores sem Estado e o Desacoplamento TCP/IP' }
-    ]
-  },
-  {
-    id: '02',
-    slug: '02-tcp-9293',
-    title: 'Módulo 02: Transporte Confiável TCP',
-    subtitle: 'RFC 9293: máquina de estados, janela deslizante e números de sequência.',
-    status: 'planned',
-    sectionsCount: 'Planejado',
-    simulatorsCount: 'A definir',
-    testStatus: 'RFC 9293',
-    description: 'O fluxo de bytes confiável sobre o datagrama não confiável: handshake, ordem, retransmissão e encerramento.',
-    topics: []
-  },
-  {
-    id: '03',
-    slug: '03-congestionamento-jacobson',
-    title: 'Módulo 03: Controle de Congestionamento',
-    subtitle: 'Van Jacobson 1988: slow start, AIMD, fast retransmit e RTO.',
-    status: 'planned',
-    sectionsCount: 'Planejado',
-    simulatorsCount: 'A definir',
-    testStatus: 'Jacobson 1988',
-    description: 'Como o transmissor descobre a capacidade da rede sem quebrá-la: conservação de pacotes e o dente de serra do AIMD.',
-    topics: []
-  },
-  {
-    id: '04',
-    slug: '04-http-9110-9112',
-    title: 'Módulo 04: Aplicação Web HTTP',
-    subtitle: 'RFCs 9110, 9111 e 9112: semântica, caching e HTTP/1.1.',
-    status: 'planned',
-    sectionsCount: 'Planejado',
-    simulatorsCount: 'A definir',
-    testStatus: 'RFCs 9110 a 9112',
-    description: 'A camada de aplicação sobre o transporte: métodos, códigos, cabeçalhos, frescor de cache e framing textual.',
-    topics: []
-  },
-  {
-    id: '05',
-    slug: '05-tls-9846',
-    title: 'Módulo 05: Segurança de Transporte TLS 1.3',
-    subtitle: 'RFC 9846: handshake 1-RTT, ECDHE e AEAD.',
-    status: 'planned',
-    sectionsCount: 'Planejado',
-    simulatorsCount: 'A definir',
-    testStatus: 'RFC 9846',
-    description: 'Privacidade e autenticidade sobre o transporte: troca efêmera de chaves, cifras autenticadas e o handshake que atravessa tudo acima.',
-    topics: []
-  }
-];
+const trackId = '02-networks';
+const track = getTrack(trackId);
+const modules = getModulesByTrack(trackId);
+const pilots = modules.filter((m) => m.study_state === 'pilot');
+const resumeModules = modules.map((m) => ({ track: m.track, slug: m.slug, title: m.title }));
 ---
 
 <TrackLayout
-  title="Trilha 02: Redes e Comunicação de Dados | Catálogo de Módulos"
-  trackId="02-networks"
-  trackTitle="02. Redes e Comunicação de Dados"
+  title={`${track?.title} | Catálogo de Módulos`}
+  trackId={trackId}
+  trackTitle={track?.title || ''}
 >
   <div class="space-y-12 md:space-y-16 py-4">
-    {/* Cabeçalho da Trilha Editorial */}
     <div class="border-b border-ash pb-10">
       <div class="inline-flex items-center gap-2 rounded-full border border-ash bg-white/80 px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-graphite mb-5 shadow-sm">
-        <HugeiconsIcon icon={NetworkIcon} className="h-3.5 w-3.5 text-lake-blue" />
         <span>Trilha 02 : Redes e Comunicação</span>
       </div>
       <h1 class="font-serif text-[clamp(2rem,5vw,3rem)] font-normal tracking-[-0.02em] text-off-black mb-4 leading-[1.2]">
-        Redes e Comunicação de Dados
+        {track?.title}
       </h1>
       <p class="font-sans text-base text-graphite leading-relaxed max-w-3xl">
-        Aprenda como pacotes atravessam hardwares incompatíveis sem dono central: do envelope IPv4 e da resolução DNS aos requisitos de host, do transporte confiável ao handshake criptográfico. Cada módulo resolve o problema de entrega deixado pelo módulo anterior, subindo da camada de rede à aplicação.
+        {track?.description} Cada módulo resolve o problema de entrega deixado pelo anterior,
+        subindo da camada de rede à aplicação. Os {modules.length} módulos têm página publicada,
+        mas o conteúdo ainda não passou por revisão neste percurso.
       </p>
 
-      {/* Métricas e Badges em Pílulas Editoriais */}
       <div class="mt-8 flex flex-wrap gap-3 text-xs font-mono">
         <div class="rounded-full border border-ash bg-white px-4 py-2 flex items-center gap-2 shadow-sm text-graphite">
-          <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4 text-lake-blue" />
-          <span class="text-smoke">Módulos Disponíveis:</span>
-          <span class="font-medium text-off-black">1 Ativo (Módulo 00)</span>
-        </div>
-        <div class="rounded-full border border-ash bg-white px-4 py-2 flex items-center gap-2 shadow-sm text-graphite">
-          <HugeiconsIcon icon={PlayIcon} className="h-4 w-4 text-lake-blue" />
-          <span class="text-smoke">Simuladores Interativos:</span>
-          <span class="font-medium text-off-black">2 Ferramentas</span>
-        </div>
-        <div class="rounded-full border border-ash bg-white px-4 py-2 flex items-center gap-2 shadow-sm text-graphite">
-          <HugeiconsIcon icon={ShieldCheckIcon} className="h-4 w-4 text-lake-blue" />
-          <span class="text-smoke">Auditoria Epistêmica:</span>
-          <span class="font-medium text-off-black">100% Gates Aprovados</span>
+          <span class="text-smoke">Módulos:</span>
+          <span class="font-medium text-off-black">{modules.length} publicados · {pilots.length} no roteiro piloto</span>
         </div>
       </div>
     </div>
 
-    {/* Lista de Seleção de Módulos */}
+    <ContinueReading modules={resumeModules} currentPath={`/tracks/${trackId}`} />
+
     <div class="space-y-8">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
         <div>
@@ -140,101 +56,90 @@ const modules = [
           </h2>
         </div>
         <p class="text-xs font-mono text-smoke">
-          Selecione o módulo ou explore os tópicos específicos
+          A ordem do catálogo é a ordem de estudo
         </p>
       </div>
 
       <div class="space-y-8">
         {modules.map((m) => {
-          const isActive = m.status === 'active';
+          const isPilot = m.study_state === 'pilot';
+          const primary = getPrimarySourceForModule(m.slug);
           return (
-            <div
-              class={`rounded-card border transition-all ${
-                isActive
-                  ? 'border-ash bg-white p-6 md:p-10 shadow-sm hover:border-lake-blue/40'
-                  : 'border-ash/70 bg-white/60 p-6 md:p-10 opacity-75'
-              }`}
+            <article
+              class="rounded-card border border-ash bg-white p-6 md:p-10 shadow-sm transition-all hover:border-lake-blue/40"
             >
-              {/* Cabeçalho do Card do Módulo */}
               <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
                 <div class="space-y-2">
-                  <div class="flex items-center gap-2.5">
-                    <span class={`rounded-full px-3 py-1 font-mono text-xs font-medium ${
-                      isActive ? 'bg-periwinkle-mist text-lake-blue' : 'bg-ash/30 text-smoke'
-                    }`}>
-                      MÓDULO {m.id}
-                    </span>
-                    {isActive ? (
-                      <span class="rounded-full bg-mint/25 border border-mint px-3 py-0.5 text-xs font-mono font-medium text-off-black">
-                        Disponível Agora
+                  <div class="flex flex-wrap items-center gap-2.5">
+                    {isPilot ? (
+                      <span class="rounded-full bg-lake-blue px-3 py-1 font-mono text-xs font-medium text-white">
+                        Roteiro piloto
                       </span>
                     ) : (
-                      <span class="rounded-full bg-parchment border border-ash px-3 py-0.5 text-xs font-mono text-smoke">
-                        {m.sectionsCount}
+                      <span class="rounded-full bg-parchment border border-ash px-3 py-1 font-mono text-xs text-smoke">
+                        Conteúdo sem revisão
                       </span>
                     )}
                   </div>
                   <h3 class="font-serif text-xl md:text-2xl font-normal text-off-black leading-snug tracking-[-0.02em]">
                     {m.title}
                   </h3>
-                  <p class="font-mono text-xs text-smoke font-normal">
-                    {m.subtitle}
-                  </p>
                 </div>
 
-                {isActive && (
-                  <a
-                    href={withBase(`/tracks/02-networks/${m.slug}`)}
-                    class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-6 py-3 min-h-[44px] inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment shrink-0"
-                  >
-                    Abrir Módulo <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5" />
-                  </a>
-                )}
+                <a
+                  href={withBase(moduleHref(m))}
+                  class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-6 py-3 min-h-[44px] inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment shrink-0"
+                >
+                  Abrir Módulo
+                </a>
               </div>
 
               <p class="font-sans text-base text-graphite leading-relaxed mb-6 max-w-[70ch]">
                 {m.description}
               </p>
 
-              {/* Tópicos Detalhados em Pergaminho com Borda Ash */}
-              {m.topics.length > 0 && (
-                <div class="rounded-2xl border border-ash bg-parchment p-5 md:p-6 font-mono">
-                  <div class="text-xs font-medium uppercase tracking-wider text-smoke mb-3.5 flex items-center gap-2">
-                    <HugeiconsIcon icon={BookOpen01Icon} className="h-3.5 w-3.5 text-lake-blue" />
-                    <span>Tópicos deste Módulo:</span>
+              {isPilot && m.objectives && m.objectives.length > 0 && (
+                <div class="rounded-2xl border border-ash bg-parchment p-5 md:p-6">
+                  <div class="text-xs font-medium uppercase tracking-wider text-smoke mb-3.5 font-mono">
+                    <span>Ao concluir, você explica:</span>
                   </div>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                    {m.topics.map((t) => (
-                      <div class="flex items-start gap-2 text-graphite">
-                        <span class="font-mono text-xs font-medium text-lake-blue shrink-0">
-                          {t.num}.
-                        </span>
-                        <span class="leading-relaxed text-xs">{t.name}</span>
-                      </div>
+                  <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs list-none pl-0 my-0">
+                    {m.objectives.map((o) => (
+                      <li class="leading-relaxed text-xs text-graphite">
+                        {o.href ? (
+                          <a href={withBase(o.href)} class="text-lake-blue hover:underline font-medium">{o.label}</a>
+                        ) : (
+                          <span>{o.label}</span>
+                        )}
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               )}
 
-              {/* Rodapé do Card com Tags */}
+              {!isPilot && (
+                <p class="mt-2 mb-0 font-mono text-xs text-smoke">
+                  {m.review_status}
+                </p>
+              )}
+
+              {primary && (
+                <p class="mt-4 mb-0 font-mono text-xs text-smoke">
+                  Fonte principal: {primary.url ? (
+                    <a href={primary.url} class="text-lake-blue hover:underline">{primary.citation}</a>
+                  ) : primary.citation}
+                </p>
+              )}
+
               <div class="mt-6 pt-4 border-t border-ash/60 flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-smoke">
-                <div class="flex items-center gap-3">
-                  <span>{m.sectionsCount}</span>
-                  <span>&middot;</span>
-                  <span>{m.simulatorsCount}</span>
-                  <span>&middot;</span>
-                  <span>{m.testStatus}</span>
-                </div>
-                {isActive && (
-                  <a
-                    href={withBase(`/tracks/02-networks/${m.slug}`)}
-                    class="text-xs font-mono font-medium text-lake-blue hover:underline inline-flex items-center gap-1"
-                  >
-                    Estudar este conteúdo &rarr;
-                  </a>
-                )}
+                <a
+                  href={withBase(moduleHref(m))}
+                  class="text-xs font-mono font-medium text-lake-blue hover:underline inline-flex items-center gap-1 min-h-[44px]"
+                >
+                  Estudar este conteúdo &rarr;
+                </a>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>

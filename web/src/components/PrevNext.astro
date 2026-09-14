@@ -1,0 +1,52 @@
+---
+/**
+ * Navegação uniforme anterior/próximo entre módulos da mesma trilha.
+ * Renderizada em todas as páginas de módulo, na ordem do contrato.
+ */
+import { withBase } from "../utils/paths";
+import type { CurriculumModule } from "../data/curriculum";
+
+interface Props {
+  prev: CurriculumModule | null;
+  next: CurriculumModule | null;
+}
+
+const { prev, next } = Astro.props;
+---
+
+<nav aria-label="Módulos anterior e próximo" class="mt-14 grid grid-cols-1 gap-4 border-t border-ash pt-8 sm:grid-cols-2">
+  <div>
+    {prev ? (
+      <a
+        href={withBase(`/tracks/${prev.track}/${prev.slug}`)}
+        rel="prev"
+        class="group flex min-h-[44px] flex-col gap-1 rounded-2xl border border-ash bg-white p-5 transition-all hover:border-lake-blue/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
+      >
+        <span class="font-mono text-xs uppercase tracking-widest text-smoke">&larr; Anterior</span>
+        <span class="font-sans text-base font-medium text-off-black group-hover:text-lake-blue">{prev.title}</span>
+      </a>
+    ) : (
+      <span class="flex min-h-[44px] flex-col gap-1 rounded-2xl border border-ash/60 bg-parchment/60 p-5">
+        <span class="font-mono text-xs uppercase tracking-widest text-smoke">Início da trilha</span>
+        <span class="font-sans text-sm text-smoke">Este é o primeiro módulo. Siga para o próximo quando quiser.</span>
+      </span>
+    )}
+  </div>
+  <div>
+    {next ? (
+      <a
+        href={withBase(`/tracks/${next.track}/${next.slug}`)}
+        rel="next"
+        class="group flex min-h-[44px] flex-col gap-1 rounded-2xl border border-ash bg-white p-5 text-right transition-all hover:border-lake-blue/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
+      >
+        <span class="font-mono text-xs uppercase tracking-widest text-smoke">Próximo &rarr;</span>
+        <span class="font-sans text-base font-medium text-off-black group-hover:text-lake-blue">{next.title}</span>
+      </a>
+    ) : (
+      <span class="flex min-h-[44px] flex-col gap-1 rounded-2xl border border-ash/60 bg-parchment/60 p-5 text-right">
+        <span class="font-mono text-xs uppercase tracking-widest text-smoke">Fim da trilha</span>
+        <span class="font-sans text-sm text-smoke">Este é o último módulo desta trilha.</span>
+      </span>
+    )}
+  </div>
+</nav>

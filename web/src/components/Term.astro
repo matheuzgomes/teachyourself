@@ -25,9 +25,12 @@ const info = glossary[id] || {
     <slot>{id}</slot>
   </span>
 
-  {/* Tooltip Card Flutuante via CSS puro (Funciona 100% sem JavaScript) */}
+  {/* Tooltip Card Flutuante via CSS puro (Funciona 100% sem JavaScript).
+      Fechado sai do layout com display:none (invisible ainda criava rolagem
+      horizontal). No mobile vira lâmina fixa com margens (sempre cabe na
+      viewport); no desktop mantém a ancoragem acima do termo. */}
   <span
-    class="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 sm:w-80 rounded-card border border-ash bg-white p-4 shadow-xl transition-all duration-200 pointer-events-none group-hover:pointer-events-auto text-left font-sans normal-case not-italic font-normal block text-off-black"
+    class="hidden group-hover:block group-focus-within:block z-50 rounded-card border border-ash bg-white p-4 shadow-xl pointer-events-none group-hover:pointer-events-auto text-left font-sans normal-case not-italic font-normal text-off-black max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:bottom-2 max-sm:top-auto max-sm:w-auto max-sm:translate-x-0 max-sm:mb-0 sm:absolute sm:bottom-full sm:left-1/2 sm:-translate-x-1/2 sm:mb-2 sm:w-80 w-72"
   >
     {/* Header do Card */}
     <span class="flex items-start justify-between gap-2 border-b border-ash/70 pb-2.5 mb-2.5 block">
@@ -53,8 +56,8 @@ const info = glossary[id] || {
       {info.description}
     </span>
 
-    {/* Seta do Tooltip */}
-    <span class="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-ash block"></span>
-    <span class="absolute top-full left-1/2 -translate-x-1/2 -mt-[2px] border-4 border-transparent border-t-white block"></span>
+    {/* Seta do Tooltip (só no desktop ancorado; no mobile vira lâmina inferior) */}
+    <span class="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-ash max-sm:hidden block"></span>
+    <span class="absolute top-full left-1/2 -translate-x-1/2 -mt-[2px] border-4 border-transparent border-t-white max-sm:hidden block"></span>
   </span>
 </span>

@@ -1,7 +1,7 @@
 ---
 layout: ../../../layouts/TrackLayout.astro
 title: "06. Processos, Threads e a Fronteira do Kernel: System Calls e Troca de Contexto"
-description: "A separação Ring 3 vs Ring 0, a instrução syscall via IA32_LSTAR, a equivalência ontológica de clone(), a mecânica de switch_to e o ciclo de sinais POSIX."
+description: "A separação de privilégios Ring 3 vs Ring 0, a instrução atômica syscall via MSR IA32_LSTAR, a equivalência ontológica sob clone(), a mecânica assembly de switch_to e o ciclo de sinais POSIX."
 trackId: "01-hardware-and-os"
 trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 ---
@@ -17,271 +17,381 @@ import Term from "../../../components/Term.astro";
 
 # Módulo 06: Processos, Threads e a Fronteira do Kernel: System Calls e Troca de Contexto
 
-> **O que você precisa aqui:** 1. Ter visto que RAM é fita com endereço e cada processo tem mapa privado. 2. Ter visto que pilha guarda a volta com call e ret. 3. Aceitar que o SO organiza e protege. Nada de terminal, nada de medir kernel.
+No módulo anterior, estabelecemos como a Unidade de Gerenciamento de Memória (<Term id="MMU">MMU</Term>) e a estrutura em árvore esparsa PML4 isolam rigorosamente cada processo em seu próprio espaço de endereçamento linear de 128 TiB ancorado no registrador de controle `%cr3`.
 
-No módulo anterior, vimos como cada programa ganha um mapa privado de memória e ninguém lê o terreno alheio.
+Esse isolamento físico e lógico impede qualquer corrupção acidental ou maliciosa de memória entre tarefas concorrentes. Contudo, ele instaura um dilema fundamental de engenharia de sistemas:
+*Se o código da aplicação executa confinado em sua própria bolha de endereçamento virtual sem permissão de acesso a outros processos ou aos dispositivos físicos, como ele interage com o mundo exterior?*
 
-Contudo, esse isolamento rigoroso impõe um dilema fundamental de engenharia:
-Se cada processo executa em uma bolha de memória virtual privada e sem privilégios de hardware, como ele interage com o mundo exterior?
+Um aplicativo em espaço de usuário não possui autorização elétrica do processador para manipular diretamente as portas de rede, enviar comandos para controladores de disco NVMe ou alocar páginas físicas de memória RAM. Permitir acesso direto a hardware quebraria instantaneamente as garantias de integridade de todo o sistema operacional. Para ler um arquivo, emitir um pacote de rede ou criar uma nova linha de execução concorrente, o software precisa transpor uma barreira física fiscalizada pelos decodificadores da CPU: a fronteira do kernel.
 
-Um aplicativo de usuário não pode tocar diretamente nos pinos de uma placa de rede, gravar setores em um disco NVMe ou alocar memória física arbitrária sem quebrar as garantias de segurança de todo o sistema operacional.
-Para ler um arquivo, enviar dados por um socket ou criar uma nova tarefa concorrente, o software de usuário precisa cruzar uma barreira intransponível fiscalizada pelos circuitos da CPU: a fronteira do kernel.
+Neste módulo, decompomos a travessia entre o espaço de usuário e o núcleo do sistema sob cinco fundamentos mecânicos:
 
-Neste módulo, investigamos a travessia entre programa e kernel em 5 perguntas:
-
-1. Por que o programa não pode tocar no hardware direto?
-2. Como pedir ao kernel sem quebrar o isolamento?
-3. Onde o kernel anota quem é cada tarefa?
-4. Por que processo e thread são a mesma coisa lá dentro?
-5. Como a <Term id="CPU">CPU</Term> troca de tarefa sem perder o fio?
-
-> [!TIP]
-> **Como ler este módulo:** cada seção responde 1 pergunta. Detalhe de registrador e de código do kernel vai em aprofundamento. A Trilha 1 conta a mecânica, o aprofundamento mostra a fiação.
+1. **A fronteira de privilégios de hardware:** como os anéis Ring 3 e Ring 0 impedem a execução de instruções destrutivas pelo código de usuário.
+2. **A travessia atômica da syscall:** a mecânica da instrução `SYSCALL`, os registradores MSR de configuração, a instrução `SWAPGS` e a comutação para a pilha de kernel segura.
+3. **O descritor universal `task_struct`:** como o kernel organiza internamente memória virtual, descritores de arquivos abertos e tratamento de sinais.
+4. **A unificação ontológica via `clone()`:** a razão estrutural pela qual processos e threads são idênticos perante o escalonador do Linux.
+5. **A mecânica da troca de contexto:** a rotina assembly `switch_to()`, a decisão de recarga de `%cr3`, os custos de poluição de cache/TLB e o ciclo assíncrono de sinais POSIX.
 
 ---
 
 ## 6.1 A Ilusão da Execução Exclusiva e a Fronteira de Privilégios (Ring 3 vs Ring 0)
 
-Para compreender por que o sistema separa programa de kernel, considere o estrago se qualquer programa executasse qualquer ordem: desligar interrupções e congelar a máquina, ou reprogramar a tabela de páginas e ler a memória alheia.
+Para compreender por que o processador impõe uma separação rígida entre código de aplicação e código do sistema operacional, considere o impacto se qualquer programa pudesse executar instruções arbitrárias na CPU: uma aplicação poderia desativar as interrupções de hardware congelando a máquina, reprogramar a tabela PML4 para inspecionar as senhas de outro processo ou emitir comandos destrutivos diretamente ao barramento de armazenamento.
 
-Para impedir esse colapso, o processador tem anéis de privilégio em hardware. O x86 nasceu com 4 anéis de 0 a 3, mas Linux, Windows e macOS usam só 2 níveis:
+Para neutralizar esse colapso, as microarquiteturas modernas implementam **anéis de privilégio hierárquicos em nível de circuito**. A arquitetura x86 foi concebida originalmente com quatro anéis (de 0 a 3). Entretanto, sistemas operacionais de uso geral contemporâneos (como Linux, macOS e Windows) adotam um modelo dual estrito:
 
-1. **Ring 0 (Modo Supervisor):**
-   Privilégio máximo. Acesso a todas as ordens, registradores de controle e periféricos. Aqui roda o núcleo do sistema.
-2. **Ring 3 (Modo Usuário):**
-   Sem privilégio. Aqui rodam navegador, banco de dados e terminal. Hardware direto e tabela de supervisor bloqueados pela <Term id="CPU">CPU</Term>.
-
+1. **Ring 0 (Modo Supervisor / Kernel Space):**
+   Privilégio irrestrito de execução. O código que executa neste anel tem acesso a todas as instruções do conjunto de instruções (ISA), pode programar registradores de controle (`%cr0`, `%cr3`, `%cr4`), configurar registradores de modelo específicos (MSRs) e dialogar diretamente com controladores de periféricos. É o ambiente onde opera o núcleo do sistema operacional.
+2. **Ring 3 (Modo Usuário / User Space):**
+   Privilégio restrito de execução. É o ambiente onde rodam navegadores, bancos de dados, servidores web e comandos de terminal. O acesso direto a periféricos e a registradores de controle é bloqueado diretamente pelo decodificador de instruções da CPU.
 
 <PrivilegeRings />
 
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Anéis de Privilégio x86-64**
+> - **O que inspecionar:** A estrutura hierárquica concêntrica de privilégios de hardware, contrapondo o núcleo interno (Ring 0 / Modo Supervisor) ao domínio externo (Ring 3 / Modo Usuário).
+> - **Controle e estímulo:** Observe quais classes de instruções e estruturas de memória são acessíveis em cada domínio de execução.
+> - **Verificação do mecanismo:** Confirme que a CPU rejeita em hardware instruções de controle de sistema originadas em Ring 3, canalizando qualquer requisição de serviço externo para a porta de entrada controlada das chamadas de sistema.
+
 ### O Nível de Privilégio Atual (CPL - Current Privilege Level)
-Como o processador sabe, a cada ciclo, se uma ordem pode executar?
-A <Term id="CPU">CPU</Term> lê o anel ativo em 2 bits do registrador `%cs`. Esse campo se chama **Nível de Privilégio Atual (Current Privilege Level, ou <Term id="CPL">CPL</Term>)**.
 
-* `CPL == 0`: Modo Supervisor (Ring 0).
-* `CPL == 3`: Modo Usuário (Ring 3).
+Como a CPU sabe, a cada ciclo de clock, se a instrução atualmente decodificada tem permissão de execução?
 
-O CPL não muda com ordem comum. Só transições autorizadas pelo hardware, configuradas pelo kernel na inicialização, alteram o nível.
+O processador armazena o nível de privilégio ativo nos dois bits menos significativos do registrador de segmento de código (`%cs[1:0]`). Esse campo de 2 bits é denominado **Nível de Privilégio Atual (Current Privilege Level, ou <Term id="CPL">CPL</Term>)**:
+
+* `CPL == 0b00` (0): O núcleo opera em Modo Supervisor (Ring 0).
+* `CPL == 0b11` (3): O núcleo opera em Modo Usuário (Ring 3).
+
+O CPL não pode ser alterado por instruções ordinárias de escrita em registradores (como `mov`). O valor do CPL é imutável durante a execução sequencial e só é modificado por mecanismos de transição de controle expressamente validados pelo circuito de hardware da CPU.
 
 ### Instruções Privilegiadas vs Instruções Ordinárias
-A microarquitetura divide suas ordens em duas categorias:
 
-1. **Ordinárias:** rodam em qualquer anel. Conta, cópia, salto e leitura em página de usuário.
-2. **Privilegiadas:** só com `CPL == 0`. Tentar com `CPL == 3` aborta com falta geral de proteção (`#GP`, interrupção 13). Exemplos: desligar interrupções, trocar `%cr3`, invalidar <Term id="TLB">TLB</Term>, ler registradores de modelo, I/O direto e suspender o núcleo.
+O conjunto de instruções da CPU é formalmente segregado em duas categorias pelo hardware:
 
-Essa barreira garante o sistema.
-Para gravar arquivo ou receber pacote, o programa não toca no controlador: pede ao kernel pela porta formal, a chamada de sistema.
+1. **Instruções Ordinárias:** Podem ser executadas livremente em qualquer nível de privilégio (`CPL == 0` ou `CPL == 3`). Englobam instruções aritméticas e lógicas (`add`, `sub`, `imul`), movimentação de dados em memória mapeada de usuário (`mov`, `push`, `pop`), desvios condicionais e saltos de função (`jmp`, `call`, `ret`).
+2. **Instruções Privilegiadas:** Só podem ser executadas quando a CPU opera estritamente com `CPL == 0`. A tentativa de emitir uma instrução privilegiada em Ring 3 (`CPL == 3`) faz o circuito decodificador da CPU interromper a execução no mesmo ciclo e disparar imediatamente a exceção de Falta Geral de Proteção (**General Protection Fault, ou `#GP`**, vetor de interrupção 13).
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **2 anéis valem:** Ring 0 manda no hardware, Ring 3 pede pelo kernel;
-> 2. **CPL diz onde está:** 2 bits de `%cs` decidem cada ordem;
-> 3. **Porta é syscall:** programa não atravessa sozinho, chama e o kernel executa.
+Entre as instruções estritamente privilegiadas destacam-se:
+* `cli` e `sti`: desativação e ativação da flag de interrupção externa (`IF` em `RFLAGS`).
+* `mov %rax, %cr3`: carregamento da base física da árvore de tabelas de páginas (troca de mapa virtual).
+* `invlpg`: invalidação manual de entradas na TLB.
+* `wrmsr` e `rdmsr`: escrita e leitura em registradores MSR de controle da arquitetura.
+* `in` e `out`: comandos diretos para portas legadas de I/O.
+* `hlt`: suspensão da esteira de execução do processador até a chegada da próxima interrupção física.
+
+Essa muralha de hardware é a garantia primordial da estabilidade do sistema operacional. Para que um programa em Ring 3 leia dados de um disco ou envie um segmento pela rede, ele não acessa os dispositivos: ele solicita a execução ao kernel através da fronteira formal da chamada de sistema (*system call*).
 
 ---
 
-## 6.2 Transferências Excepcionais de Controle (ECF) e a Syscall
+## 6.2 Transferências Excepcionais de Controle (ECF) e a Mecânica Atômica da Syscall
 
-Além do fluxo linha após linha, processador e sistema precisam reagir a eventos: periférico que avisa, programa que pede, erro que pode ser corrigido e falha grave que aborta. O modelo unificado chama isso de **Transferências Excepcionais de Controle (Exceptional Control Flow, ou ECF)**, em 4 classes: interrupção externa, trap intencional como `syscall`, falta corrigível como falta de página e abort fatal.
+Em um fluxo de execução linear, o registrador `%rip` avança sequencialmente ou por desvios de controle planejados (`call`/`jmp`). Entretanto, sistemas operacionais precisam responder a eventos síncronos e assíncronos que rompem o fluxo normal do programa. A literatura de sistemas unifica esses eventos sob o conceito de **Transferências Excepcionais de Controle (Exceptional Control Flow, ou ECF)**, organizadas em quatro classes canônicas:
 
-<DeepDive title="Detalhe de implementação: IDT e o int 0x80 antigo">
-Todas as transições convergem para a Tabela de Descritores de Interrupção (IDT), com até 256 portas que elevam o CPL e entregam a pilha do kernel. Nos x86 de 32 bits, syscall ia por `int 0x80`: suspendia a esteira, lia a IDT na <Term id="RAM">RAM</Term>, checava porta e empilhava 5 registradores, custando centenas de ciclos só para entrar no tratador. Nada aqui muda o modelo da Trilha 1, só detalha o caminho antigo.
+1. **Interrupts (Interrupções de Hardware):** Assíncronas. Disparadas eletricamente por periféricos externos (sinal de rede, disco ou temporizador APIC) através de linhas de sinal da CPU.
+2. **Traps (Armadilhas Intencionais):** Síncronas. Instruções deliberadamente executadas pelo programa para transferir o controle ao kernel com elevação de privilégio. A chamada de sistema (`SYSCALL`) é o exemplo primordial de trap.
+3. **Faults (Faltas Corrigíveis):** Síncronas. Ocorrências potencialmente recuperáveis provocadas por instruções que não conseguem concluir a execução sem intervenção do SO (como o Page Fault `#PF`, vetor 14, estudado no Módulo 05). Se corrigido pelo kernel, o fluxo é retomado na mesma instrução faltosa.
+4. **Aborts (Falhas Fatais):** Síncronas. Erros de integridade de hardware irrecuperáveis (como falha de paridade de memória RAM detectada por ECC ou pane elétrica), provocando o encerramento imediato do processo ou o pânico do kernel.
+
+<DeepDive title="Detalhe Histórico: O mecanismo legado int 0x80 do x86 de 32 bits">
+Nos processadores x86 de 32 bits, as chamadas de sistema eram implementadas através de uma interrupção por software disparada pela instrução `int 0x80`. Esse mecanismo consultava a Tabela de Descritores de Interrupção (IDT) armazenada na memória RAM, suspendia o pipeline de instruções, validava os privilégios do descritor de porta e empilhava automaticamente cinco registradores na pilha de kernel. Essa sequência consumia centenas de ciclos de clock apenas para cruzar a fronteira para o tratador.
 </DeepDive>
 
-Para eliminar esse atraso, o x86-64 trouxe o par rápido `SYSCALL` e `SYSRET`: em vez de ler tabela na memória a cada chamada, a <Term id="CPU">CPU</Term> usa registradores configurados pelo kernel no boot.
+Para suprimir esse gargalo na transição para 64 bits, a arquitetura x86-64 introduziu o par de instruções de alto desempenho **`SYSCALL`** e **`SYSRET`**. Em vez de realizar leituras lentas de tabelas em memória RAM a cada transição, a CPU realiza a elevação de privilégio diretamente através de registradores de modelo de hardware dedicados (MSRs).
 
-### Os Registradores de Configuração da Syscall
-No boot, o kernel grava 3 registradores de modelo com ordem privilegiada:
+### Os Registradores MSR de Configuração da Syscall
 
-1. **`IA32_LSTAR`:** endereço da entrada do tratador no kernel.
-2. **`IA32_STAR`:** seletores de segmento para alternar Ring 0 e Ring 3.
-3. **`IA32_FMASK`:** máscara que a <Term id="CPU">CPU</Term> aplica no `RFLAGS` na transição, desativando interrupções até a pilha estabilizar.
+Durante a fase de inicialização do sistema (*boot*), o kernel do Linux configura previamente os circuitos de syscall através de três registradores MSR utilizando a instrução privilegiada `wrmsr`:
 
-<DeepDive title="Detalhe de implementação: endereços e arquivo do tratador">
-`IA32_LSTAR` é o MSR `0xC0000082` e no Linux aponta para `entry_SYSCALL_64`. `IA32_STAR` é o `0xC0000081`, `IA32_FMASK` o `0xC0000084`. Nada aqui muda a mecânica da Trilha 1, só ancora os números para quem vai ler o código do kernel.
-</DeepDive>
+1. **`IA32_LSTAR` (MSR `0xC0000082` - *Long System Target Address Register*):** Armazena o endereço virtual linear de 64 bits do ponto de entrada do tratador do kernel (no Linux x86-64, a função assembly `entry_SYSCALL_64`).
+2. **`IA32_STAR` (MSR `0xC0000081`):** Armazena os seletores de segmento de 16 bits para `%cs` e `%ss` a serem carregados automaticamente durante as transições de privilégio (Ring 3 $\to$ Ring 0 e Ring 0 $\to$ Ring 3).
+3. **`IA32_FMASK` (MSR `0xC0000084` - *Flag Mask Register*):** Define a máscara de bits que a CPU aplica ao registrador `RFLAGS` no instante exato da chamada. O kernel programa este registrador para limpar compulsoriamente a flag `IF` (Interrupt Flag), garantindo que interrupções de hardware permaneçam temporariamente desativadas até que a pilha de kernel seja configurada com segurança.
 
-### A Mecânica de Execução da Instrução `syscall`
-Quando um programa em Ring 3 executa `syscall`, o processador roda uma sequência atômica gravada nos circuitos:
+### A Mecânica de Execução da Instrução `SYSCALL`
 
-1. **Guarda a volta:** copia o `%rip` seguinte para `%rcx`.
-2. **Guarda as flags:** copia `RFLAGS` para `%r11`.
-3. **Pula ao tratador:** copia `IA32_LSTAR` para `%rip`.
-4. **Sobe o privilégio:** CPL vai de 3 para 0.
-5. **Aplica a máscara:** zera em `RFLAGS` o que `IA32_FMASK` manda, travando interrupções.
+Quando uma aplicação em Ring 3 emite a instrução `syscall`, a microarquitetura da CPU executa uma sequência estritamente atômica em nível de circuito:
 
-Preste atenção no detalhe crítico:
-**A ordem física `syscall` não troca a pilha (`%rsp`).**
-Na primeira ordem do kernel, o processador está em Ring 0 mas o `%rsp` ainda aponta para a pilha do usuário. Escrever ali seria gravar em memória do programa, falha fatal de segurança.
+1. **Preserva o endereço de retorno:** Salva o `%rip` da próxima instrução de usuário no registrador `%rcx`.
+2. **Preserva as flags:** Salva o registrador `RFLAGS` completo no registrador `%r11`.
+3. **Desvia a execução:** Carrega o conteúdo de `IA32_LSTAR` diretamente no registrador `%rip`.
+4. **Eleva o privilégio:** Altera o CPL de 3 para 0 através dos seletores pré-gravados em `IA32_STAR`.
+5. **Aplica a máscara de flags:** Executa `RFLAGS <- RFLAGS & ~IA32_FMASK`, desativando interrupções externas.
+
+> [!IMPORTANT]
+> **A Falha de Continuidade da Pilha no Silício:**
+> Observe com máxima atenção um detalhe de hardware crucial:
+> **A instrução `SYSCALL` não altera o ponteiro de pilha (`%rsp`).**
+> Ao entrar na primeira instrução de `entry_SYSCALL_64` em Ring 0, o processador possui privilégio máximo de supervisor, mas o registrador `%rsp` ainda aponta para o topo da pilha de usuário em Ring 3!
+
+Se o tratador de kernel emitisse qualquer instrução de pilha (`push` ou `call`) imediatamente, ele gravaria metadados e endereços de retorno de privilégio de kernel dentro da memória de usuário do processo. Além de permitir ataques de injeção de código e corrupção maliciosa, a pilha de usuário poderia estar corrompida ou apontar para um endereço inválido, disparando um Page Fault duplo e congelando o sistema operacional.
 
 ### A Instrução `SWAPGS` e a Obtenção da Pilha de Kernel
-Para resolver isso sem usar gavetas com dados do usuário, o x86-64 troca a base de `GS` pela área privada do núcleo, lê ali a pilha segura da tarefa e comuta o `%rsp` para ela.
 
-No momento da entrada da syscall, a sequência é rígida:
+Para solucionar o problema da pilha sem depender da memória não confiável de usuário e sem utilizar registradores de propósito geral previamente ocupados pela aplicação, o x86-64 dispõe da instrução privilegiada **`SWAPGS`**:
 
-1. A CPU executa `syscall`: o nível de privilégio vai para 0 e `%rip` salta para o ponto de entrada (`IA32_LSTAR`). A pilha de usuário permanece ativa neste instante.
-2. O kernel executa `swapgs`: a base de GS passa a apontar para os dados por CPU do kernel.
-3. O kernel guarda a pilha de usuário temporariamente na área por CPU.
-4. O kernel comuta para o ponteiro de pilha segura da tarefa.
-5. O kernel empilha `struct pt_regs` com todos os registradores de usuário.
+```text
+Entrada da Syscall (entry_SYSCALL_64):
+  1. swapgs                     ; Comuta base oculta de %gs com IA32_KERNEL_GS_BASE
+  2. movq %rsp, %gs:cpu_user_sp ; Salva %rsp de usuário na estrutura Per-CPU
+  3. movq %gs:cpu_kernel_sp, %rsp; Carrega ponteiro para a pilha de kernel segura da tarefa
+  4. pushq $__USER_DS           ; Inicia construção da estrutura struct pt_regs
+  5. pushq %gs:cpu_user_sp      ; Empilha o %rsp original de usuário
+  6. pushq %r11                 ; Empilha RFLAGS de usuário (salvo em %r11 pelo hardware)
+  7. pushq $__USER_CS           ; Empilha seletor de código de usuário
+  8. pushq %rcx                 ; Empilha %rip de retorno de usuário (salvo em %rcx)
+  9. pushq %rax                 ; Empilha número original da syscall
+ 10. pushq %rdi; pushq %rsi...  ; Empilha todos os registradores de propósito geral
+```
 
-Ao executar `SWAPGS`, o kernel lê da área privada o endereço da pilha do kernel da tarefa, guarda o `%rsp` de usuário e comuta para a pilha segura.
-A partir daí empilha a estrutura com todos os registradores do usuário e atende com variáveis locais sem corromper o programa.
+O mecanismo opera com precisão milimétrica:
+1. Em Ring 3, o registrador de segmento `%gs` é frequentemente utilizado pela biblioteca de tempo de execução para indexar variáveis de thread local (*Thread-Local Storage*, TLS).
+2. Ao ingressar no kernel, a instrução `swapgs` troca atomicamente a base de `%gs` com o conteúdo do registrador MSR privilegiado `IA32_KERNEL_GS_BASE`.
+3. A base de `%gs` no kernel passa a apontar diretamente para a estrutura de dados **Per-CPU** daquele núcleo físico específico.
+4. A estrutura Per-CPU contém ponteiros fixos do kernel. O kernel utiliza um deslocamento a partir de `%gs` para guardar o `%rsp` de usuário e ler o endereço da pilha de kernel dedicada àquela tarefa específica.
+5. Com `%rsp` agora apontando para a pilha privada de kernel, o código constrói na memória a estrutura **`struct pt_regs`**, empilhando todos os registradores de propósito geral (`%rax`, `%rbx`, `%rcx`, `%rdx`, `%rsi`, `%rdi`, `%rbp`, `%r8`-`%r15`).
 
-### A Convenção da <Term id="ABI">ABI</Term> para Syscalls
-A convenção de chamadas de sistema difere um pouco da de funções em C:
+### A Convenção da System V AMD64 ABI para Syscalls
 
-* **Número da ordem:** vai em `%rax` (`0` ler, `1` escrever, `57` criar, `60` sair).
-* **Valores:** `%rdi`, `%rsi`, `%rdx`, **`%r10`**, `%r8`, `%r9`.
-* **Por que `%r10` e não `%rcx`?**
-  Porque o hardware usa `%rcx` para guardar o `%rip` de volta. A <Term id="ABI">ABI</Term> deslocou o 4º valor para `%r10`.
-* **Resposta:** volta em `%rax`. Faixa de `-4095` a `-1` indica erro padrão <Term id="POSIX">POSIX</Term>, que a biblioteca converte em `errno`.
+A convenção de chamada para invocar rotinas do kernel via syscall difere da convenção de funções C ordinárias em dois aspectos determinantes:
 
-Ao concluir, o tratador restaura as gavetas do usuário e executa `SYSRETQ`: `%rip` volta de `%rcx`, `RFLAGS` volta de `%r11`, CPL desce para 3 e o programa retoma no ciclo seguinte.
+* **Número da chamada de sistema:** É transmitido obrigatoriamente no registrador `%rax` (`sys_read = 0`, `sys_write = 1`, `sys_clone = 56`, `sys_exit = 60`, etc.).
+* **Registradores de argumentos:** São transmitidos na ordem:
+  1. `%rdi`
+  2. `%rsi`
+  3. `%rdx`
+  4. **`%r10`** (e **não** `%rcx`!)
+  5. `%r8`
+  6. `%r9`
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Pedir é trap:** `syscall` guarda volta e flags e pula ao tratador;
-> 2. **Pilha troca depois:** `SWAPGS` acha a pilha segura antes de empilhar;
-> 3. **4º valor muda de gaveta:** `%rcx` guarda retorno, então syscall usa `%r10`.
+> [!WARNING]
+> **Por que a convenção utiliza `%r10` em vez de `%rcx`?**
+> Na convenção padrão da System V AMD64 ABI para funções ordinárias, o quarto argumento é passado em `%rcx`. Contudo, como vimos no funcionamento de hardware da instrução `SYSCALL`, o processador **sobrescreve incondicionalmente o conteúdo de `%rcx`** com o endereço `%rip` de retorno de usuário. Para não perder o quarto parâmetro da função, o compilador e a biblioteca C movem explicitamente o valor de `%rcx` para `%r10` antes de disparar a instrução `syscall`.
+
+* **Valor de retorno:** O kernel devolve o resultado da operação no registrador `%rax`. Se a operação falhar, o kernel retorna um valor negativo no intervalo `[-4095, -1]`, representando `-errno` (por exemplo, `-2` para `-ENOENT`). A biblioteca de tempo de execução (`glibc` ou `musl`) extrai o módulo do valor, armazena-o na variável thread-local `errno` e devolve `-1` ao chamador em nível de linguagem C.
+
+Ao término do processamento, o tratador do kernel desempilha a estrutura `struct pt_regs` restaurando os registradores de propósito geral, executa `swapgs` para restabelecer a base de `%gs` de usuário e emite a instrução de hardware **`SYSRETQ`**. A CPU recupera atomicamente `%rip <- %rcx`, `RFLAGS <- %r11` e reduz o CPL de volta para 3, retomando o programa de usuário no ciclo imediatamente seguinte à chamada.
 
 ---
 
-## 6.3 A Ficha da Tarefa no Kernel: Memória, Arquivos e Sinais
+## 6.3 A Estrutura da Tarefa no Kernel (`task_struct`) e o Ciclo de Vida
 
-Para o programa, processo é programa em execução.
-Para o kernel, processo é uma ficha com ponteiros: a `struct task_struct`, com vários kilobytes por tarefa.
-
+Para o programador de aplicações, um processo é uma instância de um programa em execução com sua própria memória e fluxos de controle. Para o núcleo do Linux, um processo é materializado como uma estrutura de dados de vários kilobytes alocada em memória física não-paginável do kernel: a **`struct task_struct`** (definida no cabeçalho `<linux/sched.h>`).
 
 <TaskStructMap />
 
-### Os Três Ponteiros da Identidade do Processo
-Para gerenciar a tarefa, bastam 3 ponteiros na ficha:
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Anatomia da `task_struct`**
+> - **O que inspecionar:** Os campos e ponteiros estruturais da `task_struct`, focando no isolamento dos três subsistemas críticos: memória virtual (`mm_struct`), sistema de arquivos e descritores (`files_struct`) e tratamento de sinais (`sighand_struct`).
+> - **Controle e estímulo:** Acompanhe como os ponteiros referenciam estruturas independentes na memória do kernel, permitindo compartilhamento granular ou isolamento completo.
+> - **Verificação do mecanismo:** Observe que o campo `mm` armazena o ponteiro para a raiz PML4 associada ao registrador `%cr3`, comprovando o acoplamento físico entre a estrutura de tarefas do sistema operacional e o decodificador da MMU.
 
-1. **Mapa de memória:** aponta para a raiz PML4 que vai ao `%cr3` e para as faixas válidas de código, dados, heap e pilha.
-2. **Arquivos abertos:** vetor de números pequenos. `write(1, ...)` usa a posição 1 para achar onde escrever e em que ponto está.
-3. **Sinais <Term id="POSIX">POSIX</Term>:** máscaras de bloqueio, fila de pendentes e tabela de funções registradas para `SIGINT`, `SIGTERM` e `SIGSEGV`.
+### Os Três Ponteiros Canônicos de Identidade e Recursos
 
-### Os Estados da Tarefa
-O campo de estado diz ao escalonador se a tarefa pode rodar:
+Dentre as centenas de campos contidos na `task_struct`, três ponteiros definem a essência de execução e recursos de uma tarefa:
 
-* **`TASK_RUNNING`:** rodando ou na fila, esperando a vez.
-* **`TASK_INTERRUPTIBLE`:** dormindo por evento externo. Sinal acorda na hora.
-* **`TASK_UNINTERRUPTIBLE`:** dormindo por hardware inadiável. Nem sinal acorda, letra D no `ps`.
-* **`TASK_STOPPED`:** parada por depurador ou `Ctrl+Z`.
-* **`EXIT_ZOMBIE`:** terminou e liberou quase tudo, mas a ficha vive até o pai ler a saída com `waitpid()`.
+1. **`struct mm_struct *mm` (Espaço de Endereçamento Virtual):**
+   Aponta para o descritor de memória virtual da tarefa. Contém o ponteiro `pgd` (Page Global Directory), que guarda o endereço físico da raiz da tabela PML4 carregada no registrador `%cr3` da CPU. Contém também a árvore balanceada de áreas de memória virtual (`vm_area_struct`), delimitando as faixas mapeadas de código (`.text`), variáveis globais (`.data`/`.bss`), heap dinâmico, bibliotecas compartilhadas e a pilha de usuário.
+   *(Nota: em threads puras de kernel (`kthreads`), `mm` é `NULL`, pois elas não possuem espaço de usuário; o escalonador reutiliza temporariamente o `active_mm` do processo suspenso anteriormente).*
+2. **`struct files_struct *files` (Tabela de Arquivos Abertos):**
+   Contém o vetor de descritores de arquivo (`fdtable`), que mapeia inteiros pequenos (`0`, `1`, `2`, ...) em ponteiros para estruturas `struct file`. Cada `struct file` rastreia o deslocamento do cursor de leitura/escrita (`f_pos`), os sinalizadores de abertura (`O_RDONLY`, `O_WRONLY`) e a referência ao nó de índice (*inode*) no sistema de arquivos.
+3. **`struct sighand_struct *sighand` (Tabela de Ações de Sinais):**
+   Indexa o vetor de tratadores de sinais (`action[64]`), associando cada sinal POSIX (`SIGINT`, `SIGTERM`, `SIGSEGV`) a um tratador configurado pela aplicação, à ação padrão do sistema (`SIG_DFL`) ou ao descarte (`SIG_IGN`).
 
-### A Pilha Privada do Kernel
-Cada tarefa tem pilha própria no supervisor. Ao entrar no kernel, o estado do usuário fica guardado no topo dela, e o kernel trabalha com variáveis locais sem tocar no programa.
+### Estados de Escalonamento da Tarefa
+
+O campo `state` (ou `__state`) na `task_struct` comanda as decisões do escalonador do sistema operacional:
+
+* **`TASK_RUNNING`:** A tarefa está executando ativamente em um núcleo de CPU ou está inserida na fila de tarefas prontas (*runqueue*), aguardando sua vez de receber tempo de processamento.
+* **`TASK_INTERRUPTIBLE`:** A tarefa está bloqueada em espera por um evento externo (dados em um socket de rede, liberação de trava mutex ou expiração de temporizador). Se um sinal POSIX for emitido para a tarefa, o kernel a acorda imediatamente, cancelando a espera e retornando `-EINTR` na chamada de sistema correspondente.
+* **`TASK_UNINTERRUPTIBLE`:** A tarefa está bloqueada aguardando uma operação síncrona e inadiável de hardware (como a leitura física de um bloco de disco magnético ou sincronização de página via NFS). **Nenhum sinal pode acordar a tarefa neste estado**; ela permanecerá suspensa até que o controlador de hardware emita a interrupção física de I/O. É identificada pela letra `D` nas ferramentas `ps` e `top`.
+* **`TASK_STOPPED`:** A tarefa teve sua execução suspensa por um sinal explícito de controle de jobs (`SIGSTOP`, `SIGTSTP`) ou está sob controle direto de um depurador interativo via `ptrace`.
+* **`EXIT_ZOMBIE`:** A tarefa encerrou sua execução (via `exit()` ou término por sinal fatal). Todas as suas páginas de memória RAM (`mm_struct`) e descritores de arquivo foram desalocados. Contudo, sua estrutura `task_struct` permanece retida em memória preservando o código de término (`exit_code`) e métricas de consumo de CPU até que o processo pai realize a colheita do status invocando `wait()` ou `waitpid()`.
+
+### A Pilha Privada de Kernel
+
+Cada tarefa instanciada pelo sistema operacional possui sua própria pilha de kernel alocada em memória física contígua (com tamanho típico de 16 KiB no x86-64). Durante o atendimento a chamadas de sistema, exceções e interrupções, todas as variáveis locais do código do kernel e a estrutura `struct pt_regs` residem isoladas nessa pilha segura, sem tocar na memória do processo de usuário.
 
 ---
 
-## 6.4 Processo vs Thread: a Mesma Ficha com Ponteiros Diferentes
+## 6.4 Processo vs Thread: Equivalência Ontológica no Escalonador e a Primitiva `clone()`
 
-Nos livros clássicos, processo é entidade pesada com memória própria e thread é linha leve que compartilha memória.
+Em livros didáticos tradicionais, um "processo" é frequentemente definido como uma entidade pesada possuindo espaço de memória próprio, enquanto uma "thread" é apresentada como um fluxo de execução leve que compartilha memória.
 
-**No escalonador do Linux essa divisão não existe.**
-Tudo que disputa <Term id="CPU">CPU</Term> é uma `task_struct`, chamada de **tarefa (task)**.
+**No escalonador do kernel Linux, essa distinção ontológica simplesmente não existe.**
+Todas as entidades que disputam ciclos de clock na CPU são representadas exatamente pela mesma estrutura: uma `struct task_struct`, referida internamente pelo termo unificado de **tarefa (task)**.
 
-O que chamamos de processo ou thread é só quais ponteiros a ficha compartilha. E toda criação passa por 1 única chamada: `clone()`.
-
+O que o espaço de usuário rotula como "processo independente" ou "thread concorrente" é unicamente o grau de compartilhamento dos ponteiros gerenciados pela chamada de sistema unificada **`clone()`**.
 
 <CloneTree />
 
-### A Anatomia da Chamada `clone()`
-A `clone()` recebe flags que dizem o que a nova tarefa compartilha:
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Árvore de Bifurcação via `clone()`**
+> - **O que inspecionar:** O mecanismo de instanciação de novas tarefas a partir da chamada de sistema unificada `clone()`.
+> - **Controle e estímulo:** Compare a rota de criação de um processo filho tradicional (`fork()`) com a rota de criação de uma thread POSIX (`pthread_create()`).
+> - **Verificação do mecanismo:** Verifique que ambas as operações produzem nós `task_struct` idênticos no escalonador; a diferença exclusiva reside no compartilhamento de ponteiros (`CLONE_VM`, `CLONE_FILES`) versus a criação de novas estruturas com isolamento de memória (*Copy-on-Write*).
 
-1. **Processo independente (o que `fork()` faz):**
-   Flags de compartilhamento desligadas. O kernel aloca nova ficha, novo mapa de memória com PML4 duplicada em <Term id="COW">COW</Term> e tabela de arquivos duplicada. Novo identificador próprio.
-2. **Thread (o que `pthread_create()` faz):**
-   Flags ligadas: mesmo mapa (`CLONE_VM`, mesmo `%cr3`), mesmos arquivos (`CLONE_FILES`), mesmo diretório (`CLONE_FS`), mesmos tratadores (`CLONE_SIGHAND`) e mesmo grupo (`CLONE_THREAD`).
+### A Anatomia da Chamada de Sistema Unificada `clone()`
 
-### PID vs TGID em 1 parágrafo
-O padrão <Term id="POSIX">POSIX</Term> exige que todas as threads vejam o mesmo `getpid()`. O kernel guarda 2 números: `pid` único da tarefa e `tgid` do grupo. `getpid()` devolve o `tgid`, `gettid()` devolve o `pid`.
+Toda criação de tarefa no Linux converge para a primitiva `clone()` (ou sua evolução moderna `clone3()`), cujas flags de controle configuram os ponteiros da nova `task_struct`:
 
+1. **Processo Independente (`fork()`):**
+   Invocado internamente como `clone(SIGCHLD, 0)`. As flags de compartilhamento de memória permanecem desativadas. O kernel aloca uma nova `task_struct`, cria uma nova `mm_struct`, duplica a árvore de tabelas PML4 marcando as páginas graváveis como *Copy-on-Write* (COW) e duplica a tabela de descritores de arquivo `files_struct`. O processo filho passa a operar em um universo de memória virtual totalmente isolado.
+2. **Thread Concorrente (`pthread_create()`):**
+   Invocado internamente com flags de compartilhamento explícitas:
+   * **`CLONE_VM`:** A nova tarefa aponta para o **mesmo** descritor `mm_struct`. Ambas compartilham a mesma tabela PML4 e o mesmo registrador `%cr3`. Qualquer gravação em memória realizada por uma thread é instantaneamente visível para todas as outras.
+   * **`CLONE_FILES`:** A nova tarefa compartilha a mesma tabela `files_struct`. Abrir ou fechar um descritor de arquivo reflete imediatamente em todo o grupo.
+   * **`CLONE_FS`:** Compartilha informações de sistema de arquivos (diretório raiz `chroot`, diretório corrente de trabalho e máscara `umask`).
+   * **`CLONE_SIGHAND`:** Compartilha a tabela de ações de tratamento de sinais.
+   * **`CLONE_THREAD`:** Insere a nova tarefa no mesmo grupo de threads (*Thread Group*) do chamador.
+
+### Distinção Formal entre PID e TGID
+
+O padrão POSIX estipula uma regra semântica estrita: todas as threads criadas dentro de um mesmo aplicativo devem reportar o mesmo identificador de processo ao invocarem a função de biblioteca `getpid()`.
+
+Para atender a essa especificação sem quebrar a equivalência ontológica de suas tarefas, o Linux mantém dois campos numéricos distintos em cada `task_struct`:
+
+* **`pid` (Task Identifier):** O identificador numérico universal da tarefa no escalonador. Cada thread física criada possui um valor de `pid` único no sistema, acessível através da chamada de sistema direta `gettid()` (*Get Thread ID*).
+* **`tgid` (Thread Group ID):** O identificador do grupo de threads ao qual a tarefa pertence. Para a thread primordial (o processo líder que deu origem ao programa), `tgid` é numericamente idêntico ao seu `pid`. Para todas as threads secundárias instanciadas com a flag `CLONE_THREAD`, o kernel copia o valor do `tgid` da thread líder.
+
+Quando uma aplicação invoca a função canônica POSIX `getpid()`, o kernel retorna o campo **`tgid`** de sua `task_struct`. Assim, centenas de threads concorrentes reportam o mesmo identificador de processo em `getpid()`, enquanto o escalonador continua administrando cada uma como uma unidade autônoma via seu `pid` exclusivo.
 
 ---
+
+## 6.5 Simulador de Transição de Contexto e a Rotina Assembly `switch_to()`
 
 <SyscallContextVisualizer client:visible />
 
-O visual acima responde: onde cada modo mora?
-1. Localize Ring 3 com programa e pilha de usuário.
-2. Atravesse a syscall e veja Ring 0 com pilha de kernel.
-3. Volte com sysret e confira as gavetas restauradas.
-Conclusão em 1 frase: modo troca, pilha troca, gavetas voltam.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Simulador de Transição de Contexto e Pilhas**
+> - **O que inspecionar:** O ciclo de transição completo entre Ring 3 (User Space) e Ring 0 (Kernel Space), monitorando a comutação de ponteiros de instrução (`%rip`), registradores de pilha (`%rsp`) e a salvaguarda de registradores de propósito geral.
+> - **Controle e estímulo:** Acione os passos de avanço da syscall, observando a ativação de `SWAPGS`, o carregamento do endereço de entrada em `IA32_LSTAR` e a formação da moldura `struct pt_regs` na pilha de kernel.
+> - **Verificação do mecanismo:** Confirme que a CPU opera de forma segura com pilha de kernel durante todo o atendimento em Ring 0 e que o retorno via `SYSRETQ` restaura atomicamente os registradores da aplicação e restabelece `CPL == 3`.
+
+Quando centenas de tarefas prontas competem pelos núcleos físicos da máquina, o sistema operacional realiza a multiplexação temporal do hardware suspendendo a tarefa atual e assumindo a execução de outra: a **troca de contexto (context switch)**.
+
+### Troca Voluntária vs Preempção Involuntária
+
+A comutação de tarefas ocorre sob dois gatilhos arquiteturais distintos:
+
+1. **Troca Voluntária (Bloqueio ou Cooperação):**
+   A tarefa em execução emite uma chamada de sistema síncrona cujo resultado não está imediatamente disponível: leitura de dados em um socket de rede sem pacotes prontos, espera por dados de disco magnético, bloqueio em uma primitiva de trava (`futex`) ou cessão explícita de processamento via `sched_yield()`. O kernel altera o estado da tarefa para `TASK_INTERRUPTIBLE` ou `TASK_UNINTERRUPTIBLE`, remove-a da fila de prontos e invoca diretamente a rotina de escalonamento `schedule()`.
+2. **Preempção Involuntária (Interrupção Periódica de Relógio):**
+   A tarefa está executando um laço intenso de cálculo puro em Ring 3, sem emitir chamadas de sistema. Para garantir que nenhuma aplicação monopolize a CPU, o temporizador físico do sistema (Local APIC Timer) dispara interrupções periódicas de hardware (**timer ticks**, tipicamente a cada 1 ms para `CONFIG_HZ=1000` ou 4 ms para `CONFIG_HZ=250`).
+   O tratador da interrupção atualiza as métricas de tempo de execução da tarefa. Se o escalonador constatar que a tarefa esgotou sua cota de tempo proporcional, ele ativa a flag de controle **`TIF_NEED_RESCHED`** na `task_struct`. Ao retornar da interrupção de volta para o Ring 3, o código assembly de saída do kernel verifica essa flag: se ativa, ele invoca compulsoriamente a função `schedule()`, suspendendo a tarefa mesmo contra a sua vontade.
+
+### A Sequência Assembly Exata de `switch_to()`
+
+Quando a função do escalonador decide que a tarefa atual (`prev`) deve ceder a CPU para a próxima tarefa pronta (`next`), ela transfere o controle para a rotina assembly **`__switch_to_asm()`** no Linux x86-64:
+
+```text
+Entrada de __switch_to_asm(prev, next):
+  1. pushq %rbp                 ; Salva registradores callee-saved da ABI
+  2. pushq %rbx                 ; na pilha de kernel da tarefa que sai (prev)
+  3. pushq %r12
+  4. pushq %r13
+  5. pushq %r14
+  6. pushq %r15
+  7. movq %rsp, prev->thread.sp ; Grava o ponteiro de pilha atual na task_struct de prev
+  8. movq next->thread.sp, %rsp ; CARREGA A PILHA DE NEXT: Ponto de inflexão ontológica!
+  9. popq %r15                  ; Restaura registradores callee-saved a partir
+ 10. popq %r14                  ; da pilha de kernel da tarefa que assume (next)
+ 11. popq %r13
+ 12. popq %r12
+ 13. popq %rbx
+ 14. popq %rbp
+ 15. jmp __switch_to            ; Conclui preparação em C e executa 'ret'
+```
+
+Preste absoluta atenção no passo 8:
+**A troca física de contexto consuma-se no instante exato em que a instrução `movq next->thread.sp, %rsp` é executada.**
+A partir deste ciclo de clock, o registrador `%rsp` aponta para a pilha de kernel de `next`. Quando o processador executa os comandos `popq` subsequentes e alcança a instrução de retorno `ret`, ele desempilha o endereço `%rip` que havia sido empilhado quando a tarefa `next` fora suspensa no passado. A execução retoma `next` exatamente no ponto em que ela havia sido paralisada.
+
+### A Decisão do Registrador `%cr3`: Threads vs Processos
+
+Após a alternância das pilhas de kernel, o escalonador inspeciona os ponteiros de memória virtual:
+
+* **Troca entre Threads do Mesmo Processo (`prev->mm == next->mm`):**
+  Ambas as tarefas compartilham o mesmo espaço de endereçamento. O registrador de controle `%cr3` **não é alterado**. A TLB permanece totalmente válida e quente, e as linhas de cache contendo o código e os dados da aplicação continuam prontas para uso imediato.
+* **Troca entre Processos Distintos (`prev->mm != next->mm`):**
+  O kernel precisa comutar o mapa virtual carregando o endereço físico da nova PML4:
+  `movq next->mm->pgd, %cr3`
+  Em processadores sem suporte à extensão PCID (*Process Context Identifiers*), a gravação no registrador `%cr3` acarreta a **invalidação compulsória de todas as entradas de usuário na TLB**. Quando o novo processo retoma a execução, suas primeiras dezenas de instruções e acessos a dados exigem caminhadas completas na árvore PML4 na memória RAM física.
+
+### Custo Direto vs Custo Indireto da Troca de Contexto
+
+* **Custo Direto (Medido em Nanossegundos / Ciclos de Instrução):**
+  É o tempo estrito que a CPU gasta executando a lógica do escalonador, salvando os registradores preservados pela ABI na pilha de kernel, comutando o registrador `%rsp` e eventualmente recarregando o registrador `%cr3`. Em processadores x86-64 modernos, essa operação consome entre 1.000 e 3.000 ciclos de clock (aproximadamente 300 ns a 1 µs).
+* **Custo Indireto (Poluição de Cache e TLB):**
+  Constitui o verdadeiro gargalo de desempenho em ambientes computacionais de produção.
+  Ao assumir o controle do núcleo, a nova tarefa encontra as caches de instruções (L1i), dados (L1d), cache L2 e a TLB povoadas com o conjunto de trabalho (*working set*) da tarefa suspensa anteriormente.
+  A nova tarefa sofre uma intensa tempestade de **faltas frias de cache e TLB**. Cada falta de cache não atendida em L2 ou L3 força uma transação nos barramentos de memória DRAM física (custando dezenas de nanossegundos por linha). O custo cumulativo de reaquecimento de cache varia de 15.000 a mais de 100.000 ciclos de clock (entre 5 e 30 µs por troca de contexto).
+
+Quando um sistema opera com saturação patológica de threads concorrentes disputando poucos núcleos físicos, o processador entra em colapso por **context switch thrashing**: a CPU consome quase toda a sua largura de banda e ciclos úteis salvando contextos e reaquecendo caches, paralisando o processamento computacional real.
 
 ---
 
-## 6.5 A Mecânica da Troca de Contexto: Pilha, `%cr3` e Caches
+## 6.6 Síntese: Sinais POSIX, Matriz de Custos e Ponte para Concorrência Multicore
 
-Com centenas de tarefas para poucos núcleos, o sistema finge simultaneidade suspendendo uma tarefa e carregando outra: a **troca de contexto**.
+### Ciclo de Vida dos Sinais POSIX e o Frame de Usuário (`sigreturn`)
 
-### Voluntária vs Preempção em 1 parágrafo cada
-**Voluntária:** a tarefa pede algo que demora (disco, rede, trava) e chama o escalonador de livre vontade.
-**Preempção:** o relógio do hardware apita a cada poucos milissegundos. Se a fatia acabou, o kernel marca a tarefa e a suspende na volta ao usuário, mesmo contra a vontade dela.
+Sinais POSIX (`SIGINT`, `SIGTERM`, `SIGSEGV`, etc.) são interrupções assíncronas entregues pelo sistema operacional a um processo. Como um tratador de sinal registrado pela aplicação reside em espaço de usuário, ele deve executar estritamente em Ring 3. O kernel não pode invocar diretamente uma função de usuário a partir do Ring 0 com privilégios de supervisor.
 
-### Política vs Mecanismo em 4 passos
-1. **Pulso:** o temporizador apita.
-2. **Conta:** o kernel atualiza o tempo virtual da tarefa.
-3. **Marca:** se passou da cota, acende o pedido de reescalonamento.
-4. **Troca:** na saída para o usuário, chama o escalonador e a rotina `switch_to()`.
+Para resolver essa restrição, o kernel implementa um ciclo sofisticado de desvio de fluxo:
 
-### A Sequência de `switch_to()` em 5 passos
-Quando a tarefa A cede a <Term id="CPU">CPU</Term> para a tarefa B:
+```text
+Fluxo do Tratamento de Sinal POSIX:
+  1. Sinal detectado como pendente ao preparar o retorno para Ring 3.
+  2. Kernel monta um 'Signal Frame' no topo da pilha de usuário (%rsp de usuário).
+  3. Salva no frame a cópia dos registradores (struct pt_regs) e a máscara de sinais.
+  4. Injeta na pilha um código de trampolim apontando para sys_rt_sigreturn.
+  5. Ajusta %rip de pt_regs para o endereço do tratador (ex: void sig_handler(int)).
+  6. Executa SYSRETQ: CPU desce para Ring 3 e roda a função tratadora na pilha de usuário.
+  7. Tratador conclui e desvia para o trampolim, que emite a syscall 15 (rt_sigreturn).
+  8. Kernel assume em Ring 0, valida o frame na pilha de usuário e restaura pt_regs original.
+  9. Executa SYSRETQ: CPU retoma a execução exatamente no ponto da interrupção original.
+```
 
-1. Gavetas de usuário de A já dormem salvas na pilha de kernel de A.
-2. O kernel empilha as gavetas preservadas de A e salva o `%rsp` na ficha de A.
-3. O kernel carrega o `%rsp` da ficha de B. **Deste ciclo em diante, a <Term id="CPU">CPU</Term> opera na pilha de B.**
-4. O kernel restaura as gavetas preservadas de B.
-5. O kernel decide o `%cr3` e retorna ao usuário de B.
-
-Preste atenção na elegância: a troca de fluxo acontece no instante em que o `%rsp` recebe o endereço da pilha nova.
-Ao retornar da rotina, o processador desempilha o endereço guardado na pilha de B e retoma B exatamente onde parou.
-
-### A Decisão do `%cr3`: Threads vs Processos
-* **Mesmo mapa:** `%cr3` intacto, <Term id="TLB">TLB</Term> quente, cache válida. Troca barata.
-* **Mapa diferente:** `%cr3` recarregado com a PML4 de B. Sem PCID, o <Term id="TLB">TLB</Term> esvazia. Troca cara.
-
-### Custo Direto vs Custo Indireto em 1 parágrafo cada
-**Direto:** rodar o escalonador, salvar gavetas, trocar `%rsp` e `%cr3`. Centenas a poucos milhares de ciclos, ordem de 0,3 a 1,5 microssegundo em núcleos contemporâneos típicos.
-**Indireto:** o verdadeiro preço. A tarefa nova chega com cache fria e <Term id="TLB">TLB</Term> vazio, e passa dezenas de microssegundos reaquecendo. Tempestade de trocas com processos demais derruba servidor.
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Ficha única:** processo e thread são `task_struct`, muda o que compartilha;
-> 2. **Troca é pilha mais mapa:** `%rsp` sempre troca, `%cr3` só entre processos;
-> 3. **Frio custa:** cache e <Term id="TLB">TLB</Term> vazios cobram mais que as ordens da troca.
-
----
-
-## 6.6 Síntese: Sinais, Custos e Heurísticas
-
-### Sinais <Term id="POSIX">POSIX</Term> em 1 parágrafo
-Sinal é aviso assíncrono ao processo. Como o kernel não pode rodar função do usuário em Ring 0, ele prepara na pilha do programa um quadro com as gavetas salvas, aponta o `%rip` para a tratadora e, no fim, a tratadora chama `sigreturn` para o kernel restaurar tudo. Por isso tratadora só pode chamar função reentrante: se o programa estava no meio de `malloc()` travado e a tratadora chama `malloc()` de novo, trava tudo.
+> [!CAUTION]
+> **Fricção Crítica de Concorrência: Funções Reentrantes (Async-Signal-Safe)**
+> Um sinal assíncrono pode interromper a linha principal de execução em qualquer ciclo arbitrário de clock. Se a thread principal estiver executando uma função com travas internas de alocação (como `malloc()`) e for interrompida por um sinal cujo tratador também chame `malloc()`, a segunda invocação tentará adquirir a mesma trava mantida pela primeira, provocando um **deadlock permanente e irrecuperável**.
+> Por essa razão, tratadores de sinal só podem invocar funções certificadas como *async-signal-safe* pelo padrão POSIX (como `write()`, omitindo rotinas com buffer ou travas como `printf()` e `malloc()`).
 
 ### Matriz de Custos de Transição e Escalonamento
-Ordens de grandeza típicas em x86-64 contemporâneo classe servidor e desktop. Não são constantes universais, variam por microarquitetura e carga.
 
-| Operação de Execução | Latência em Ciclos (Escopo de Referência) | Tempo Aproximado | Impacto em Caches e <Term id="TLB">TLB</Term> |
+Ordens de grandeza típicas observadas em microarquiteturas x86-64 contemporâneas de classe desktop e servidor (sujeitas a variações de clock, microarquitetura e carga):
+
+| Operação de Execução | Latência em Ciclos (Referência) | Tempo Típico | Impacto Físico em Caches e TLB |
 | :--- | :---: | :---: | :--- |
-| **Chamada de Função C (ABI em Ring 3)** | 1 a 3 ciclos | ~0,3 a 1 ns | Nenhum. Executa dentro do mesmo anel e mesma pilha. |
-| **Chamada de Sistema Nula (`syscall` / `sysret`)** | 50 a 100 ciclos | ~15 a 30 ns | Mínimo. Salva estado na pilha de kernel sem tocar em `%cr3` (aumenta se KPTI estiver ativo). |
-| **Troca de Contexto entre Threads** | 1.000 a 2.000 ciclos | ~300 a 600 ns | Baixo. Mesma tabela PML4, `%cr3` preservado e TLB quente. |
-| **Troca de Contexto entre Processos (Direto)** | 2.000 a 5.000 ciclos | ~0,6 a 1,5 µs | Alto. Recarga de `%cr3`, invalidação de TLB (sem PCID). |
-| **Reaquecimento de Cache Pós-Troca (Indireto)** | 15.000 a 100.000 ciclos | ~5 a 30 µs | Severo. Faltas frias de cache L1/L2 e dezenas de faltas de TLB na RAM física. |
+| **Chamada de Função C (ABI em Ring 3)** | 1 a 3 ciclos | ~0,3 a 1 ns | Nulo. Permanece no mesmo anel e na mesma pilha. |
+| **Chamada de Sistema Nula (`syscall` / `sysret`)** | 50 a 100 ciclos | ~15 a 30 ns | Mínimo. Comutação para pilha de kernel sem alterar `%cr3` (aumenta se KPTI estiver ativo). |
+| **Troca de Contexto entre Threads** | 1.000 a 2.000 ciclos | ~300 a 600 ns | Baixo. Mesma tabela PML4, `%cr3` preservado e TLB mantida quente. |
+| **Troca de Contexto entre Processos (Direto)** | 2.000 a 5.000 ciclos | ~0,6 a 1,5 µs | Alto. Recarga física de `%cr3`, invalidação de entradas na TLB (sem PCID). |
+| **Reaquecimento de Cache Pós-Troca (Indireto)** | 15.000 a 100.000 ciclos | ~5 a 30 µs | Severo. Faltas frias em caches L1/L2 e caminhadas lentas na árvore PML4 na memória DRAM. |
 
-### Quatro Diretrizes e Heurísticas de Engenharia
+### Quatro Diretrizes de Engenharia de Software
 
-1. **Agrupe chamadas no caminho quente:**
-   Cada transição Ring 3 para Ring 0 custa dezenas de ciclos. Ler arquivo byte a byte com 1 chamada por byte queima milhões de ciclos. Use buffer em usuário ou anel compartilhado como `io_uring`.
-2. **Modo não é troca:**
-   Chamada comum executa no próprio processo, só sobe e desce de anel sem trocar `%cr3`. Troca só quando a tarefa dorme ou a fatia acaba.
-3. **Threads perto do número de núcleos para conta pesada:**
-   Threads demais viram tempestade de trocas e a <Term id="CPU">CPU</Term> vive salvando contexto em vez de calcular. Centenas de threads só para espera de I/O.
-4. **Meça em vez de adivinhar (leitura, sem executar):**
-   Contagem e latência de chamadas, taxa de trocas voluntárias e involuntárias e espera do escalonador aparecem em contadores do Linux. A Trilha 1 termina aqui: o como medir em detalhe fica para o laboratório do leitor.
+1. **Agrupe operações de I/O para amortizar o custo da travessia de anéis:**
+   Cada transição Ring 3 $\to$ Ring 0 consome dezenas de ciclos de clock. Ler ou escrever em arquivos byte a byte emitindo uma chamada de sistema individual por caractere dissipa milhões de ciclos em salvamento de registradores e comutações de pilhas. Utilize buffers em espaço de usuário (como os fornecidos por `stdio` em C ou buffers alinhados de aplicação) ou adote interfaces modernas de anel compartilhado em memória como **`io_uring`**, que eliminam as transições de syscall submetendo requisições por anéis de submissão e conclusão.
+2. **Distinga transição de modo de troca de contexto:**
+   Uma chamada de sistema ordinária (`read()`, `write()`, `getpid()`) realiza apenas uma **transição de modo** de execução: a CPU comuta de Ring 3 para Ring 0 e retorna para o mesmo processo, sem alterar `%cr3` e sem trocar a tarefa no escalonador. A troca de contexto só ocorre quando a tarefa se bloqueia voluntariamente ou quando a preempção por interrupção periódica é disparada.
+3. **Dimensione o número de threads ativas conforme os núcleos físicos para tarefas intensivas em CPU:**
+   Em tarefas pesadas de computação numérica ou processamento de dados (CPU-bound), manter uma quantidade de threads de trabalho significativamente superior à contagem de núcleos físicos disponíveis gera degradação severa por tempestades de trocas de contexto. Aloque pools de threads com contagem próxima ou igual ao número de núcleos físicos de hardware. Pools com centenas de threads concorrentes só se justificam em modelos de I/O síncrono bloqueante onde a imensa maioria das tarefas repousa em `TASK_INTERRUPTIBLE`.
+4. **Instrumente e meça métricas reais de escalonamento no sistema operacional:**
+   Em vez de especular sobre contenção, inspecione os contadores formais fornecidos pelo núcleo do Linux:
+   * `/proc/[pid]/status`: monitore os campos `voluntary_ctxt_switches` (trocas voluntárias por espera de I/O ou sincronização) e `nonvoluntary_ctxt_switches` (preempções forçadas por expiração de fatia de tempo).
+   * Ferramenta `perf stat`: analise a frequência global de trocas de contexto através da métrica `context-switches` e a taxa de migração de tarefas entre núcleos (`cpu-migrations`).
+   * Rastreamento avançado com `bpftrace`: monitore a latência de execução do escalonador acoplando sondas nas rotinas `sched:sched_switch`.
 
-Com isso, 1 núcleo finge rodar todo mundo. Mas e com vários núcleos de verdade acessando a mesma memória ao mesmo tempo? No Módulo 07, a coerência de cache e os atômicos decidem quem vê o quê e em que ordem.
+---
+
+## Ponte para o Módulo 07: Concorrência no Silício e Coerência de Cache
+
+A comutação de pilhas em `switch_to()` e a preempção periódica por temporizadores resolvem a ilusão de execução simultânea em processadores com um único núcleo físico.
+
+Entretanto, as estações de trabalho e os servidores contemporâneos são construídos sobre múltiplos núcleos físicos de computação executando tarefas paralelamente no mesmo instante de tempo. Quando duas ou mais threads de um mesmo processo (compartilhando a mesma tabela PML4 e o mesmo `%cr3`) executam em núcleos físicos diferentes e manipulam simultaneamente as mesmas variáveis em memória RAM, surge uma nova fronteira física de conflito:
+
+As caches L1 e L2 privadas de cada núcleo retêm cópias locais dos mesmos blocos de memória física. Se o Núcleo 0 altera o valor de uma variável em sua cache local privada, como o circuito eletrônico do processador garante que o Núcleo 1, lendo o mesmo endereço, não leia um dado defasado? Como o hardware implementa protocolos de coerência por barramento (como o protocolo **MESI**), modelos formais de ordenação de memória (**TSO - Total Store Order**) e instruções atômicas primitivas com bloqueio de barramento (`LOCK CMPXCHG`) para coordenar travas e primitivas de sincronização no espaço de usuário?
+
+Essa física da concorrência no silício é o objeto de investigação do **Módulo 07**.
 
 <div class="mt-16 pt-8 border-t border-ash flex flex-col sm:flex-row items-center justify-between gap-4">
   <a

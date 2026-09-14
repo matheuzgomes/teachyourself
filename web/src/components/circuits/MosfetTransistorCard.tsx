@@ -6,7 +6,7 @@ export default function MosfetTransistorCard() {
   const vGate = gateHigh ? "3.3V" : "0V";
   const channelFormed = gateHigh;
   const conductionState = gateHigh ? "LINEAR (Condução Ativa)" : "CUTOFF (Chave Aberta)";
-  const currentDrainSource = gateHigh ? "12.4 mA" : "0.0 pA (Corrente Nula)";
+  const currentDrainSource = gateHigh ? "12.4 mA (ilustrativo)" : "≈ 0 (ideal; no silício real resta fuga de junção)";
 
   return (
     <div
@@ -195,7 +195,7 @@ export default function MosfetTransistorCard() {
             <strong className="block font-serif font-normal text-base text-off-black mb-1.5">
               Invariante Eletrostático:
             </strong>
-            O gate está isolado do silício por dióxido de silício (SiO2). A comutação da chave ocorre sem fluxo de corrente elétrica contínua no controle, apenas por atração e repulsão eletrostática de cargas.
+            O gate está isolado do silício por dióxido de silício (SiO2). A comutação da chave ocorre sem fluxo de corrente elétrica contínua no controle, apenas por atração e repulsão eletrostática de cargas. Valores de corrente exibidos são ilustrativos do modelo ideal. Rótulos de Fonte e Dreno valem para esta polarização.
           </div>
         </div>
       </div>

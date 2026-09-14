@@ -1,9 +1,26 @@
 ---
-// impeccable-disable numbered-section-markers -- filesystem route slugs for technical track modules
+/**
+ * Layout das trilhas e módulos.
+ *
+ * Fonte compartilhada: títulos de trilha e listas de módulos vêm de
+ * `curriculum.json` via `curriculum.ts`. O frontmatter de cada MDX continua
+ * dono do <title> da página e do H1 do conteúdo: o layout nunca esconde o
+ * H1 nem duplica o título no corpo. Em caso de divergência pontual, os
+ * rótulos de navegação preferem a fonte compartilhada.
+ */
 import '../styles/global.css';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CpuIcon, NetworkIcon, DatabaseIcon, ServerIcon, GitBranchIcon } from '@hugeicons/core-free-icons';
 import { withBase } from '../utils/paths';
+import PrevNext from '../components/PrevNext.astro';
+import {
+  contractVersion,
+  getActiveTracks,
+  getModulesByTrack,
+  getPlannedTracks,
+  getPrevNextModule,
+  getTrack,
+} from '../data/curriculum';
 
 interface Props {
   title?: string;
@@ -23,36 +40,40 @@ interface Props {
 const props = Astro.props.frontmatter || Astro.props;
 const title = props.title;
 const description = props.description;
-const trackId = (props.trackId || '') as string;
-const trackTitle = (props.trackTitle || '') as string;
+const rawTrackId = (props.trackId || '') as string;
 const headings = Astro.props.headings || props.headings;
 
-const isOverview = trackId === 'overview';
+const isOverview = rawTrackId === 'overview';
 
-const tracks = [
-  { id: 'hardware-and-os', path: withBase('/tracks/01-hardware-and-os'), title: 'Sistemas de Computação', icon: CpuIcon, active: trackId.includes('hardware-and-os'), count: '9 Módulos Ativos' },
-  { id: 'networks', path: withBase('/tracks/02-networks'), title: 'Redes e Comunicação de Dados', icon: NetworkIcon, active: trackId.includes('networks') || trackId.includes('02-networks'), count: '2 Módulos Ativos' },
-  { id: 'databases', path: '#', title: 'Bancos de Dados & Storage Engines', icon: DatabaseIcon, active: trackId.includes('databases'), count: 'Em desenvolvimento' },
-  { id: 'distributed-systems', path: '#', title: 'Sistemas Distribuídos & Consenso', icon: ServerIcon, active: trackId.includes('distributed-systems'), count: 'Em desenvolvimento' },
-  { id: 'algorithms-and-design', path: '#', title: 'Algoritmos & Design de Software', icon: GitBranchIcon, active: trackId.includes('algorithms-and-design'), count: 'Em desenvolvimento' },
-];
+const trackIcons: Record<string, any> = {
+  '01-hardware-and-os': CpuIcon,
+  '02-networks': NetworkIcon,
+  '03-databases': DatabaseIcon,
+  '04-distributed-systems': ServerIcon,
+  '05-algorithms-and-design': GitBranchIcon,
+};
 
-const track01Modules = [
-  { id: '0', slug: '00-logica-digital-transistores-circuitos-clock', label: 'Módulo 0', match: '00-logica', title: 'Da Chave ao Clock: Lógica Digital & CMOS' },
-  { id: '1', slug: '01-representacao-informacao-inteiros-ponto-flutuante', label: 'Módulo 1', match: '01-representacao', title: 'Representação, Inteiros & IEEE 754' },
-  { id: '2', slug: '02-representacao-programas-assembly-x86-64', label: 'Módulo 2', match: '02-representacao', title: 'Assembly x86-64, Registradores & Pilha' },
-  { id: '3', slug: '03-arquitetura-processadores-pipelining-hazards', label: 'Módulo 3', match: '03-arquitetura', title: 'Pipelining, Estágios & Hazards' },
-  { id: '4', slug: '04-hierarquia-memoria-caches-localidade', label: 'Módulo 4', match: '04-hierarquia', title: 'Caches, Localidade & Memory Wall' },
-  { id: '5', slug: '05-memoria-virtual-mmu-paginacao', label: 'Módulo 5', match: '05-memoria', title: 'Memória Virtual, MMU & Paginação' },
-  { id: '6', slug: '06-processos-threads-kernel-syscalls', label: 'Módulo 6', match: '06-processos', title: 'Processos, Threads & Syscalls' },
-  { id: '7', slug: '07-concorrencia-silicio-atomicos-sincronizacao', label: 'Módulo 7', match: '07-concorrencia', title: 'Concorrência, Atômicos & Sincronização' },
-  { id: '8', slug: '08-io-page-cache-sistemas-arquivos-durabilidade', label: 'Módulo 8', match: '08-io-page-cache', title: 'I/O, Page Cache, FS & Durabilidade' },
-];
+// Trilha corrente resolvida pela fonte compartilhada (fallback: frontmatter).
+const activeTracks = getActiveTracks();
+const plannedTracks = getPlannedTracks();
+const currentTrack = getTrack(rawTrackId);
+const trackTitle = currentTrack?.title || (props.trackTitle as string) || '';
+const trackModules = !isOverview && currentTrack ? getModulesByTrack(currentTrack.id) : [];
 
-const track02Modules = [
-  { id: '0', slug: '00-rede-ipv4-dns-requisitos-host', label: 'Módulo 0', match: '00-rede-ipv4', title: 'IPv4, Fragmentação & DNS' },
-  { id: '1', slug: '01-principio-fim-a-fim-internetworking', label: 'Módulo 1', match: '01-principio-fim-a-fim', title: 'Princípio Fim a Fim & Internetworking' },
-];
+// Módulo corrente detectado pelo slug na URL (páginas de módulo, não catálogos).
+const pathname = Astro.url.pathname;
+const currentModule = trackModules.find((m) => pathname.includes(`/${m.slug}`)) || null;
+const { prev: prevModule, next: nextModule } = currentModule
+  ? getPrevNextModule(currentModule.track, currentModule.slug)
+  : { prev: null, next: null };
+
+const isModulePage = currentModule !== null;
+const moduleCountLabel = (n: number) => (n === 1 ? '1 módulo' : `${n} módulos`);
+
+function shortLabel(slug: string): string {
+  const head = slug.split('-')[0];
+  return /^\d+$/.test(head) ? head : slug.slice(0, 2);
+}
 ---
 
 <!doctype html>
@@ -64,7 +85,6 @@ const track02Modules = [
     <meta name="description" content={description || 'Periódico técnico editorial sobre fundamentos de computação.'} />
   </head>
   <body class="bg-parchment text-off-black min-h-screen flex flex-col font-sans antialiased">
-    {/* Link acessível de salto para conteúdo (WCAG 2.4.1) */}
     <a
       href="#main-content"
       class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-off-black focus:text-white focus:rounded-full focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-lake-blue focus:font-mono focus:text-xs"
@@ -72,28 +92,26 @@ const track02Modules = [
       Pular para o conteúdo principal
     </a>
 
-    {/* Announcement Bar (Nível 4: Ink #000000) */}
-    <aside aria-label="Aviso editorial" class="w-full bg-ink text-parchment px-4 md:px-8 py-2.5 flex items-center justify-between text-xs font-mono border-b border-ash/20">
-      <div class="flex items-center gap-2.5">
-        <span class="inline-block h-2 w-2 rounded-full bg-mint" />
-        <span class="tracking-wider text-xs">
+    <aside aria-label="Aviso editorial" class="w-full bg-ink text-parchment px-4 md:px-8 py-2.5 flex items-center justify-between gap-2 text-xs font-mono border-b border-ash/20">
+      <div class="flex min-w-0 flex-1 items-center gap-2.5">
+        <span class="inline-block h-2 w-2 shrink-0 rounded-full bg-mint" />
+        <span class="truncate tracking-wider text-xs">
           TEACHYOURSELF : SISTEMA DE DESTILAÇÃO TÉCNICA E CIÊNCIA DA COMPUTAÇÃO
         </span>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex shrink-0 items-center gap-3">
         <span class="hidden sm:inline-block rounded-full border border-ash/40 px-2.5 py-0.5 text-xs uppercase tracking-wider text-parchment/80">
-          C11 VERIFIED
+          Currículo v{contractVersion}
         </span>
         <a
           href={withBase("/tracks/01-hardware-and-os")}
-          class="text-xs uppercase tracking-wider text-sky-blue hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-blue rounded"
+          class="hidden sm:inline text-xs uppercase tracking-wider text-sky-blue hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-blue rounded"
         >
           Trilha 01 &rarr;
         </a>
       </div>
     </aside>
 
-    {/* Navbar Superior (~80px, Nível 1: Parchment com Hairline Ash) */}
     <header class="sticky top-0 z-50 flex h-20 items-center justify-between border-b border-ash bg-parchment/90 px-6 md:px-10 backdrop-blur-md">
       <div class="flex items-center gap-3">
         <a href={withBase("/")} class="flex items-center gap-2.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment">
@@ -110,10 +128,10 @@ const track02Modules = [
           </div>
         </a>
 
-        {!isOverview && (
+        {!isOverview && currentTrack && (
           <div class="hidden lg:flex items-center gap-2 pl-4 text-xs text-smoke border-l border-ash">
             <a
-              href={trackId.includes('networks') ? withBase("/tracks/02-networks") : withBase("/tracks/01-hardware-and-os")}
+              href={currentTrack.catalog_href ? withBase(currentTrack.catalog_href) : withBase("/")}
               class="hover:text-off-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black rounded"
             >
               Trilha: <span class="text-off-black font-medium">{trackTitle}</span>
@@ -122,21 +140,16 @@ const track02Modules = [
         )}
       </div>
 
-      {/* Seletor Rápido e Contextual no Topo */}
       {isOverview ? (
         <nav aria-label="Navegação rápida das trilhas" class="hidden md:flex items-center gap-1.5 rounded-full border border-ash bg-white/70 p-1 text-xs font-mono">
-          <a
-            href={withBase("/tracks/01-hardware-and-os")}
-            class="rounded-full px-4 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium text-graphite hover:text-off-black hover:bg-white/80"
-          >
-            Trilha 01: Hardware & SO
-          </a>
-          <a
-            href={withBase("/tracks/02-networks")}
-            class="rounded-full px-4 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium text-graphite hover:text-off-black hover:bg-white/80"
-          >
-            Trilha 02: Redes
-          </a>
+          {activeTracks.map((t) => (
+            <a
+              href={t.catalog_href ? withBase(t.catalog_href) : withBase("/")}
+              class="rounded-full px-4 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium text-graphite hover:text-off-black hover:bg-white/80"
+            >
+              {t.title.split(':')[0]}
+            </a>
+          ))}
           <a
             href="#grade-curricular"
             class="rounded-full px-4 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium text-graphite hover:text-off-black hover:bg-white/80"
@@ -144,61 +157,29 @@ const track02Modules = [
             Grade Curricular
           </a>
         </nav>
-      ) : trackId.includes('networks') || trackId.includes('02-networks') ? (
-        <nav aria-label="Navegação da Trilha de Redes" class="hidden md:flex items-center gap-1 rounded-full border border-ash bg-white/70 p-1 text-xs font-mono">
+      ) : currentTrack && trackModules.length > 0 && (
+        <nav aria-label={`Navegação dos módulos da ${trackTitle}`} class="hidden xl:flex items-center gap-1 rounded-full border border-ash bg-white/60 p-1 text-xs font-mono overflow-x-auto max-w-[58vw]">
           <a
-            href={withBase("/tracks/02-networks")}
-            class={`rounded-full px-3.5 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium ${
-              Astro.url.pathname === withBase('/tracks/02-networks') || Astro.url.pathname === withBase('/tracks/02-networks/')
-                ? 'bg-off-black text-white shadow-sm'
-                : 'text-graphite hover:text-off-black'
-            }`}
+            href={currentTrack.catalog_href ? withBase(currentTrack.catalog_href) : withBase("/")}
+            class="rounded-full px-3 py-2 min-h-[44px] inline-flex items-center shrink-0 transition-all uppercase tracking-wider text-xs font-mono font-medium text-graphite hover:text-off-black"
           >
-            Catálogo
+            Índice
           </a>
-          {track02Modules.map((m) => (
-            <a
-              href={withBase(`/tracks/02-networks/${m.slug}`)}
-              class={`rounded-full px-3.5 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono font-medium ${
-                Astro.url.pathname.includes(m.match)
-                  ? 'bg-lake-blue text-white shadow-sm'
-                  : 'text-graphite hover:text-off-black'
-              }`}
-            >
-              {m.label}: {m.title.split(':')[0].replace('Da Chave ao Clock', '').trim() || m.label}
-            </a>
-          ))}
-          <a
-            href={withBase("/tracks/01-hardware-and-os")}
-            class="rounded-full px-3 py-2 min-h-[44px] inline-flex items-center transition-all uppercase tracking-wider text-xs font-mono text-smoke hover:text-off-black"
-          >
-            Trilha 01 &rarr;
-          </a>
-        </nav>
-      ) : (
-        <nav aria-label="Navegação rápida de módulos" class="hidden xl:flex items-center gap-1 rounded-full border border-ash bg-white/60 p-1 text-xs font-mono overflow-x-auto max-w-[58vw]">
-          <a
-            href={withBase("/tracks/01-hardware-and-os")}
-            class={`rounded-full px-3 py-2 min-h-[44px] inline-flex items-center shrink-0 transition-all uppercase tracking-wider text-xs font-mono font-medium ${
-              Astro.url.pathname === withBase('/tracks/01-hardware-and-os') || Astro.url.pathname === withBase('/tracks/01-hardware-and-os/')
-                ? 'bg-off-black text-white shadow-sm'
-                : 'text-graphite hover:text-off-black'
-            }`}
-          >
-            Grade
-          </a>
-          {track01Modules.map((m) => (
-            <a
-              href={withBase(`/tracks/01-hardware-and-os/${m.slug}`)}
-              class={`rounded-full px-2.5 py-2 min-h-[44px] inline-flex items-center shrink-0 transition-all uppercase tracking-wider text-xs font-mono font-medium ${
-                Astro.url.pathname.includes(m.match)
-                  ? 'bg-lake-blue text-white shadow-sm'
-                  : 'text-graphite hover:text-off-black'
-              }`}
-            >
-              {m.label}
-            </a>
-          ))}
+          {trackModules.map((m) => {
+            const active = currentModule?.slug === m.slug;
+            return (
+              <a
+                href={withBase(`/tracks/${m.track}/${m.slug}`)}
+                aria-current={active ? 'page' : undefined}
+                title={m.title}
+                class={`rounded-full px-2.5 py-2 min-h-[44px] inline-flex items-center shrink-0 transition-all uppercase tracking-wider text-xs font-mono font-medium ${
+                  active ? 'bg-lake-blue text-white shadow-sm' : 'text-graphite hover:text-off-black'
+                }`}
+              >
+                {shortLabel(m.slug)}
+              </a>
+            );
+          })}
         </nav>
       )}
 
@@ -207,125 +188,164 @@ const track02Modules = [
           href={isOverview ? withBase('/tracks/01-hardware-and-os') : withBase('/')}
           class="rounded-full bg-off-black text-white hover:bg-black active:scale-[0.98] px-6 py-2.5 min-h-[44px] inline-flex items-center justify-center text-xs font-mono uppercase tracking-wider font-medium transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment"
         >
-          {isOverview ? 'Explorar Trilha 01 ▸' : 'Página Inicial'}
+          {isOverview ? 'Começar a estudar ▸' : 'Página Inicial'}
         </a>
       </div>
     </header>
 
-    {/* Estrutura do Conteúdo */}
     {isOverview ? (
-      /* Layout Editorial Amplo para a Página Inicial */
       <main id="main-content" class="w-full max-w-[1432px] mx-auto px-6 md:px-12 py-10 md:py-16 flex-1">
         <slot />
       </main>
     ) : (
-      /* Layout de Leitura Técnica com Navegação Lateral */
       <div class="flex-1 flex w-full max-w-[1432px] mx-auto">
-        {/* Sidebar Esquerda (Trilhas e Navegação) */}
         <aside class="hidden lg:block w-72 shrink-0 border-r border-ash bg-parchment/60 p-6 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
           <div class="text-xs font-mono font-medium uppercase tracking-wider text-smoke mb-4">
             Trilhas de Conhecimento
           </div>
-          <nav class="space-y-2">
-            {tracks.map((t) => (
-              <a
-                href={t.path}
-                class={`flex items-start gap-3 rounded-2xl p-3 text-xs transition-all border ${
-                  t.active
-                    ? 'bg-white border-ash text-off-black shadow-monad'
-                    : 'text-graphite hover:bg-white/50 hover:text-off-black border-transparent'
-                }`}
-              >
-                <div class={`mt-0.5 rounded-xl p-1.5 ${t.active ? 'bg-periwinkle-mist text-lake-blue' : 'bg-ash/30 text-smoke'}`}>
-                  <HugeiconsIcon icon={t.icon} className="h-4 w-4" />
-                </div>
-                <div>
-                  <div class="font-medium leading-tight">{t.title}</div>
-                  <div class="text-xs font-mono text-smoke mt-0.5">{t.count}</div>
-                </div>
-              </a>
-            ))}
+          <nav class="space-y-2" aria-label="Trilhas">
+            {activeTracks.map((t) => {
+              const active = t.id === currentTrack?.id;
+              const Icon = trackIcons[t.id] || CpuIcon;
+              return (
+                <a
+                  href={t.catalog_href ? withBase(t.catalog_href) : withBase("/")}
+                  aria-current={active ? 'page' : undefined}
+                  class={`flex items-start gap-3 rounded-2xl p-3 text-xs transition-all border ${
+                    active
+                      ? 'bg-white border-ash text-off-black shadow-monad'
+                      : 'text-graphite hover:bg-white/50 hover:text-off-black border-transparent'
+                  }`}
+                >
+                  <div class={`mt-0.5 rounded-xl p-1.5 ${active ? 'bg-periwinkle-mist text-lake-blue' : 'bg-ash/30 text-smoke'}`}>
+                    <HugeiconsIcon icon={Icon} className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div class="font-medium leading-tight">{t.title}</div>
+                    <div class="text-xs font-mono text-smoke mt-0.5">{moduleCountLabel(getModulesByTrack(t.id).length)}</div>
+                  </div>
+                </a>
+              );
+            })}
+            {plannedTracks.map((t) => {
+              const Icon = trackIcons[t.id] || CpuIcon;
+              return (
+                <span
+                  class="flex items-start gap-3 rounded-2xl p-3 text-xs border border-transparent text-smoke"
+                  title={`${t.title}: trilha planejada, ainda sem catálogo`}
+                >
+                  <div class="mt-0.5 rounded-xl p-1.5 bg-ash/30 text-smoke">
+                    <HugeiconsIcon icon={Icon} className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div class="font-medium leading-tight">{t.title}</div>
+                    <div class="text-xs font-mono mt-0.5">Planejada, sem catálogo</div>
+                  </div>
+                </span>
+              );
+            })}
           </nav>
 
-          <div class="mt-8 pt-5 border-t border-ash">
-            {trackId.includes('networks') || trackId.includes('02-networks') ? (
-              <>
-                <div class="flex items-center justify-between mb-3">
-                  <span class="text-xs font-mono font-medium uppercase tracking-wider text-smoke">
-                    Módulos da Trilha 02
-                  </span>
+          {currentTrack && trackModules.length > 0 && (
+            <div class="mt-8 pt-5 border-t border-ash">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-mono font-medium uppercase tracking-wider text-smoke">
+                  Módulos desta trilha
+                </span>
+                {currentTrack.catalog_href && (
                   <a
-                    href={withBase("/tracks/02-networks")}
+                    href={withBase(currentTrack.catalog_href)}
                     class="text-xs font-mono font-medium text-lake-blue hover:underline"
                   >
                     Catálogo
                   </a>
-                </div>
-                <div class="space-y-2">
-                  {track02Modules.map((m) => (
+                )}
+              </div>
+              <div class="space-y-2">
+                {trackModules.map((m) => {
+                  const active = currentModule?.slug === m.slug;
+                  return (
                     <a
-                      href={withBase(`/tracks/02-networks/${m.slug}`)}
+                      href={withBase(`/tracks/${m.track}/${m.slug}`)}
+                      aria-current={active ? 'page' : undefined}
                       class={`block rounded-2xl p-3 text-xs transition-all border ${
-                        Astro.url.pathname.includes(m.match)
+                        active
                           ? 'bg-white border-ash text-off-black shadow-monad'
                           : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
                       }`}
                     >
                       <div class="flex items-center justify-between mb-1">
-                        <span class="font-mono text-xs text-lake-blue font-medium">{m.label.toUpperCase()}</span>
-                        {Astro.url.pathname.includes(m.match) && (
+                        <span class="font-mono text-xs text-lake-blue font-medium">{shortLabel(m.slug).toUpperCase()}</span>
+                        {active && (
                           <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
+                        )}
+                        {!active && m.study_state !== 'pilot' && (
+                          <span class="rounded-full bg-parchment border border-ash px-2 py-0.5 text-xs text-smoke">Sem revisão</span>
                         )}
                       </div>
                       <div class="font-medium leading-tight">{m.title}</div>
                     </a>
-                  ))}
-                </div>
-              </>
-            ) : (
-            <>
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-mono font-medium uppercase tracking-wider text-smoke">
-                Módulos da Trilha 01
-              </span>
-              <a
-                href={withBase("/tracks/01-hardware-and-os")}
-                class="text-xs font-mono font-medium text-lake-blue hover:underline"
-              >
-                Catálogo
-              </a>
+                  );
+                })}
+              </div>
             </div>
-            <div class="space-y-2">
-              {track01Modules.map((m) => (
-                <a
-                  href={withBase(`/tracks/01-hardware-and-os/${m.slug}`)}
-                  class={`block rounded-2xl p-3 text-xs transition-all border ${
-                    Astro.url.pathname.includes(m.match)
-                      ? 'bg-white border-ash text-off-black shadow-monad'
-                      : 'border-transparent text-graphite hover:bg-white/60 hover:text-off-black'
-                  }`}
-                >
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="font-mono text-xs text-lake-blue font-medium">{m.label.toUpperCase()}</span>
-                    {Astro.url.pathname.includes(m.match) && (
-                      <span class="rounded-full bg-periwinkle-mist px-2 py-0.5 text-xs font-medium text-lake-blue">Lendo</span>
-                    )}
-                  </div>
-                  <div class="font-medium leading-tight">{m.title}</div>
-                </a>
-              ))}
-            </div>
-            </>
-            )}
-          </div>
+          )}
         </aside>
 
-        {/* Conteúdo Principal de Leitura */}
         <main id="main-content" class="flex-1 min-w-0 px-6 py-8 md:px-12 md:py-10 max-w-4xl mx-auto">
+          {/* Índice móvel: details nativo, teclado acessível, mesma fonte de dados */}
+          {trackModules.length > 0 && (
+            <details class="xl:hidden mb-8 rounded-2xl border border-ash bg-white p-4" data-mobile-index>
+              <summary class="cursor-pointer font-mono text-xs uppercase tracking-widest text-off-black min-h-[44px] flex items-center [&::-webkit-details-marker]:hidden">
+                <span aria-hidden="true" class="mr-2 text-lake-blue">≡</span> Índice da trilha e desta página
+              </summary>
+              <nav aria-label="Índice da trilha" class="mt-3 space-y-1.5">
+                {currentTrack?.catalog_href && (
+                  <a href={withBase(currentTrack.catalog_href)} class="block rounded-xl px-3 py-2.5 min-h-[44px] font-mono text-xs text-lake-blue hover:bg-parchment">
+                    Ver catálogo: {trackTitle}
+                  </a>
+                )}
+                {trackModules.map((m) => (
+                  <a
+                    href={withBase(`/tracks/${m.track}/${m.slug}`)}
+                    aria-current={currentModule?.slug === m.slug ? 'page' : undefined}
+                    class={`block rounded-xl px-3 py-2.5 min-h-[44px] font-sans text-sm leading-snug ${
+                      currentModule?.slug === m.slug ? 'bg-periwinkle-mist/50 text-off-black font-medium' : 'text-graphite hover:bg-parchment hover:text-off-black'
+                    }`}
+                  >
+                    {m.title}
+                  </a>
+                ))}
+              </nav>
+              {headings && headings.length > 0 && (
+                <nav aria-label="Seções desta página" class="mt-4 border-t border-ash pt-4">
+                  <div class="px-3 mb-2 text-xs font-mono uppercase tracking-widest text-smoke">Nesta página</div>
+                  <ul class="space-y-1">
+                    {headings
+                      .filter((h: any) => h.depth === 2 || h.depth === 3)
+                      .map((h: any) => (
+                        <li class={h.depth === 3 ? 'pl-6' : ''}>
+                          <a
+                            href={`#${h.slug}`}
+                            class="block rounded-lg px-3 py-2 min-h-[44px] font-mono text-xs text-graphite hover:bg-parchment hover:text-off-black leading-snug"
+                          >
+                            {h.text}
+                          </a>
+                        </li>
+                      ))}
+                  </ul>
+                </nav>
+              )}
+            </details>
+          )}
+
           <slot />
+
+          {isModulePage && currentModule && !currentModule.has_inline_navigation && (
+            <PrevNext prev={prevModule} next={nextModule} />
+          )}
         </main>
 
-        {/* Sidebar Direita (Índice Dinâmico do Módulo) */}
         <aside class="hidden xl:block w-64 shrink-0 p-6 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto border-l border-ash">
           <div class="text-xs font-mono font-medium uppercase tracking-wider text-smoke mb-4">
             Neste Módulo
@@ -352,18 +372,85 @@ const track02Modules = [
       </div>
     )}
 
-    {/* Rodapé Editorial */}
     <footer class="border-t border-ash bg-parchment py-8 px-6 text-center text-xs text-smoke font-mono">
       <div class="max-w-[1432px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <span>TeachYourself : Tratado Técnico Editorial de Baixo Nível e Sistemas</span>
         <div class="flex items-center gap-4 text-xs font-mono uppercase tracking-wider">
-          <span class="text-graphite">C11 & GCC Sanitized</span>
+          <span class="text-graphite">Contrato curricular v{contractVersion}</span>
           <span>&middot;</span>
-          <span class="text-graphite">IEEE 754-2019</span>
-          <span>&middot;</span>
-          <span class="text-graphite">x86-64 System V ABI</span>
+          <span class="text-graphite">Leitura não equivale a domínio</span>
         </div>
       </div>
     </footer>
+
+    {isModulePage && currentModule && (
+      <script>
+        import {
+          normalizeBasePath,
+          normalizeSectionId,
+          writeReadingPosition,
+        } from "../utils/reading-position";
+
+        (function () {
+          // Guarda só a posição de leitura (âncora ou cabeçalho visível mais
+          // recente) com os helpers compartilhados. Sem autoplay, sem rolagem
+          // forçada, sem marcar visitado como aprendido.
+          try {
+            const base = normalizeBasePath(import.meta.env.BASE_URL || "/");
+            const main = document.getElementById("main-content");
+            if (!main || typeof window.localStorage === "undefined") return;
+            // Cabeçalhos do Astro mais as âncoras explícitas <span id>.
+            const targets = [...main.querySelectorAll("h2[id], h3[id], span[id]")].filter(
+              (el): el is HTMLElement => el instanceof HTMLElement && el.id !== "",
+            );
+            if (targets.length === 0) return;
+            const rawPath = window.location.pathname || "/";
+            const sitePath =
+              base !== "" && rawPath.startsWith(base) ? rawPath.slice(base.length) || "/" : rawPath;
+            if (sitePath !== "/" && !sitePath.startsWith("/tracks/")) return;
+            let latest: HTMLElement | null = null;
+            const save = (el: HTMLElement) => {
+              const sectionId = normalizeSectionId(el.id);
+              if (!sectionId) return;
+              const label = (el.textContent || "").trim().slice(0, 200);
+              try {
+                writeReadingPosition(
+                  window.localStorage,
+                  {
+                    path: sitePath,
+                    sectionId,
+                    sectionLabel: label === "" ? null : label,
+                    updatedAt: Date.now(),
+                  },
+                  base === "" ? "/" : base,
+                );
+              } catch {
+                // Storage indisponível: retomar é opcional.
+              }
+            };
+            const observer = new IntersectionObserver(
+              (entries) => {
+                const visible = entries.filter((e) => e.isIntersecting).map((e) => e.target);
+                if (visible.length === 0) return;
+                latest = visible[visible.length - 1] as HTMLElement;
+                save(latest);
+              },
+              { rootMargin: "-10% 0px -80% 0px" },
+            );
+            for (const el of targets) observer.observe(el);
+            const flush = () => {
+              if (latest) save(latest);
+            };
+            // Garante a última posição correta mesmo com throttle do observer.
+            document.addEventListener("visibilitychange", () => {
+              if (document.visibilityState === "hidden") flush();
+            });
+            window.addEventListener("pagehide", flush);
+          } catch {
+            // Retomar é opcional, nunca fatal.
+          }
+        })();
+      </script>
+    )}
   </body>
 </html>

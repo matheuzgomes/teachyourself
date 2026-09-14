@@ -11,213 +11,337 @@ import BitFieldLayout from "../../../components/diagrams/BitFieldLayout.astro";
 import DeepDive from "../../../components/DeepDive.astro";
 import Term from "../../../components/Term.astro";
 
-{/* Curriculum Ledger 04: KNOWN=[registrador, pipeline, hazard load-use, CPI, caixinha] CURRENT=[parede da memoria, AMAT, SRAM vs DRAM, localidade, linha 64B, Tag Set Offset, associatividade, LRU, write-back dirty] DEFERRED=[TLB, prefetching, PLRU fino, LLC, DDR, SPEC detalhe, perf] */}
+{/* Curriculum Ledger 04: 
+KNOWN=[modulo 00: portas logicas, flip-flops, registradores sincronizados por clock, atraso de propagacao; modulo 02: instrucoes assembly x86-64, registradores arquiteturais, memoria linear; modulo 03: pipeline de 5 estagios, CPI=1.0 em regime ideal, forwarding, limite Load-Use de 1 ciclo, predicao de desvios] 
+CURRENT=[barreira da memoria (Memory Wall - Wulf & McKee, 1995), discrepancia historica de velocidade (CPU +50%/ano vs DRAM +7%/ano), equacao AMAT (Average Memory Access Time), fisica de semicondutores: celula SRAM 6T bistavel vs celula DRAM 1T1C capacitiva, fuga de eletrons pelo dieletrico, ciclo periodico de refresh, leitura destrutiva e amplificadores de sensibilidade, organizacao hierarquica em niveis L1, L2, L3 (LLC), teoria do Working Set (Peter Denning, 1968), localidade temporal e espacial, transferencia atomica minima em linhas de cache de 64 bytes, analise de varredura de matrizes Row-Major vs Col-Major, decodificacao de endereco em Tag, Set Index central e Block Offset, topologias de associatividade: mapeamento direto, associativo em conjunto N-Way com comparadores em paralelo, totalmente associativo, taxonomia 3C de falhas (Hill & Smith), politicas de substituicao LRU e Pseudo-LRU (PLRU), politicas de escrita Write-Through vs Write-Back com Dirty Bit e Write-Allocate] 
+DEFERRED=[modulo 05: memoria virtual, traducao de enderecos via TLB, tabelas de paginas multinivel e paginacao por demanda; modulo 07: coerencia de caches multicore, protocolo MESI e atomicos de hardware] 
+*/}
 
 # Módulo 04: Hierarquia de Memória e Caches: A Barreira da Memória e Princípios de Localidade
 
-> **O que você precisa aqui:** 1. Ter visto que registrador fotografa no clock. 2. Ter visto que instrução que precisa de dado ainda não calculado trava a esteira. 3. Aceitar que fio curto é rápido e fio longo é lento. Nada de terminal, nada de medir hardware.
-
-Um processador com esteira de instruções em regime ideal completa uma instrução por ciclo de clock. No entanto, essa taxa de vazão assume que operandos e instruções estão prontos para consumo imediato.
-
-Quando uma instrução requisita dados da memória principal externa, a discrepância de velocidade entre circuitos combinacionais e barramentos impõe uma barreira física de latência: enquanto a ALU opera em frações de nanossegundo (um ou dois ciclos), a DRAM externa exige dezenas a centenas de ciclos para fornecer o dado. Se o processador dependesse da DRAM para cada leitura ou escrita, os estágios de execução permaneceriam ociosos na maior parte do tempo.
-
-Este módulo analisa a hierarquia de memória e o funcionamento das memórias cache: como a física de SRAM e DRAM determina a organização dos níveis de armazenamento, como o hardware mapeia endereços em conjuntos e blocos, e como o princípio de localidade permite que programas mantenham altas taxas de acerto na cache.
+> **Contrato Pedagógico:** No Módulo 03, construímos uma linha de montagem com encaminhamento de dados (*forwarding*) e predição dinâmica de desvios capaz de aposentar uma instrução por ciclo ($CPI = 1.0$) no silício local da CPU. Contudo, essa vazão perfeita assume uma premissa perigosa: que todos os operandos já residem nos registradores de estágio. Quando uma instrução `load` precisa buscar um operando na memória principal externa (<Term id="DRAM">DRAM</Term>), o caminho de dados colide contra a maior barreira física da arquitetura de computadores: a **Barreira da Memória** (*Memory Wall*). Enquanto a ALU completa uma soma em 0,3 nanossegundo, a travessia do barramento externo exige de 150 a 250 ciclos de clock de espera inerte. Se cada acesso dependesse da DRAM, o processador passaria mais de 98% do tempo congelado. Este módulo investiga como a microarquitetura constrói uma **Hierarquia de Memória** baseada na física comparada de células SRAM e DRAM e no princípio da localidade para mascarar esse abismo de tempo.
 
 ---
 
-> [!NOTE]
-> **Contrato de Aprendizagem do Módulo 04**
->
-> * **Pré-requisitos:** Módulo 00 (portas lógicas e registradores) e Módulo 03 (pipeline de instruções, hazard load-use e CPI).
-> * **Pergunta de Entrada:** Se a conta sai em frações de nanossegundo, por que buscar uma variável na memória externa pode paralisar a <Term id="CPU">CPU</Term> por centenas de ciclos?
-> * **O Que Você Vai Construir e Dominar:**
->   1. Por que fio longo e memória grande atrasam a conta?
->   2. Como guardar cópia perto sem quebrar o programa?
->   3. Quando o programa ajuda a cópia acertando quase sempre?
->   4. Como o endereço diz onde a cópia mora?
->   5. Quando a cópia volta para a memória grande?
-> * **Critérios de Domínio:** Você saberá que domina este módulo quando for capaz de explicar por que varredura por linha acerta e por coluna erra, e onde cada endereço mora na cache.
+## O Mapa da Construção: Quatro Degraus da Hierarquia de Memória
+
+1. **A Barreira da Memória e a Física de SRAM vs DRAM:** Por que existe um abismo de 200 ciclos entre o processador e a memória principal e como a física de 6 transistores contra 1 capacitor governa esse gargalo?
+2. **Princípios de Localidade e a Linha de Cache de 64 Bytes:** Como programas reais apresentam determinismo estatístico no tempo e no espaço e por que o hardware trafega sempre blocos atômicos de 64 bytes?
+3. **Anatomia do Endereço (Tag, Set Index e Offset) e Mapeamento Associativo:** Como o decodificador de hardware localiza dados em frações de nanossegundo usando os bits centrais do endereço e comparadores em paralelo?
+4. **Políticas de Substituição (LRU/PLRU), Escrita (Write-Back) e a Fronteira da Memória Virtual:** Como o hardware descarta linhas limpas, adia tráfego na DRAM com o *Dirty Bit* e prepara o terreno para o isolamento de processos no Módulo 05?
 
 ---
 
-## 0. A Metáfora da Mesa de Estudos: A Escala Humana das Latências
+## Parte 4A: A Barreira da Memória (Memory Wall) e a Equação AMAT
 
-Para compreender por que o processador depende visceralmente da hierarquia de memória, precisamos converter nanossegundos abstratos do caminho de dados em uma escala de tempo que o cérebro humano consiga sentir.
+### O Abismo de Frequência entre CPU e Barramento Externo
 
-Imagine que você é um pesquisador trabalhando em uma mesa de escritório e que **1 ciclo de clock da <Term id="CPU">CPU</Term> equivale a 1 segundo da sua vida**. Valores típicos de núcleos de alto desempenho classe desktop e servidor, apenas ordens de grandeza para intuição, não medição de um chip específico:
+Durante o período entre 1980 e o início dos anos 2000, o desempenho dos processadores cresceu a uma taxa exponencial média de aproximadamente **50% ao ano**, impulsionado pela escala de Dennard, redução da litografia dos transistores e aumento das frequências de clock para a casa dos gigahertz.
 
-| Componente do Computador | Latência típica | Equivalente em Tempo Humano | Analogia no Mundo Físico |
-| :--- | :--- | :--- | :--- |
-| **Registradores da <Term id="CPU">CPU</Term>** | 0,5 ns (1 ciclo) | **1 segundo** | Uma folha de anotações já aberta na sua mão. |
-| **Cache L1** | 1 a 1,5 ns (4 ciclos) | **4 segundos** | Um livro de referência aberto em cima da sua mesa. |
-| **Cache L2** | 3 a 5 ns (12 ciclos) | **12 segundos** | Pegar uma pasta dentro da gaveta da escrivaninha. |
-| **Cache L3** | 10 a 20 ns (40 ciclos) | **40 segundos** | Levantar e consultar um volume na estante da mesma sala. |
-| **Memória Principal (<Term id="DRAM">DRAM</Term>)**| 60 a 100 ns (200 ciclos) | **4 a 5 minutos** | Sair do prédio, caminhar até a biblioteca pública e buscar um livro. |
-| **Armazenamento SSD NVMe** | 50 a 100 us | **2 meses inteiros** | Esperar uma encomenda internacional de navio cargueiro. |
-| **Disco Rígido Magnético** | 10 ms | **30 anos de espera** | Uma expedição histórica de ida e volta pelo planeta. |
+Em contrapartida, a velocidade de acesso à memória principal dinâmica evoluiu a um ritmo modesto de apenas **7% ao ano**. Embora a capacidade de armazenamento da DRAM tenha multiplicado por milhares de vezes, sua latência de acesso melhorou de forma marginal.
 
-Se a <Term id="CPU">CPU</Term> precisar buscar um dado na memória <Term id="DRAM">DRAM</Term> a cada instrução, o artesão da computação passa 4 minutos de braços cruzados a cada segundo de trabalho útil.
+Essa divergência histórica foi formalizada pelos pesquisadores William Wulf e Sally McKee em 1995 no clássico artigo *Hitting the Memory Wall: Implications of the Obvious*:
 
-> [!WARNING]
-> **Ponto de Quebra da Analogia:**
-> Na biblioteca do mundo real, se você precisa consultar uma única palavra, você pode ler apenas essa palavra. No hardware do computador, a CPU **nunca trafega bytes isolados**: o barramento transporta sempre um bloco rígido e atômico de **64 bytes contíguos** (uma linha de cache inteira). Se você pedir 1 byte, o hardware carrega 64 bytes para a sua mesa de estudos.
+```text
+Velocidade Relativa
+  ▲
+  │                                     / CPU (+50%/ano)
+  │                                   /
+  │                                 /
+  │                               /
+  │                             /
+  │                           /
+  │                         /
+  │                       /
+  │                     /
+  │                   /
+  │                 /
+  │               /           ──────────────── DRAM (+7%/ano)
+  │             / 
+  │           /
+  └──────────┴────────────────────────────────────────► Tempo (Anos)
+            1980                           2000+
+```
+
+A consequência física desse abismo é drástica:
+* Uma operação na Unidade Lógica e Aritmética (<Term id="ALU">ALU</Term>) dentro do chip consome tipicamente **1 ciclo de clock** (cerca de 0,3 a 0,5 nanossegundo em um núcleo moderno de 3 GHz).
+* Uma travessia pelo barramento da placa-mãe até os módulos de memória principal (<Term id="DRAM">DRAM</Term>) consome entre **150 e 250 ciclos de clock** (50 a 100 nanossegundos), devido a atrasos de capacitância dos pinos, comutação de barramento e temporização interna das matrizes de memória.
+
+Se cada instrução de leitura (`load`) emitida pelo pipeline dependesse de uma consulta à memória principal externa, o processador passaria centenas de ciclos paralisado por bolhas forçadas, anulando qualquer avanço conquistado por pipelining, forwarding ou execução superescalar.
 
 ---
 
-## 4.1 A Barreira da Memória (Memory Wall): O Abismo entre CPU e DRAM
+### A Equação Fundamental do AMAT (Average Memory Access Time)
 
-Durante as décadas de 1980 e 1990, a frequência de operação dos processadores cresceu em um ritmo exponencial, impulsionada pela miniaturização dos transistores e pelo aprofundamento das esteiras de pipelining.
-A velocidade com que a CPU realizava cálculos aumentava cerca de cinquenta por cento ao ano.
-No entanto, a velocidade de acesso à memória principal aumentava em um ritmo muito mais modesto, próximo de sete por cento ao ano.
-
-Essa discrepância histórica gerou o fenômeno que os arquitetos de computadores denominam a Barreira da Memória (Memory Wall).
-O caminho de dados da CPU tornou-se ordens de magnitude mais rápido do que o barramento que a conecta à memória externa.
-Se a CPU precisasse aguardar cada leitura diretamente na memória dinâmica a cada instrução, todo o ganho proporcionado pelo pipelining e pela execução superescalar seria anulado.
-
-Para quantificar esse impacto, a ciência da computação utiliza a métrica do Tempo Médio de Acesso à Memória (Average Memory Access Time, ou <Term id="AMAT">AMAT</Term>).
-A equação fundamental do tempo de acesso estabelece:
+Para quantificar com rigor matemático o impacto de múltiplos níveis de memória no caminho de dados, a arquitetura de sistemas utiliza a métrica do **Tempo Médio de Acesso à Memória** (*Average Memory Access Time* - <Term id="AMAT">AMAT</Term>):
 
 $$\text{AMAT} = \text{Hit Time} + (\text{Miss Rate} \times \text{Miss Penalty})$$
 
-Nessa equação, o Tempo de Acerto (Hit Time) é o tempo necessário para acessar a memória rápida local.
-A Taxa de Falha (Miss Rate) é a fração de acessos que não encontram o dado na memória rápida.
-A Penalidade de Falha (Miss Penalty) é o tempo gasto para buscar a informação na memória principal lenta e entregá-la à CPU.
+Onde:
+* **Hit Time ($t_{\text{hit}}$):** o tempo necessário para consultar a memória local rápida e entregar o dado ao registrador da CPU (tipicamente 1 a 4 ciclos em caches L1).
+* **Miss Rate ($m$):** a fração de acessos à memória que não encontram o dado no nível rápido ($0 \le m \le 1$).
+* **Miss Penalty ($t_{\text{penalty}}$):** o tempo adicional exigido para buscar o dado no nível inferior mais lento e transferi-lo para a cache.
 
-Imagine, de forma simplificada, que um processador possua uma memória local com tempo de acesso de 1 ciclo de relógio e que a busca na memória principal custe 100 ciclos de penalidade.
-Se o processador atingir uma taxa de acerto de noventa por cento, o que parece alto em uma primeira impressão, a taxa de falha será de dez por cento.
-Aplicando a fórmula do AMAT, obtemos:
+Considere uma máquina operando com uma memória rápida local de 1 ciclo e uma penalidade de acesso à memória principal de 100 ciclos:
 
-$$\text{AMAT} = 1 + (0{,}10 \times 100) = 1 + 10 = 11 \text{ ciclos}$$
+Se o sistema obtiver uma taxa de acerto de 90% (uma taxa de falha de apenas $m = 0{,}10$), o cálculo revela o estrago temporal:
 
-Mesmo com noventa por cento dos dados encontrados na memória rápida, o tempo médio de cada acesso subiu de 1 para 11 ciclos.
-O processador gasta mais de noventa por cento de seu tempo esperando dados da <Term id="DRAM">DRAM</Term> externa.
-Para que a <Term id="CPU">CPU</Term> opere próxima de sua capacidade teórica, a taxa de acerto precisa superar noventa e oito ou noventa e nove por cento nestes modelos típicos de penalidade alta.
-Como nenhuma tecnologia de memória consegue ser simultaneamente gigantesca, barata e ultrarrápida, a arquitetura moderna organiza as memórias em múltiplos níveis hierárquicos: caches L1, L2 e L3.
+$$\text{AMAT} = 1 + (0{,}10 \times 100) = 1 + 10 = \mathbf{11 \text{ ciclos}}$$
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Parede da memória:** fio longo custa centenas de ciclos contra 1 ciclo perto;
-> 2. **Média pune falta:** mesmo errando pouco, a penalidade domina o <Term id="AMAT">AMAT</Term>;
-> 3. **Perto é pequeno:** rápido mora ao lado em pouca quantidade, grande mora longe.
+Mesmo acertando 9 em cada 10 acessos, o tempo médio de execução de cada leitura decuplicou: a CPU passa mais de **90% do seu tempo de vida útil ociosa**, aguardando o barramento externo.
+
+Para que um processador com pipeline opere com eficiência real próxima de $CPI \approx 1.0$, a taxa de acerto no primeiro nível de memória rápida precisa obrigatoriamente superar **95% a 98%**.
 
 ---
 
-## 4.2 A Física das Memórias: Células SRAM de 6 Transistores vs DRAM 1T1C
+### A Escala Físico-Temporal da Hierarquia de Memória
 
-Para compreender por que existe um abismo de velocidade entre a cache e a memória principal, é indispensável examinar o circuito elétrico elementar de cada bit.
-Existem duas tecnologias fundamentais de memória semicondutora: a memória estática (<Term id="SRAM">SRAM</Term>) e a memória dinâmica (<Term id="DRAM">DRAM</Term>).
+A tabela abaixo consolida as ordens de grandeza reais de latência e capacidade típicas observadas em microarquiteturas de alto desempenho (núcleos x86-64 contemporâneos em regime nominal):
 
-### A Célula <Term id="SRAM">SRAM</Term> (Static RAM)
-A célula de memória estática é construída com um circuito bistável composto por seis transistores (estrutura 6T).
-Dois inversores lógicos são conectados de forma cruzada em uma malha de realimentação fechada, acompanhados por dois transistores de acesso que controlam a leitura e a escrita.
-Enquanto o circuito estiver energizado, a realimentação mantém o estado lógico do bit indefinidamente, sem degradação do sinal.
+| Nível de Armazenamento | Tecnologia de Circuito | Localização Física | Latência Típica (Ciclos) | Latência Absoluta (ns) | Capacidade Típica |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Registradores da CPU** | Flip-flops / Latches | No datapath interno | 0 a 1 ciclo | 0,3 a 0,5 ns | ~1 a 2 KiB |
+| **Cache L1 (L1d / L1i)** | Células SRAM 6T | Dedicada por núcleo | 4 a 5 ciclos | ~1 a 1,5 ns | 32 a 48 KiB |
+| **Cache L2** | Células SRAM 6T | Dedicada por núcleo | 12 a 14 ciclos | ~3 a 5 ns | 512 KiB a 2 MiB |
+| **Cache L3 (LLC)** | Células SRAM alta densidade | Compartilhada no die | 30 a 60 ciclos | ~10 a 20 ns | 16 a 64+ MiB |
+| **Memória Principal (DRAM)** | Células DRAM 1T1C | Externa (barramento DDR) | 150 a 250 ciclos | 50 a 100 ns | 16 a 128+ GiB |
 
-A grande vantagem da <Term id="SRAM">SRAM</Term> é a sua velocidade extrema.
-A leitura de uma célula <Term id="SRAM">SRAM</Term> consiste em ativar a linha de palavra e medir a diferença de tensão entre duas linhas de dados complementares, um processo que se estabiliza em frações de nanossegundo.
-Por outro lado, utilizar seis transistores para cada bit exige uma grande área física no chip.
-Isso torna a <Term id="SRAM">SRAM</Term> cara e limita sua capacidade total: caches L1 raramente ultrapassam algumas dezenas de kilobytes por núcleo.
+Por que os engenheiros de silício não constroem todo o computador com a memória ultrarrápida de 1 ciclo? A resposta reside nas restrições físicas de área, custo e semicondutores.
 
-### A Célula <Term id="DRAM">DRAM</Term> (Dynamic RAM)
-A memória principal dos computadores modernos utiliza células dinâmicas baseadas na arquitetura 1T1C, composta por apenas um transistor de acesso e um único capacitor minúsculo.
-O bit 1 é representado pela presença de carga elétrica no capacitor, e o bit 0 é representado pela ausência de carga.
+---
 
-A vantagem primordial da DRAM reside em sua densidade e custo.
-Como cada bit requer apenas um transistor e um capacitor verticalizado, é possível empacotar bilhões de células em uma área minúscula de encapsulamento, produzindo módulos com dezenas de gigabytes a baixo custo.
+## Parte 4B: A Física das Memórias: SRAM de 6 Transistores versus DRAM 1T1C
 
-Contudo, a física impõe duas penalidades severas à DRAM:
-1. **Fuga de Carga e Recarga Periódica (Refresh):** Os capacitores da DRAM são minúsculos e sofrem vazamento natural de elétrons através do dielétrico. Se não forem recarregados a cada poucos milissegundos, a carga se dissipa e a informação é destruída. O controlador de memória precisa interromper as operações regulares periodicamente para ler e regravar o conteúdo de cada linha (ciclo de refresh), paralisando temporariamente o acesso aos dados.
-2. **Leitura Destrutiva e Amplificação:** O ato de ler uma célula DRAM drena a carga do capacitor para o barramento de leitura. O controlador precisa utilizar amplificadores de sensibilidade delicados para detectar variações sutis de tensão e, em seguida, recarregar imediatamente o capacitor ao seu estado original.
+### A Célula SRAM (Static RAM): Estabilidade Bistável por Realimentação
 
-Essa mecânica faz com que o acesso à <Term id="DRAM">DRAM</Term> externa seja centenas de vezes mais lento que o acesso a uma célula <Term id="SRAM">SRAM</Term> interna.
-A solução de engenharia não é escolher uma tecnologia em detrimento da outra, mas combiná-las: pequenas quantidades de <Term id="SRAM">SRAM</Term> próximas ao caminho de dados da <Term id="CPU">CPU</Term> e grandes volumes de <Term id="DRAM">DRAM</Term> conectados externamente pelo barramento.
+A memória estática (<Term id="SRAM">SRAM</Term>) é a tecnologia empregada na construção de todos os níveis de cache internos da CPU (L1, L2 e L3).
 
-<DeepDive title="Detalhe de circuito: por que rápida é pequena e densa é lenta">
-Na <Term id="SRAM">SRAM</Term>, a malha de 6 transistores segura o bit enquanto há energia, sem recarga. Na <Term id="DRAM">DRAM</Term> de 1 transistor e 1 capacitor, a carga vaza pelo dielétrico e a leitura drena o capacitor, por isso há ciclo de refresh e amplificadores de sensibilidade. Nada aqui muda o modelo da Trilha 1, só detalha onde mora o custo físico já ensinado acima.
+O circuito básico de um único bit de SRAM é composto por **seis transistores MOSFET** (arquitetura 6T):
+
+```text
+         VDD                     VDD
+          │                       │
+      ┌───┴───┐               ┌───┴───┐
+      │  PMOS │               │  PMOS │
+      └───┬───┘               └───┬───┘
+          ├────────── Q ──────────┤
+          │           │           │
+      ┌───┴───┐       │       ┌───┴───┐
+      │  NMOS │       │       │  NMOS │
+      └───┬───┘       │       └───┬───┘
+          │           │           │
+         GND          │          GND
+                      │
+  BL ────┤ NMOS ├─────┴─────┤ NMOS ├──── BL_bar
+         (Acesso)           (Acesso)
+             ▲                  ▲
+             │                  │
+             └──────── WL ──────┘
+```
+
+#### O Mecanismo de Funcionamento da Célula 6T:
+1. Dois inversores CMOS são interconectados em uma **malha de realimentação cruzada fechada**: a saída do primeiro inversor alimenta a entrada do segundo, cuja saída retorna à entrada do primeiro.
+2. Essa configuração cria dois pontos de equilíbrio elétrico estáveis (bistabilidade): se o nó $Q$ estiver em nível alto ($V_{DD}$), ele força a saída $\overline{Q}$ para nível baixo ($GND$), mantendo o nó $Q$ em alta indefinidamente.
+3. Dois transistores adicionais de acesso conectam os nós $Q$ e $\overline{Q}$ às linhas de bit complementares ($BL$ e $\overline{BL}$), sob comando da linha de palavra (*Word Line* - $WL$).
+
+A leitura de uma célula SRAM não destrói seu conteúdo: basta energizar a $WL$ e um circuito comparador mede a diferença diferencial de tensão entre $BL$ e $\overline{BL}$. O dado estabiliza em frações de nanossegundo.
+
+#### O Limite Físico da SRAM:
+Para armazenar um único bit, a SRAM requer 6 transistores independentes, ocupando uma área de silício considerável (dezenas de vezes maior que uma célula DRAM). Além disso, cada transistor em regime estacionário dissipa corrente parasita de fuga pelo dielétrico ($I_{\text{leakage}}$). Caches L1 são limitadas a dezenas de kilobytes para evitar que o consumo térmico e a área do chip inviabilizem a viabilidade econômica do processador.
+
+---
+
+### A Célula DRAM (Dynamic RAM): O Capacitor de Carga 1T1C
+
+Para armazenar dezenas de gigabytes a baixo custo, a indústria de computadores utiliza a memória dinâmica (<Term id="DRAM">DRAM</Term>).
+
+Em vez de 6 transistores ativos, a célula elementar de DRAM adota a arquitetura **1T1C**: exatamente **um transistor de passagem NMOS e um único capacitor minúsculo verticalizado** (com capacitância na ordem de 25 a 30 femtofarads):
+
+```text
+                  Linha de Bit (BL)
+                         │
+                         ▼
+                     ───┬───
+                        │
+                  ┌─────┴─────┐
+    Word Line ───►│ NMOS (1T) │
+     (WL)         └─────┬─────┘
+                        │
+                        ▼  Nó de Armazenamento
+                      ──┴──
+                      ──┬──  Capacitor (1C) ~ 30 fF
+                        │
+                       GND
+```
+
+* **Bit 1:** o capacitor encontra-se carregado com tensão elétrica ($V_{DD}$).
+* **Bit 0:** o capacitor encontra-se descarregado ($GND$).
+
+Como cada bit requer apenas um transistor e um capacitor entalhado no substrato de silício, é possível empacotar dezenas de bilhões de células em um único módulo de circuito integrado, viabilizando memórias de alta capacidade por fração de centavo por megabyte.
+
+Contudo, a física impõe duas penalidades incontornáveis à arquitetura 1T1C:
+
+#### 1. Fuga Quântica de Carga e o Ciclo de Refresh
+Um capacitor de 30 femtofarads retém uma quantidade ínfima de elétrons. O dielétrico do capacitor e as junções de silício do transistor sofrem vazamento elétrico constante. A cada poucos milissegundos, a carga se esvai por completo.
+
+Para impedir a perda irreversível de dados, o controlador de memória é obrigado a interromper periodicamente as operações regulares da CPU e executar o **Ciclo de Refresh**: ler o estado de cada linha de células e recarregá-las com tensão total a cada **64 milissegundos** (padrão JEDEC). Durante o refresh, o barramento fica bloqueado para novas leituras da CPU.
+
+#### 2. Leitura Destrutiva e Amplificação de Sensibilidade
+Para ler o valor armazenado, o controlador energiza a $WL$, abrindo o transistor. A carga residual minúscula do capacitor é descarregada diretamente sobre a fiação da Linha de Bit ($BL$), provocando uma variação de potencial minúscula (da ordem de dezenas de milivolts).
+
+Essa variação é capturada por um circuito analógico extremamente sensível: o **Amplificador de Sensibilidade** (*Sense Amplifier*). O ato físico de ler a célula drena o capacitor: **a leitura na DRAM é destrutiva**. Antes de encerrar o ciclo de acesso, o amplificador de sensibilidade deve obrigatoriamente dirigir tensão de volta ao capacitor para restaurar seu valor original (o tempo de pré-carga $t_{RP}$ e atraso $t_{RCD}$).
+
+Essa cadeia de restrições de capacitância, amplificação analógica e restauração de carga explica fisicamente por que a DRAM externa impõe de 150 a 250 ciclos de latência em comparação com a SRAM interna.
+
+<DeepDive title="Física de Semicondutores: SRAM 6T vs DRAM 1T1C">
+A distinção entre SRAM e DRAM reside no princípio fundamental de conservação de estado:
+1. **SRAM:** O estado é mantido por realimentação ativa de transistores energizados. Não há perda de dados enquanto $V_{DD}$ estiver ativo; não existe ciclo de recarga nem leitura destrutiva. O custo é área e dissipação estática.
+2. **DRAM:** O estado é mantido passivamente como carga eletrostática em um capacitor físico. A leitura drena a carga e a física dos materiais impõe fuga dielétrica contínua. O ganho é densidade extrema; o custo é latência de recarga e pré-carga de barramento.
 </DeepDive>
 
 ---
 
-## 4.3 Princípios de Localidade: Temporal e Espacial
+### A Tensão de Engenharia: A Necessidade de Previsibilidade Estatística
 
-A hierarquia de memória só funciona porque programas reais de computador não acessam a memória de maneira aleatória ou caótica.
-Em 1968, o pesquisador Peter Denning formulou o conceito de Working Set (Conjunto de Trabalho), demonstrando empiricamente que a execução dos programas exibe um comportamento previsível conhecido como o Princípio da Localidade.
+A constatação de que a SRAM é ultrarrápida porém minúscula, enquanto a DRAM é gigantesca porém centenas de vezes mais lenta, expõe a tensão central de projeto:
 
-O princípio da localidade manifesta-se em duas dimensões complementares:
+*Se a cache L1 possui apenas 32 KiB de espaço físico, e o programa em execução acessa um espaço de memória de dezenas de gigabytes na DRAM, como garantir que o processador encontre o dado necessário na cache L1 em mais de 95% dos acessos?*
 
-### 1. Localidade Temporal
-Se um endereço específico de memória foi acessado neste instante, existe uma probabilidade altíssima de que esse mesmo endereço seja acessado novamente em um futuro próximo.
-O exemplo mais evidente são as variáveis de controle de laços de repetição, contadores, ponteiros de pilha e instruções dentro do corpo de um loop.
-Uma vez que esse dado é carregado da DRAM para a cache na primeira iteração, todos os acessos subsequentes durante a execução do loop serão acertos imediatos em L1.
+Se os programas de computador realizassem leituras de forma caótica ou aleatória uniforme por todo o espaço de endereçamento, a probabilidade de encontrar o dado na cache de 32 KiB seria inferior a 0,001%, e a máquina sucumbiria à Barreira da Memória.
 
-### 2. Localidade Espacial
-Se um endereço de memória foi acessado neste instante, existe uma probabilidade altíssima de que os endereços imediatamente adjacentes sejam acessados em seguida.
-O exemplo típico é a execução sequencial de instruções no código de máquina e a leitura linear de elementos contíguos em um vetor.
-
-O hardware explora a localidade espacial através de uma regra fundamental: a CPU nunca transfere bytes isolados entre a DRAM e as caches.
-Toda transferência entre níveis de memória ocorre em blocos contíguos de tamanho fixo denominados **linhas de cache** (tipicamente 64 bytes).
-Quando o programa requisita um único byte de memória que resulta em falha, o hardware busca a linha inteira de 64 bytes ao redor desse endereço.
-Os acessos subsequentes aos próximos 63 bytes serão acertos instantâneos na cache.
-
-
-### O Impacto da Localidade no Código: O Teste das Matrizes
-A escolha da ordem dos laços de repetição em software afeta drasticamente o aproveitamento da localidade espacial.
-Considere uma matriz bidimensional de inteiros de 32 bits armazenada em linguagem C.
-A especificação do C organiza matrizes em ordem maior por linha (Row-Major Order), o que significa que os elementos de uma mesma linha estão posicionados em sequência contígua na memória RAM.
-
-Analise o contraste entre as duas implementações abaixo. Você não precisa compilar, só comparar a ordem dos laços.
-
-```c
-// Versão A: por linha, vizinho contíguo
-int soma_linhas(int m[1024][1024]) {
-  int t = 0;
-  for (int i = 0; i < 1024; i++)
-    for (int j = 0; j < 1024; j++) t += m[i][j];
-  return t;
-}
-```
-
-```c
-// Versão B: por coluna, salto de 4096 bytes
-int soma_colunas(int m[1024][1024]) {
-  int t = 0;
-  for (int j = 0; j < 1024; j++)
-    for (int i = 0; i < 1024; i++) t += m[i][j];
-  return t;
-}
-```
-
-Na Versão A, o laço interno avança pelo índice `j`.
-Cada iteração lê a posição adjacente na memória (`matriz[i][j]`, depois `matriz[i][j+1]`).
-Como cada inteiro ocupa 4 bytes e a linha de cache possui 64 bytes, uma única transferência da DRAM traz dezesseis inteiros consecutivos para a cache.
-O primeiro acesso sofre uma falta compulsória, mas os próximos quinze acessos são acertos imediatos na cache L1.
-A taxa de acerto é de 93,75%.
-
-Na Versão B, os laços estão invertidos e o índice interno avança por `i`.
-A cada iteração, o programa acessa `matriz[i][j]` e salta uma linha inteira (1024 colunas de 4 bytes = 4096 bytes de distância) para acessar `matriz[i+1][j]`.
-O bloco de 64 bytes carregado na cache para o primeiro elemento é completamente desperdiçado, pois a próxima iteração requisita um endereço a milhares de bytes de distância.
-Praticamente todo acesso resulta em falta, tornando a Versão B dezenas de vezes mais lenta neste padrão de acesso típico.
-
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Perto e repetido acerta:** tempo e vizinhança viram acerto em L1;
-> 2. **Linha de 64B manda:** 1 falta traz 16 inteiros de uma vez;
-> 3. **Ordem do laço decide:** linha aproveita, coluna desperdiça.
+A razão pela qual as memórias cache funcionam de forma quase milagrosa na prática é o tema da **Parte 4C**: os **Princípios de Localidade**.
 
 ---
 
-## 4.4 Anatomia Física da Cache: Linhas de 64 Bytes, Tag, Set Index e Block Offset
+## Parte 4C: Princípios de Localidade e a Linha de Cache de 64 Bytes
 
-Para que uma memória cache entregue dados em frações de ciclo, o hardware não pode realizar buscas lineares demoradas em tabelas.
-O decodificador de endereços deve determinar instantaneamente se o bloco requisitado está presente e onde ele reside.
-Isso é realizado fatiando matematicamente o endereço de memória física em três campos contíguos de bits.
+### O Working Set de Peter Denning (1968)
 
-Considere um sistema com endereços físicos de 64 bits e uma cache com parâmetros universais:
-* O tamanho do bloco de dados é $B$ bytes. Em processadores x86-64 modernos, o valor padrão de $B$ é inegociavelmente 64 bytes.
-* A cache é dividida em $S$ conjuntos (Sets). Como $S$ é sempre uma potência de dois, definimos $S = 2^s$, onde $s$ é a quantidade de bits de índice.
-* Cada conjunto contém $E$ linhas de cache (Ways ou vias).
-* O tamanho total de dados da cache é calculado por $C = S \times E \times B$.
+Na Parte 4B, identificamos o dilema central da hierarquia de memória: a memória cache em tecnologia SRAM possui capacidade diminuta (32 KiB a 48 KiB em L1), enquanto a memória principal DRAM armazena dezenas de gigabytes a uma distância temporal de centenas de ciclos.
 
-O decodificador de hardware particiona o endereço de 64 bits da direita para a esquerda em três componentes disjuntos:
+A viabilidade desse sistema depende de uma propriedade empírica universal da computação: **programas reais não acessam o espaço de endereçamento de maneira aleatória ou uniforme**.
+
+Em 1968, o pesquisador Peter Denning formalizou essa observação através da teoria do **Conjunto de Trabalho** (*Working Set*): em qualquer janela finita de tempo ($\Delta t$), um processo concentra a esmagadora maioria de suas operações sobre um subconjunto restrito e altamente previsível de seus endereços de código e dados.
+
+Esse comportamento manifesta-se em duas dimensões físicas complementares: **Localidade Temporal** e **Localidade Espacial**.
+
+---
+
+### As Duas Dimensões da Localidade
+
+#### 1. Localidade Temporal
+> **Se um endereço de memória $X$ foi acessado no instante $t$, existe uma probabilidade estatística extremamente elevada de que esse mesmíssimo endereço $X$ seja acessado novamente no instante imediatamente posterior ($t + \Delta t$).**
+
+A localidade temporal decorre da estrutura iterativa dos programas de computador:
+* **Variáveis de laço e acumuladores:** em um laço `for (int i = 0; i < N; i++)`, as variáveis `i` e `soma` residem em endereços fixos e são lidas e reescritas a cada volta.
+* **Instruções de controle:** o bloco básico de código de máquina que compõe o corpo de um laço de repetição é executado dezenas ou milhares de vezes consecutivas.
+* **Ponteiros de pilha:** o registrador `%rsp` e os primeiros slots de ativação de função manipulados por instruções `push`/`pop` sofrem dezenas de referências contínuas durante a vida de um subprograma.
+
+Ao transferir o dado de $X$ da DRAM para a cache na primeira iteração, todos os acessos subsequentes durante a execução do laço transformam-se em acertos instantâneos de 1 ciclo no nível L1.
+
+#### 2. Localidade Espacial
+> **Se um endereço de memória $X$ foi acessado no instante $t$, existe uma probabilidade estatística extremamente elevada de que os endereços imediatamente adjacentes ($X + 1, X + 2, \dots, X + k$) sejam acessados em um futuro próximo.**
+
+A localidade espacial decorre da organização contígua dos dados e instruções na memória física linear:
+* **Fluxo sequencial de instruções:** o Program Counter avança de forma predominantemente incremental (`PC + 4` ou `PC + tamanho da instrução`), lendo instruções dispostas em bytes consecutivos na memória.
+* **Vetores e matrizes:** estruturas de dados lineares alocam seus elementos em posições de memória rigorosamente adjacentes.
+
+---
+
+### A Invariante do Barramento: A Transferência Atômica de Linhas de 64 Bytes
+
+Para explorar a localidade espacial diretamente no silício, a microarquitetura moderna adota uma regra inviolável de barramento:
+
+> [!IMPORTANT]
+> **A CPU nunca trafega bytes isolados entre a memória principal e a hierarquia de caches.**
+> O barramento e os controladores de memória operam exclusivamente sobre blocos rígidos, contíguos e alinhados de tamanho fixo denominados **Linhas de Cache** (*Cache Lines*).
+
+Em praticamente todas as microarquiteturas de uso geral contemporâneas (famílias x86-64 da Intel e AMD, arquiteturas ARM64 modernas), o tamanho de uma linha de cache é universalmente fixado em **64 bytes**.
+
+Isso impõe uma mecânica estrita:
+* Quando uma instrução `movzbl (%rax), %ebx` solicita a leitura de um único byte de memória cuja linha correspondente não está na cache (ocorre um *cache miss*), o controlador de memória não transfere 1 byte.
+* O barramento carrega um bloco atômico de **64 bytes contíguos alinhados** que envolve aquele endereço e o grava na memória cache L1.
+* A instrução consome o byte solicitado com a penalidade da falha. Contudo, **as requisições subsequentes aos 63 bytes vizinhos já residirão na SRAM ultra-rápida**, convertendo-se em acertos imediatos de 1 ciclo.
+
+---
+
+### O Impacto Algorítmico da Localidade: O Teste de Varredura de Matrizes
+
+A interação entre o tamanho da linha de cache de 64 bytes e a convenção de layout de memória da linguagem de programação define o desempenho prático de algoritmos científicos e de sistemas.
+
+Na linguagem C, matrizes bidimensionais são organizadas na memória em **ordem maior por linhas** (*Row-Major Order*): os elementos da linha 0 são dispostos consecutivamente na memória, seguidos imediatamente pelos elementos da linha 1, linha 2, e assim por diante.
+
+Considere uma matriz quadrada $M$ de $1024 \times 1024$ elementos inteiros de 32 bits (4 bytes cada), totalizando 4 MiB de dados contíguos. Compare a física de hardware de duas abordagens de soma:
+
+#### Versão A: Varredura Contígua por Linhas (Row-Major)
+```c
+int soma_linhas(int m[1024][1024]) {
+    int total = 0;
+    for (int i = 0; i < 1024; i++) {
+        for (int j = 0; j < 1024; j++) {
+            total += m[i][j];
+        }
+    }
+    return total;
+}
+```
+
+* **Comportamento no Silício:**
+  1. O laço mais interno varia o índice $j$. Os acessos consecutivos dão-se em `m[i][0]`, `m[i][1]`, `m[i][2]`, cujos endereços físicos diferem por exatamente 4 bytes ($X, X+4, X+8\dots$).
+  2. Como cada linha de cache armazena 64 bytes e cada inteiro ocupa 4 bytes, **uma única linha de cache transporta exatamente 16 inteiros consecutivos**:
+     $$\frac{64 \text{ bytes}}{4 \text{ bytes/inteiro}} = 16 \text{ inteiros}$$
+  3. No acesso a `m[i][0]`, ocorre uma falha compulsória de cache (*cold miss*), que carrega os 64 bytes da DRAM para a cache L1.
+  4. Os **15 acessos seguintes** (`m[i][1]` até `m[i][15]`) encontram seus dados já presentes na cache L1, operando com latência mínima de 1 ciclo!
+  5. Apenas no 17º elemento (`m[i][16]`), que cruza a fronteira de 64 bytes, uma nova falha é gerada.
+  6. **Taxa de acerto analítica:** $\frac{15}{16} = \mathbf{93{,}75\%}$ de acertos no nível L1.
+
+#### Versão B: Varredura por Colunas com Salto de Estágio (Column-Major)
+```c
+int soma_colunas(int m[1024][1024]) {
+    int total = 0;
+    for (int j = 0; j < 1024; j++) {
+        for (int i = 0; i < 1024; i++) {
+            total += m[i][j];
+        }
+    }
+    return total;
+}
+```
+
+* **Comportamento no Silício:**
+  1. O laço mais interno varia o índice $i$. Os acessos consecutivos dão-se em `m[0][j]`, `m[1][j]`, `m[2][j]`.
+  2. A distância na memória entre `m[i][j]` e `m[i+1][j]` é de uma linha inteira de matriz:
+     $$\text{Salto} = 1024 \text{ colunas} \times 4 \text{ bytes} = 4096 \text{ bytes}$$
+  3. A cada iteração, o processador salta 4096 bytes adiante, caindo muito além da fronteira do bloco de 64 bytes recém-carregado.
+  4. Os 60 bytes adjacentes trazidos com alto custo de barramento são **completamente desperdiçados** e acabam expulsos da cache antes que qualquer instrução chegue a lê-los.
+  5. **Taxa de falha analítica:** praticamente **100% de falhas de cache**. Cada iteração do laço força o processador a parar por centenas de ciclos aguardando o barramento externo.
+
+Em medições empíricas com o utilitário `perf`, a Versão A conclui o processamento dezenas de vezes mais rápido que a Versão B, embora ambas executem rigorosamente a mesmíssima quantidade de adições na ALU.
+
+---
+
+### A Tensão de Engenharia: A Indexação em Tempo Real
+
+A invariante do bloco atômico de 64 bytes resolve a transferência de dados no barramento. Contudo, ela introduz um problema crítico de decodificação de circuito:
+
+*A CPU emite um endereço de memória de 64 bits a cada ciclo de clock. Como o hardware consegue descobrir, em frações de nanossegundo e sem varredura sequencial de memória, se a linha de 64 bytes correspondente já reside na cache L1 e em qual posição física do silício ela está armazenada?*
+
+Essa exigência de tempo constante impõe o particionamento matemático do endereço em três campos funcionais contíguos de bits: **Tag, Set Index e Block Offset**, objeto da **Parte 4D**.
+
+---
+
+## Parte 4D: Anatomia Física da Cache: Tag, Set Index e Block Offset
+
+### O Particionamento do Endereço de 64 Bits
+
+Para que uma memória cache L1 entregue dados no tempo estrito de 1 a 4 ciclos de clock, o hardware não pode percorrer tabelas lineares nem executar buscas sequenciais.
+
+O decodificador de memória deve determinar em frações de nanossegundo:
+1. Se a linha de 64 bytes que contém o endereço solicitado já reside na SRAM local;
+2. Em qual posição física do circuito ela está armazenada;
+3. Qual byte específico dentro da linha deve ser encaminhado aos registradores da CPU.
+
+Para viabilizar essa comutação instantânea via circuitos combinacionais, o processador particiona matematicamente o endereço físico de 64 bits, da direita para a esquerda, em **três campos contíguos disjuntos**:
 
 <BitFieldLayout
   fields={[
@@ -225,178 +349,240 @@ O decodificador de hardware particiona o endereço de 64 bits da direita para a 
     { name: "Set Index", detail: "s bits", span: 2 },
     { name: "Block Offset", detail: "b bits", span: 2 },
   ]}
-  caption="Bit 63 à esquerda, bit 0 à direita. Offset ocupa os bits 0 a b menos significativos."
+  caption="Bit 63 à esquerda (mais significativo), bit 0 à direita. O Block Offset ocupa os bits 0 a b-1 menos significativos."
 />
 
-### 1. Block Offset (Deslocamento de Bloco: $b$ bits)
-Os $b$ bits menos significativos do endereço determinam qual byte específico dentro da linha de 64 bytes está sendo requisitado pela instrução.
-Como a linha possui 64 bytes e $64 = 2^6$, o campo de deslocamento utiliza exatamente $b = 6$ bits (bits 0 a 5).
-Quando a CPU lê uma palavra de 4 ou 8 bytes, esses 6 bits indicam o ponto exato de partida do dado dentro do bloco.
+#### Contrato de Bancada: Inspeção dos Campos do Endereço
+* **O que inspecionar:** Observe a partição binária do endereço de memória nos três campos: Block Offset ($b$ bits), Set Index ($s$ bits) e Tag ($t$ bits).
+* **Controle e estímulo:** Acompanhe a soma dos comprimentos dos campos: $t + s + b = m$ bits (onde $m = 64$ bits em arquiteturas x86-64).
+* **Verificação do mecanismo:** 
+  1. O **Block Offset** ($b$ bits) utiliza $b = \log_2(B)$. Como o bloco de dados possui invariavelmente $B = 64$ bytes, o campo consome exatamente **$b = 6$ bits** ($2^6 = 64$), ocupando os bits `[5:0]`.
+  2. O **Set Index** ($s$ bits) seleciona um entre os $S = 2^s$ conjuntos físicos da cache através de decodificação direta por portas lógicas, ocupando os bits `[s+5:6]`.
+  3. A **Tag** ($t$ bits) compreende os $t = 64 - (s + 6)$ bits restantes mais significativos, servindo como o identificador inequívoco do bloco de memória.
 
-### 2. Set Index (Índice de Conjunto: $s$ bits)
-Os $s$ bits subsequentes (bits 6 até $6 + s - 1$) funcionam como um índice direto de tabela para selecionar qual conjunto da cache deve ser consultado.
-Se a cache possuir 64 conjuntos ($64 = 2^6$), o índice de conjunto consumirá $s = 6$ bits.
-Essa indexação direta por hardware opera em tempo constante de comutação de portas lógicas, sem busca comparativa.
+---
 
-Por que os arquitetos de hardware utilizam os bits centrais do endereço para o Set Index em vez dos bits mais significativos?
-A resposta decorre diretamente da localidade espacial.
-Se usássemos os bits mais altos para o índice, blocos de dados contíguos de 64 bytes compartilhariam os mesmos bits altos e mapeariam todos para o mesmíssimo conjunto da cache, colidindo entre si e deixando os demais conjuntos completamente vazios.
-Ao utilizar os bits centrais, blocos contíguos de memória alternam sequencialmente entre conjuntos diferentes (Conjunto 0, depois Conjunto 1, Conjunto 2), distribuindo os dados de forma homogênea por toda a estrutura física da cache.
+### Por Que os Bits Centrais Governam o Set Index?
 
-### 3. Tag (Identificador de Bloco: $t$ bits)
-Os $t = 64 - (s + b)$ bits restantes mais significativos compõem a Tag.
-Múltiplos blocos distintos da memória RAM mapearão para o mesmo conjunto da cache por compartilharem os mesmos bits de Set Index.
-Para confirmar se a linha presente no conjunto realmente corresponde ao bloco solicitado pela CPU, o hardware compara a Tag do endereço com a Tag gravada na linha da cache.
+Uma questão fundamental de engenharia surge ao analisar a partição: *por que os arquitetos de hardware utilizam os bits intermediários para o Set Index, em vez dos bits mais significativos (`[63:64-s]`)?*
 
-Cada linha física da cache armazena:
-* O bloco de dados de 64 bytes;
-* O campo Tag gravado em células de memória estática;
-* Um Bit de Validade (Valid Bit), que indica se aquela linha contém dados válidos de um programa ativo (1) ou lixo residual de inicialização da máquina (0).
+A resposta decorre diretamente da preservação da **localidade espacial**:
 
-O acerto de cache (Cache Hit) ocorre quando duas condições são simultaneamente satisfeitas em hardware:
-1. O Bit de Validade da linha é igual a 1;
-2. O campo Tag gravado na linha coincide exatamente com o campo Tag do endereço requisitado.
+* Considere uma sequência contígua de blocos de memória na RAM: Bloco 0 (`0x0000`), Bloco 1 (`0x0040`), Bloco 2 (`0x0080`), Bloco 3 (`0x00C0`).
+* Ao examinar a representação binária desses endereços, percebe-se que os bits mais significativos permanecem idênticos por milhares de bytes consecutivos, enquanto os **bits intermediários (`[11:6]`) alternam sequencialmente a cada 64 bytes**.
+* Se o Set Index utilizasse os bits mais significativos, todos os blocos contíguos de um vetor ou matriz mapeariam para o **mesmíssimo conjunto da cache**. Esse conjunto sofreria colisões e expulsões incessantes, enquanto os demais $S - 1$ conjuntos da cache permaneceriam completamente vazios e inúteis!
+* Ao indexar a cache pelos bits centrais, blocos contíguos da memória física distribuem-se ciclicamente entre conjuntos vizinhos:
+  $$\text{Bloco } 0 \to \text{Conjunto } 0, \quad \text{Bloco } 1 \to \text{Conjunto } 1, \quad \text{Bloco } 2 \to \text{Conjunto } 2$$
+* Essa dispersão homogênea minimiza colisões e maximiza a taxa de acerto do sistema.
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Endereço fatiado:** offset acha o byte, índice acha o conjunto, Tag confirma o dono;
-> 2. **Meio usa bits centrais:** blocos vizinhos espalham por conjuntos vizinhos;
-> 3. **Acerto exige dupla:** válido mais Tag igual.
+---
 
+### A Linha Física da Cache e a Condição de Hit
+
+Cada linha física dentro da matriz SRAM da cache é composta por quatro elementos de circuito:
+1. **Bloco de Dados:** 64 bytes (512 bits) de informação útil.
+2. **Campo de Tag:** $t$ bits armazenados em SRAM para confronto comparativo.
+3. **Bit de Validade (*Valid Bit*):** 1 bit que indica se a linha contém dados legítimos de um processo ativo (`1`) ou lixo residual da energização do circuito (`0`).
+4. **Bit de Modificação (*Dirty Bit*):** 1 bit que indica se a linha foi alterada por instruções de escrita e difere da DRAM (`1`).
+
+O hardware detecta um **Acerto de Cache** (*Cache Hit*) em tempo combinacional através da equação booleana:
+
+$$\text{Cache Hit} \iff (\text{Valid Bit} == 1) \land (\text{Tag}_{\text{linha}} == \text{Tag}_{\text{endereço}})$$
+
+Se o Valid Bit for `1` e todos os $t$ bits da Tag coincidirem exatamente com os bits altos do endereço solicitado, os multiplexadores utilizam os 6 bits de Block Offset para extrair os bytes requisitados da linha e entregá-los imediatamente ao pipeline da CPU.
 
 <CacheSimulator client:visible />
 
-O simulador acima responde: onde cada endereço mora?
-1. Digite um endereço e veja Tag, índice e offset se separarem.
-2. Force duas linhas no mesmo conjunto e veja a colisão.
-3. Troque a política e confira qual linha sai.
-Conclusão em 1 frase: endereço fatiado mais conjunto com vias explica acerto, conflito e expulsão.
+#### Contrato de Bancada: Inspeção do Mapeamento e Acertos no Simulador
+* **O que inspecionar:** No simulador acima, digite endereços hexadecimais e observe o fatiamento em tempo real nos campos Tag, Set Index e Offset.
+* **Controle e estímulo:** 
+  1. Insira o endereço `0x1000` (miss compulsório, alocando a linha no conjunto correspondente).
+  2. Insira o endereço `0x1020`: observe que ambos compartilham o mesmo bloco de 64 bytes (`Offset` diferente, mesma `Tag` e mesmo `Set`), resultando em um **Cache Hit** imediato sem acesso à DRAM!
+  3. Insira um endereço com a mesma `Set Index` mas `Tag` diferente e compare o comportamento entre mapeamento direto e associativo.
+* **Verificação do mecanismo:** No mapeamento direto ($E = 1$), a colisão no mesmo conjunto força a expulsão sumária da linha anterior. Em caches associativas ($E \ge 2$), o novo bloco acomoda-se em uma via livre do mesmo conjunto, preservando o dado anterior e eliminando a perda de ciclos.
 
 ---
 
-## 4.5 Mapeamento Associativo em Conjunto (N-Way), Falhas 3C e LRU
+## Parte 4E: Topologias de Associatividade, Taxonomia 3C e a Política LRU
 
-A forma como as linhas de cache são organizadas dentro de cada conjunto define a flexibilidade e o custo do hardware.
-Existem três topologias clássicas de organização de cache:
+### As Três Topologias de Organização de Cache
 
-### 1. Mapeamento Direto (Direct-Mapped: $E = 1$)
-Em uma cache de mapeamento direto, cada conjunto possui exatamente uma linha ($E = 1$).
-Cada endereço da memória principal mapeia para um único conjunto específico e pode residir apenas naquela única linha.
-A busca é extremamente rápida e consome pouca energia, pois requer apenas um comparador de Tag por acesso.
-Contudo, o mapeamento direto sofre gravemente de colisões: se um programa alternar acessos repetidos entre dois vetores cujos endereços mapeiem para o mesmo conjunto, cada acesso expulsará a linha anterior, gerando um ciclo infinito de falhas por conflito (thrashing).
+A quantidade de linhas físicas ($E$) agrupadas dentro de cada conjunto define a flexibilidade e o custo elétrico do hardware:
 
-### 2. Totalmente Associativo (Fully-Associative: $S = 1$)
-Na extremidade oposta, uma cache totalmente associativa possui apenas um único conjunto que engloba todas as linhas disponíveis ($S = 1, E = C/B$).
-Qualquer bloco de memória pode residir em qualquer linha física da cache.
-O endereço não possui bits de Set Index: ele consiste apenas na Tag e no Block Offset.
-O mapeamento totalmente associativo elimina por completo as colisões de conjunto, mas exige que o hardware compare a Tag do endereço com todas as linhas da cache em paralelo.
-Construir centenas ou milhares de comparadores de Tag em paralelo consome enorme área no chip e consome muita energia elétrica, inviabilizando essa topologia para caches L1 e L2 grandes. Seu uso industrial fica restrito a estruturas pequenas e críticas, como o dicionário de tradução de páginas do Módulo 05.
+#### 1. Mapeamento Direto (*Direct-Mapped: $E = 1$*)
+* Cada conjunto possui estritamente uma única linha ($E = 1$).
+* Cada bloco da memória física só pode residir em um local exato do silício.
+* **Vantagem:** Extrema simplicidade de circuito: requer apenas 1 comparador de Tag por conjunto e consome pouca energia.
+* **Gargalo:** Altíssima vulnerabilidade a **Falhas por Conflito** (*thrashing*). Se duas estruturas de dados (como dois vetores em um laço `a[i] + b[i]`) mapearem para o mesmo conjunto, cada iteração expulsa o bloco do outro vetor, degradando o sistema a um estado de falha permanente.
 
-### 3. Associativo em Conjunto de $N$ Vias (N-Way Set-Associative)
-O padrão da indústria moderna é o equilíbrio de engenharia entre os dois extremos.
-Em uma cache associativa em conjunto de $N$ vias, cada conjunto contém exatamente $E = N$ linhas (vias).
-Valores típicos na indústria são 4, 8 ou 16 vias (por exemplo, a cache L1 de dados de processadores Intel e AMD modernos costuma ser associativa em 8 vias ou 12 vias).
-O endereço seleciona o conjunto usando os $s$ bits do Set Index.
-Em seguida, o hardware avalia em paralelo as $N$ vias daquele conjunto utilizando $N$ comparadores de Tag.
-Isso reduz dramaticamente as colisões em comparação com o mapeamento direto, mantendo o consumo elétrico e a latência de hardware em patamares viáveis.
+#### 2. Totalmente Associativa (*Fully-Associative: $S = 1$*)
+* A cache é composta por um único conjunto gigante que engloba todas as linhas físicas ($S = 1, E = C / B$). Não existem bits de Set Index ($s = 0$).
+* Qualquer bloco de memória pode ocupar qualquer linha disponível.
+* **Vantagem:** Elimina completamente as falhas de conflito.
+* **Gargalo:** Requer que o hardware compare a Tag do endereço contra **todas as linhas da cache simultaneamente**. Uma cache de 32 KiB (512 linhas) exigiria 512 comparadores de 58 bits operando em paralelo. O consumo térmico, área de die e atraso combinacional tornam essa topologia inviável para caches de dados L1/L2, limitando seu uso a estruturas minúsculas como a TLB (*Translation Lookaside Buffer* do Módulo 05).
+
+#### 3. Associativa em Conjunto de $N$ Vias (*N-Way Set-Associative*)
+* O padrão industrial moderno de equilíbrio de engenharia: a cache divide-se em $S$ conjuntos, cada um contendo exatamente $E = N$ linhas (vias). Em processadores contemporâneos, $N$ é tipicamente 4, 8 ou 16 (por exemplo, caches L1d modernas utilizam frequentemente 8 vias ou 12 vias).
+* O Set Index seleciona o conjunto em tempo constante, e o circuito aciona **$N$ comparadores de Tag em paralelo**:
+
+```text
+Endereço: [  Tag (t bits)  |  Set Index (s bits)  |  Offset (6 bits)  ]
+                                 │
+                                 ▼
+                     Seleciona o Conjunto S
+                                 │
+         ┌───────────────────────┴───────────────────────┐
+         ▼                                               ▼
+    [ Via 0 ]                                       [ Via 1 ]
+   ┌──────────┬───────────┐                        ┌──────────┬───────────┐
+   │ Tag 0    │ Dados 64B │                        │ Tag 1    │ Dados 64B │
+   └────┬─────┴─────┬─────┘                        └────┬─────┴─────┬─────┘
+        │           │                                   │           │
+        ▼           │                                   ▼           │
+ ┌─────────────┐    │                            ┌─────────────┐    │
+ │ Comparador  │◄───┼── Tag do Endereço ────────►│ Comparador  │    │
+ └──────┬──────┘    │                            └──────┬──────┘    │
+        │           │                                   │           │
+        ▼           │                                   ▼           │
+     Match 0?       │                                Match 1?       │
+        │           │                                   │           │
+        └───────────┼──────────┬────────────────────────┘           │
+                    │          │                                    │
+                    ▼          ▼                                    ▼
+                 ┌─────────────────────────────────────────────────────┐
+                 │       Multiplexador de Seleção de Via (Hit)         │
+                 └─────────────────────────┬───────────────────────────┘
+                                           │
+                                           ▼ Dado para o Pipeline
+```
+
+---
 
 ### A Taxonomia das Falhas 3C (Hill e Smith)
-Em arquitetura de computadores, toda falha de acesso à cache é formalmente categorizada em uma de três classes fundamentais, estabelecidas por Mark Hill e Alan Jay Smith:
 
-1. **Falhas Compulsórias (Cold Misses):** Ocorre no primeiro acesso absoluto a um bloco de memória que nunca esteve na cache desde o início da execução. São inevitáveis na primeira leitura, a menos que o processador possua unidades de antecipação preditiva (hardware prefetching).
-2. **Falhas de Capacidade (Capacity Misses):** Ocorrem quando o conjunto de trabalho ativo do programa (working set) excede o tamanho total em bytes da memória cache. A cache simplesmente não possui espaço físico suficiente para reter todos os dados em uso simultâneo.
-3. **Falhas de Conflito (Conflict Misses):** Ocorrem em caches de mapeamento direto e associativas em conjunto quando múltiplos blocos de memória mapeiam para o mesmo conjunto, forçando a expulsão de uma linha mesmo quando ainda existem outras linhas e conjuntos totalmente vazios em outros setores da cache. Caches totalmente associativas não sofrem de falhas de conflito.
+Em arquitetura de computadores, toda falha de cache (*cache miss*) é formalmente classificada pelo modelo **3C**, proposto pelos pioneiros Mark Hill e Alan Jay Smith:
 
-
-### A Política de Substituição: <Term id="LRU">LRU</Term> (Least Recently Used)
-Quando a <Term id="CPU">CPU</Term> requisita um bloco de memória, o conjunto correspondente é consultado e todas as suas $N$ vias já estão ocupadas por linhas válidas, o hardware precisa decidir qual linha será expulsa para dar lugar ao novo dado.
-Essa decisão é governada pela Política de Substituição de Linha.
-
-A política mais conceituada teoricamente é a do Menos Recentemente Usado (Least Recently Used, ou <Term id="LRU">LRU</Term>).
-O algoritmo <Term id="LRU">LRU</Term> parte do princípio da localidade temporal: a linha que ficou mais tempo sem receber nenhum acesso no passado recente é a que tem menor probabilidade de ser requisitada no futuro próximo.
-Para manter o rastreamento temporal estrito em hardware com muitas vias, o custo de bits de controle cresce consideravelmente.
-Por essa razão, microarquiteturas contemporâneas frequentemente utilizam aproximações de hardware como o Pseudo-<Term id="LRU">LRU</Term> (PLRU), que emprega uma pequena árvore de bits de decisão para aproximar a escolha da linha mais antiga com custo de área mínimo.
-
-<DeepDive title="Detalhe de implementação: aproximação e escrita">
-O Pseudo-<Term id="LRU">LRU</Term> troca rastreamento exato por árvore de bits para caber no chip. Na escrita, o par Write-Back com Dirty Bit adia o tráfego até a expulsão, enquanto Write-Allocate decide se falta de escrita carrega o bloco antes. Nada aqui muda o modelo da Trilha 1, só detalha custo de área e tráfego já citados acima.
-</DeepDive>
+1. **Falhas Compulsórias (*Cold Misses*):** Ocorre no primeiríssimo acesso a um bloco de memória que nunca esteve na cache desde a inicialização do programa. É o custo obrigatório de trazer dados da DRAM.
+2. **Falhas de Capacidade (*Capacity Misses*):** Ocorrem quando o conjunto de trabalho ativo do programa (*Working Set*) ultrapassa a capacidade total de armazenamento em bytes da cache ($C$). Mesmo que a cache fosse totalmente associativa, as falhas continuariam ocorrendo por falta de espaço físico.
+3. **Falhas de Conflito (*Conflict Misses*):** Ocorrem quando múltiplos blocos de memória mapeiam para o mesmo conjunto específico, forçando a expulsão de linhas úteis mesmo quando outros conjuntos da cache ainda possuem vias completamente vazias.
 
 ---
 
-## 4.6 Políticas de Escrita, Dirty Bit e Síntese de Otimização de Software
+### Políticas de Substituição: LRU Exato versus Pseudo-LRU (PLRU)
 
-Até este ponto, concentramos nossa análise nas operações de leitura de dados.
-Contudo, o processador também executa instruções que alteram dados na memória através de operações de escrita.
-O tratamento de escritas introduz desafios críticos de coerência e tráfego de barramento.
+Quando uma falha ocorre em uma cache associativa em conjunto de $N$ vias e todas as $N$ vias do conjunto selecionado já estão ocupadas por dados válidos ($Valid = 1$), o hardware deve selecionar uma linha para ser expulsa (*eviction*).
+
+A política teoricamente ótima para explorar a localidade temporal é o **Menos Recentemente Usado** (*Least Recently Used* - **LRU**): expulsa a linha cujo último acesso está mais distante no tempo.
+
+#### O Limite de Escalabilidade do LRU Exato em Hardware:
+Rastrear a ordem de uso exata de $N$ elementos em hardware exige armazenar $\log_2(N!)$ bits de estado por conjunto e comutar redes lógicas complexas a cada leitura:
+* Para $N = 4$ vias: 5 bits de controle por conjunto;
+* Para $N = 8$ vias: 16 bits de controle por conjunto;
+* Para $N = 16$ vias: 45 bits de controle por conjunto, aumentando a capacitância e degradando o tempo de ciclo da cache L1.
+
+#### A Solução de Engenharia: Pseudo-LRU (PLRU) por Árvore de Decisão
+Processadores modernos substituem o LRU estrito pelo **Pseudo-LRU** (*PLRU*), que utiliza uma árvore binária de flags de 1 bit:
+* Para $N = 8$ vias, bastam **7 bits de controle** dispostos em uma árvore binária de profundidade 3:
+  * O bit da raiz indica se o acesso recente ocorreu no hemisfério das vias 0-3 ou 4-7;
+  * Os nós intermediários refinam a direção até apontar para a via menos recentemente utilizada.
+
+A cada acerto em uma via, as flags da árvore ao longo do caminho são invertidas para apontar na direção oposta. Em caso de expulsão, o hardware segue os ponteiros da árvore para identificar e descartar a linha correspondente, alcançando mais de 98% da eficiência do LRU estrito com fração mínima de área de silício.
+
+---
+
+## Parte 4F: Políticas de Escrita, Dirty Bit e Síntese de Engenharia
 
 ### Políticas de Escrita na Cache
-Quando uma instrução escreve em um endereço que já está presente na cache (Write Hit), existem duas abordagens arquiteturais possíveis:
 
-1. **Write-Through:** A escrita atualiza a linha na cache local e, simultaneamente, envia o dado pela esteira do barramento para ser gravado na memória principal. Essa política simplifica a garantia de integridade, pois a DRAM sempre contém uma cópia perfeitamente atualizada de cada bloco. No entanto, ela satura o barramento de memória com um fluxo constante de pequenas escritas, degradando severamente a performance global.
-2. **Write-Back:** A escrita atualiza unicamente a linha na memória cache local, sem propagar a alteração imediata para a DRAM. A linha recebe uma marcação especial através de um bit adicional no hardware denominado **Bit de Modificação ou Bit de Sujeira (Dirty Bit)**. O dado modificado permanece na cache até que um dia essa linha precise ser expulsa por um algoritmo de substituição (como o LRU). Somente no instante do despejo (eviction), se o Dirty Bit for igual a 1, o controlador grava o bloco inteiro de 64 bytes na memória principal. Se a linha não tiver sido alterada (Dirty Bit igual a 0), ela é simplesmente descartada sem tráfego na DRAM.
+Até este ponto, concentramos nossa análise em operações de leitura de dados. Quando a CPU emite uma instrução de escrita (`store`), o tratamento do dado introduz desafios críticos de tráfego de barramento e consistência:
 
-A política Write-Back é o padrão universal para caches de dados L1 e L2 em processadores contemporâneos de alto desempenho, pois reduz o tráfego do barramento de memória em mais de noventa por cento.
+#### 1. Write-Through
+* A instrução atualiza a linha na cache local e, simultaneamente, envia o bloco pela fiação externa para ser gravado na DRAM.
+* **Vantagem:** A memória principal mantém-se permanentemente atualizada e sincronizada com os registradores da CPU.
+* **Gargalo:** Saturação severa do barramento externo. A DRAM não possui vazão nem temporização para absorver o fluxo de escritas contínuas de um pipeline moderno operando a gigahertz, gerando bolhas permanentes de retenção.
 
-### Alocação em Falhas de Escrita
-Quando a escrita ocorre em um endereço que não está presente na cache (Write Miss), o hardware precisa adotar outra decisão de projeto:
-* **Write-Allocate:** O bloco que contém o endereço é primeiro carregado da DRAM para a cache (como em uma falha de leitura) e, em seguida, a escrita é realizada na cache marcando o Dirty Bit como 1. Costuma acompanhar a política Write-Back, explorando a localidade temporal e espacial de escritas consecutivas.
-* **No-Write-Allocate:** A escrita contorna a cache e grava o dado diretamente na memória principal, sem carregar o bloco para os níveis rápidos. Costuma acompanhar a política Write-Through.
+#### 2. Write-Back com Dirty Bit (Padrão Industrial)
+* A instrução atualiza unicamente a linha na memória cache local (SRAM), sem emitir nenhuma transação na DRAM externa!
+* Para indicar que a linha em SRAM difere fisicamente do conteúdo na DRAM, o hardware marca seu **Bit de Modificação (*Dirty Bit = 1*)**.
+* O dado modificado permanece na cache L1/L2 por tempo indeterminado.
+* **O Momento do Despejo (*Eviction*):** Somente quando essa linha modificada for selecionada para expulsão pelo algoritmo de substituição (LRU/PLRU), o controlador verifica:
+  * Se $\text{Dirty Bit} == 1$: o bloco inteiro de 64 bytes é gravado na DRAM externa (*writeback cycle*).
+  * Se $\text{Dirty Bit} == 0$: a linha nunca foi alterada e é sumariamente descartada do silício sem nenhum tráfego no barramento externo.
 
-### Matriz de Latências da Hierarquia de Memória
-Para consolidar a intuição de engenharia sobre o impacto de cada nível, a tabela a seguir resume as características típicas de acesso à memória em microarquiteturas contemporâneas de computadores pessoais e servidores (com escopo empírico de referência em famílias x86-64 modernas operando em regime nominal):
+A política Write-Back reduz o volume de tráfego no barramento de memória em mais de 90%, sendo a escolha universal para caches L1 e L2 de processadores de alto desempenho.
 
-| Nível da Hierarquia | Tecnologia Física | Capacidade Típica | Latência em Ciclos | Latência em Nanossegundos |
-| :--- | :--- | :--- | :--- | :--- |
-| **Registradores da CPU** | SRAM / Flip-Flops no caminho de dados | ~1 a 2 KiB | 0 a 1 ciclo | 0,3 a 0,5 ns |
-| **Cache L1 (Dados e Instruções)** | Células SRAM 6T dedicadas por núcleo | 32 a 48 KiB por núcleo | 4 a 5 ciclos | ~1 a 1,5 ns |
-| **Cache L2 (Unificada)** | Células SRAM 6T dedicadas por núcleo | 512 KiB a 2 MiB por núcleo | 12 a 14 ciclos | ~3 a 5 ns |
-| **Cache L3 (Compartilhada / LLC)** | Células SRAM de alta densidade no die | 16 a 64+ MiB no pacote | 30 a 60 ciclos | ~10 a 20 ns |
-| **Memória Principal (DRAM)** | Células DRAM 1T1C em barramento DDR | 16 a 128+ GiB externos | 150 a 300 ciclos | ~50 a 100 ns |
+---
 
-*(Nota de escopo: os números acima representam ordens de grandeza observadas em benchmarks de hardware padrão como SPEC CPU e medições de temporizadores de alta precisão; as latências reais em ciclos variam conforme a microarquitetura, o estado de energia e a topologia do barramento).*
+### Alocação em Falhas de Escrita (Write Miss)
 
+Quando a escrita é direcionada a um endereço que não reside na cache, duas estratégias determinam a resposta do controlador:
 
+* **Write-Allocate:** O bloco de 64 bytes é primeiro carregado da DRAM para a cache (exatamente como em uma falha de leitura). Em seguida, a escrita é realizada na cache e o Dirty Bit é setado para 1. Acompanha naturalmente a política Write-Back, explorando a localidade temporal de escritas subsequentes.
+* **No-Write-Allocate:** O dado é gravado diretamente na memória principal externa sem carregar a linha para a cache. Acompanha frequentemente a política Write-Through.
 
-### Quatro Diretrizes e Heurísticas de Otimização de Software
-O desempenho de software em ambientes de produção depende fortemente do alinhamento entre o código e o comportamento mecânico da hierarquia de caches.
-Ao contrário de regras universais de semântica da linguagem, as recomendações a seguir são **heurísticas de engenharia**: sua eficácia depende da distribuição da carga de trabalho, do compilador e da topologia de memória subjacente.
+---
 
-1. **Alinhe os Laços com a Disposição Linear da Memória:**
-   Priorize sempre laços que percorram vetores e estruturas na ordem contígua em que residem na memória física (como a varredura maior por linha em C). Isso maximiza o ganho por linha de cache, transformando quinze em cada dezesseis leituras consecutivas em acertos imediatos em L1.
-2. **Particione Grandes Volumes de Dados (Cache Tiling / Loop Blocking):**
-   Ao operar sobre estruturas multidimensionais que excedem o tamanho da cache (como na multiplicação de matrizes densas), particione os laços em blocos menores (tiles) dimensionados para caber inteiramente na cache L1 ou L2. Dessa forma, todos os elementos do bloco são reutilizados exaustivamente enquanto permanecem quentes na memória rápida antes do carregamento do próximo bloco.
-3. **Avalie o Layout de Dados entre Array of Structs e Struct of Arrays:**
-   Em estruturas de dados homogêneas, agrupar campos frequentemente acessados em conjunto na mesma estrutura (Array of Structs - AoS) favorece a localidade espacial. Se os algoritmos processarem apenas um atributo específico através de milhares de registros (como em motores analíticos ou simulações físicas), reorganizar para Struct of Arrays (SoA) impede que campos não utilizados ocupem espaço desnecessário nas linhas da cache L1.
-4. **Meça Sempre com Ferramentas de Observabilidade de Hardware:**
-   Otimizações de cache nunca devem ser guiadas por intuição cega. Utilize contadores de eventos de hardware no Linux através do comando `perf` para quantificar o comportamento real do sistema:
+### Matriz Consolidada da Hierarquia de Memória
+
+A tabela a seguir sumariza as características físicas, tecnológicas e temporais dos níveis da hierarquia de memória em uma arquitetura contemporânea de alto desempenho:
+
+| Nível | Tecnologia | Capacidade | Latência (Ciclos) | Latência Absoluta | Política de Escrita |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Registradores** | Flip-flops / Latches | ~1 a 2 KiB | 0 a 1 ciclo | 0,3 a 0,5 ns | Atualização direta no datapath |
+| **Cache L1d** | SRAM 6T dedicada | 32 a 48 KiB | 4 a 5 ciclos | ~1 a 1,5 ns | Write-Back / Write-Allocate |
+| **Cache L2** | SRAM 6T dedicada | 512 KiB a 2 MiB | 12 a 14 ciclos | ~3 a 5 ns | Write-Back / Write-Allocate |
+| **Cache L3 (LLC)** | SRAM de alta densidade | 16 a 64+ MiB | 30 a 60 ciclos | ~10 a 20 ns | Write-Back com filtros de snooping |
+| **Memória Principal** | DRAM 1T1C (DDR4/DDR5) | 16 a 128+ GiB | 150 a 250 ciclos | 50 a 100 ns | Memória física base com refresh |
+
+---
+
+### Quatro Diretrizes de Engenharia de Software para Caches
+
+1. **Alinhamento com o Layout Linear de Memória:**
+   Priorize laços que percorram estruturas na ordem em que residem na memória física (varredura Row-Major em C). Uma única linha de 64 bytes amortiza 15 em cada 16 acessos de inteiros de 32 bits, garantindo mais de 93% de acertos imediatos.
+2. **Particionamento em Blocos de Cache (*Cache Tiling / Loop Blocking*):**
+   Ao operar sobre estruturas multidimensionais extensas que excedem a capacidade de L1/L2 (como multiplicação de matrizes densas), particione o algoritmo em blocos menores (*tiles*) dimensionados para caber inteiramente na cache L1. Isso permite que todos os elementos sejam reutilizados exaustivamente enquanto estão quentes na SRAM, eliminando falhas de capacidade.
+3. **Avaliação entre Array of Structs (AoS) e Struct of Arrays (SoA):**
+   Agrupar campos acessados em conjunto na mesma `struct` (AoS) maximiza a localidade espacial. Se os algoritmos processarem apenas um atributo específico ao longo de milhões de registros (motores analíticos e física), reorganizar para Struct of Arrays (SoA) impede que campos não utilizados ocupem espaço nas linhas de cache de 64 bytes.
+4. **Auditoria com Contadores de Eventos de Hardware (`perf`):**
+   Utilize contadores reais no Linux para medir as taxas de falha em tempo de execução:
    ```bash
    perf stat -e L1-dcache-load-misses,L1-dcache-loads,LLC-load-misses,LLC-loads ./seu_programa
    ```
-   A relação entre falhas de cache L1 e falhas no último nível de cache (Last-Level Cache, ou LLC) indicará com exatidão matemática se o gargalo da aplicação reside na CPU ou na Barreira da Memória.
+   A proporção de faltas no último nível de cache (LLC) revela objetivamente se a aplicação está estrangulada pelo caminho de dados ou pela Barreira da Memória.
 
 ---
 
-## 4.7 Leitura guiada: por que linha vence coluna
+### Leitura Guiada Analítica: Por Que Linha Vence Coluna
 
-Você não precisa compilar nem medir nada. O mesmo programa soma 16 MiB de matriz de dois jeitos. Por linha, cada falta de 64 bytes alimenta 16 inteiros. Por coluna, cada acesso pula milhares de bytes e desperdiça a linha.
-
-Par mínimo 1: o laço que acerta.
+Considere uma matriz quadrada de inteiros de 32 bits ocupando 16 MiB de memória contígua:
 
 ```c
+// Varredura por Linha (Row-Major)
 for (int i = 0; i < 2048; i++)
-  for (int j = 0; j < 2048; j++) total += m[i][j];
-```
+    for (int j = 0; j < 2048; j++) total += m[i][j];
 
-Par mínimo 2: o laço que erra.
-
-```c
+// Varredura por Coluna (Column-Major)
 for (int j = 0; j < 2048; j++)
-  for (int i = 0; i < 2048; i++) total += m[i][j];
+    for (int i = 0; i < 2048; i++) total += m[i][j];
 ```
 
-Leitura dos contadores, opcional e fora da Trilha 1: `perf stat` com `L1-dcache-load-misses` mostra cerca de 6,25% de faltas por linha contra quase 100% por coluna neste padrão típico. A conclusão do hardware se mantém: linha de cache é a unidade de troca, e a parede da memória pune quem desperdiça a linha.
+* **Na Varredura por Linha:** Cada falha de cache traz 64 bytes (16 inteiros). O hardware sofre 1 falta compulsória a cada 16 acessos (taxa de falta de 6,25%). O pipeline opera próximo à capacidade máxima.
+* **Na Varredura por Coluna:** O acesso salta $2048 \times 4 = 8192$ bytes a cada iteração. A linha de 64 bytes recém-carregada é descartada antes de qualquer reuso. A taxa de faltas salta para praticamente 100%, forçando a CPU a esperar 200 ciclos a cada iteração.
 
-Com isso, a cópia perto resolve a velocidade. Mas e quando dois programas juram que moram no mesmo endereço? No Módulo 05, cada processo ganha um mapa privado sobre o terreno único da memória.
+---
+
+### A Próxima Barreira: Da Memória Física ao Isolamento de Processos
+
+A hierarquia de caches em múltiplos níveis de SRAM mascara a Barreira da Memória, permitindo que a CPU execute bilhões de instruções por segundo sobre o espaço de endereçamento linear do chip.
+
+Contudo, essa memória física é um recurso plano, compartilhado e desprotegido. Se dois programas independentes em execução tentarem acessar o mesmo endereço de memória `0x00400000`, ou se um programa com falha de ponteiro sobrescrever os dados de outro processo ou do próprio sistema operacional, o computador entra em colapso catastrófico.
+
+Como o processador e o sistema operacional podem fornecer a cada programa em execução a ilusão determinística de possuir uma memória contígua privada gigantesca, isolando processos e mapeando endereços sob demanda sem conflito?
+
+Essa necessidade fundamental introduz o **Módulo 05: Memória Virtual, MMU e Paginação**.
+
+---
 
 <div class="mt-16 pt-8 border-t border-ash flex flex-col sm:flex-row items-center justify-between gap-4">
   <a
@@ -406,7 +592,7 @@ Com isso, a cópia perto resolve a velocidade. Mas e quando dois programas juram
     <span class="group-hover:-translate-x-1 transition-transform text-base">&larr;</span>
     <div class="text-left">
       <div class="text-[10px] text-smoke uppercase tracking-wider">&larr; Módulo Anterior</div>
-      <div class="font-semibold text-off-black">03. Microarquitetura, Pipelining e Hazards</div>
+      <div class="font-semibold text-off-black">03. Arquitetura de Processadores: Pipelining e Hazards</div>
     </div>
   </a>
 
@@ -421,4 +607,3 @@ Com isso, a cópia perto resolve a velocidade. Mas e quando dois programas juram
     <span class="group-hover:translate-x-1 transition-transform text-base">&rarr;</span>
   </a>
 </div>
-

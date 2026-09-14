@@ -1,4 +1,12 @@
 ---
+/**
+ * Aprofundamento opcional de engenharia.
+ *
+ * Nativo em details/summary: funciona sem JS, é operável por teclado e
+ * respeita impressão e reduced-motion. O caminho principal do módulo nunca
+ * depende de abrir este bloco. Abre sozinho quando o hash da URL aponta
+ * para dentro dele.
+ */
 interface Props {
   title: string;
 }
@@ -6,23 +14,144 @@ interface Props {
 const { title } = Astro.props;
 ---
 
-<div class="my-8 rounded-card border border-ash bg-white p-6 md:p-8 text-graphite shadow-sm transition-all">
-  <div class="flex items-center gap-3 border-b border-ash pb-4 mb-5">
-    <span class="rounded-full bg-periwinkle-mist p-2 text-lake-blue border border-lake-blue/20">
+<details class="deepdive my-8 rounded-card border border-ash bg-white p-6 md:p-8 text-graphite shadow-sm" data-deepdive>
+  <summary class="flex cursor-pointer list-none items-center gap-3 border-b border-ash pb-4 mb-5 [&::-webkit-details-marker]:hidden">
+    <span class="rounded-full bg-periwinkle-mist p-2 text-lake-blue border border-lake-blue/20" aria-hidden="true">
       <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10" />
         <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
       </svg>
     </span>
-    <div class="flex-1">
-      <div class="text-[11px] uppercase tracking-wider font-mono text-smoke">
-        Aprofundamento de Engenharia : Indo Mais Fundo no Hardware
-      </div>
-      <div class="font-serif text-xl font-normal text-off-black tracking-tight mt-0.5">{title}</div>
-    </div>
-  </div>
+    <span class="flex-1">
+      <span class="block text-[11px] uppercase tracking-wider font-mono text-smoke">
+        Aprofundamento opcional
+      </span>
+      <span class="block font-serif text-xl font-normal text-off-black tracking-tight mt-0.5">{title}</span>
+    </span>
+    <span class="rounded-full border border-ash px-3 py-1 font-mono text-xs text-smoke" aria-hidden="true" data-deepdive-hint>
+      abrir
+    </span>
+  </summary>
 
   <div class="space-y-3 font-mono text-xs md:text-sm leading-relaxed text-graphite">
     <slot />
   </div>
-</div>
+</details>
+
+<script>
+  (function () {
+    if (typeof window === "undefined") return;
+    const doc = window.document;
+    const flag = window as unknown as Record<string, unknown>;
+
+    function resolveTarget(): Element | null {
+      const raw = window.location.hash.slice(1);
+      if (!raw) return null;
+      let id = raw;
+      try {
+        id = decodeURIComponent(raw);
+      } catch {
+        return null;
+      }
+      if (!id) return null;
+      try {
+        return doc.getElementById(id);
+      } catch {
+        return null;
+      }
+    }
+
+    function isInViewport(el: Element): boolean {
+      const rect = el.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight;
+    }
+
+    function openForHash(scrollIfNeeded: boolean): void {
+      const target = resolveTarget();
+      if (!target) return;
+      // Abre a cadeia inteira de ancestors opcionais, não só o closest.
+      let node: Element | null = target;
+      let opened = false;
+      while (node) {
+        const box: Element | null = node instanceof HTMLDetailsElement ? node : node.closest("details");
+        if (!box || !(box instanceof HTMLDetailsElement)) break;
+        if (!box.open) {
+          box.open = true;
+          opened = true;
+        }
+        node = box.parentElement;
+      }
+      syncHints(doc);
+      // Rola ao alvo só quando foi preciso abrir caminho até ele.
+      if (opened && scrollIfNeeded && target instanceof HTMLElement && !isInViewport(target)) {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        target.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+      }
+    }
+
+    function syncHints(scope: ParentNode): void {
+      for (const box of scope.querySelectorAll("[data-deepdive]")) {
+        if (!(box instanceof HTMLDetailsElement)) continue;
+        const hint = box.querySelector("[data-deepdive-hint]");
+        if (hint) hint.textContent = box.open ? "fechar" : "abrir";
+      }
+    }
+
+    if (!flag.__teachyourselfDeepdive) {
+      flag.__teachyourselfDeepdive = true;
+      window.addEventListener("hashchange", () => openForHash(true));
+      doc.addEventListener(
+        "toggle",
+        (ev) => {
+          const box = ev.target;
+          if (box instanceof HTMLDetailsElement && box.hasAttribute("data-deepdive")) syncHints(doc);
+        },
+        true,
+      );
+      let printState: Array<{ box: HTMLDetailsElement; wasOpen: boolean }> | null = null;
+      window.addEventListener("beforeprint", () => {
+        printState = [];
+        for (const box of doc.querySelectorAll("[data-deepdive]")) {
+          if (!(box instanceof HTMLDetailsElement)) continue;
+          printState.push({ box, wasOpen: box.open });
+          box.open = true;
+        }
+      });
+      window.addEventListener("afterprint", () => {
+        if (!printState) return;
+        for (const { box, wasOpen } of printState) box.open = wasOpen;
+        printState = null;
+        syncHints(doc);
+      });
+      if (doc.readyState === "loading") {
+        doc.addEventListener("DOMContentLoaded", () => openForHash(false));
+      } else {
+        openForHash(false);
+      }
+      syncHints(doc);
+    } else {
+      openForHash(false);
+      syncHints(doc);
+    }
+  })();
+</script>
+
+<style>
+  details.deepdive > summary:focus-visible {
+    outline: 2px solid #2b59d1;
+    outline-offset: 4px;
+    border-radius: 12px;
+  }
+  @media print {
+    details.deepdive {
+      break-inside: avoid;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    details.deepdive,
+    details.deepdive > summary {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>

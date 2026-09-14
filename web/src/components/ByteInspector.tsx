@@ -66,18 +66,18 @@ export default function ByteInspector({
     if (isLittleEndian) {
       // Little Endian: LSB no menor endereço
       return [
-        { addr: `0x${base.toString(16)}`, val: b0, role: 'LSB', weight: '2^0', cycle: 'Ciclo 1 (ALU lê direto)' },
-        { addr: `0x${(base + 1).toString(16)}`, val: b1, role: 'Byte 1', weight: '2^8', cycle: 'Ciclo 2' },
-        { addr: `0x${(base + 2).toString(16)}`, val: b2, role: 'Byte 2', weight: '2^16', cycle: 'Ciclo 3' },
-        { addr: `0x${(base + 3).toString(16)}`, val: b3, role: 'MSB', weight: '2^24', cycle: 'Ciclo 4' },
+        { addr: `0x${base.toString(16)}`, val: b0, role: 'LSB', weight: '2^0', cycle: 'Endereço base (ponta leve aqui)' },
+        { addr: `0x${(base + 1).toString(16)}`, val: b1, role: 'Byte 1', weight: '2^8', cycle: 'Base + 1' },
+        { addr: `0x${(base + 2).toString(16)}`, val: b2, role: 'Byte 2', weight: '2^16', cycle: 'Base + 2' },
+        { addr: `0x${(base + 3).toString(16)}`, val: b3, role: 'MSB', weight: '2^24', cycle: 'Base + 3' },
       ];
     } else {
       // Big Endian: MSB no menor endereço
       return [
-        { addr: `0x${base.toString(16)}`, val: b3, role: 'MSB', weight: '2^24', cycle: 'Não pode somar (bloqueado)' },
-        { addr: `0x${(base + 1).toString(16)}`, val: b2, role: 'Byte 2', weight: '2^16', cycle: 'Aguardando LSB' },
-        { addr: `0x${(base + 2).toString(16)}`, val: b1, role: 'Byte 1', weight: '2^8', cycle: 'Aguardando LSB' },
-        { addr: `0x${(base + 3).toString(16)}`, val: b0, role: 'LSB', weight: '2^0', cycle: 'Ciclo 1 (precisa offset +3)' },
+        { addr: `0x${base.toString(16)}`, val: b3, role: 'MSB', weight: '2^24', cycle: 'Endereço base (ponta pesada aqui)' },
+        { addr: `0x${(base + 1).toString(16)}`, val: b2, role: 'Byte 2', weight: '2^16', cycle: 'Base + 1' },
+        { addr: `0x${(base + 2).toString(16)}`, val: b1, role: 'Byte 1', weight: '2^8', cycle: 'Base + 2' },
+        { addr: `0x${(base + 3).toString(16)}`, val: b0, role: 'LSB', weight: '2^0', cycle: 'Base + 3 (ponta leve aqui)' },
       ];
     }
   }, [rawBytes, isLittleEndian, baseAddress]);
@@ -232,13 +232,13 @@ export default function ByteInspector({
       <div className="rounded-2xl bg-parchment p-5 border border-ash font-mono text-xs md:text-sm text-graphite leading-relaxed">
         {isLittleEndian ? (
           <div>
-            <strong className="text-off-black font-semibold">Vantagem Mecânica do Little Endian no Hardware: </strong>
-            O ponteiro base <code className="text-lake-blue">{baseAddress}</code> contém exatamente o <strong className="text-off-black">LSB (0x{rawBytes.b0.toString(16).padStart(2, '0').toUpperCase()})</strong>. No primeiro ciclo de clock, a CPU lê o endereço base e envia o byte diretamente para o somador da ALU com transporte (carry) inicial zero. A CPU avança a leitura para a frente sequencialmente.
+            <strong className="text-off-black font-semibold">Leitura por tipo menor sem deslocamento: </strong>
+            O ponteiro base <code className="text-lake-blue">{baseAddress}</code> contém o <strong className="text-off-black">LSB (0x{rawBytes.b0.toString(16).padStart(2, '0').toUpperCase()})</strong>. Ler esse mesmo endereço como tipo mais estreito entrega direto a porção de menor peso, sem somar deslocamento. Somadores modernos operam sobre a palavra inteira em paralelo: nenhuma ordem é mais rápida por causa do transporte.
           </div>
         ) : (
           <div>
-            <strong className="text-off-black font-semibold">Gargalo Mecânico do Big Endian no Hardware: </strong>
-            O ponteiro base <code className="text-lake-blue">{baseAddress}</code> contém o <strong className="text-off-black">MSB (0x{rawBytes.b3.toString(16).padStart(2, '0').toUpperCase()})</strong>. Como a soma depende dos carries anteriores, a CPU não pode somar o MSB de imediato. Ela precisa calcular o offset (+3) para buscar o LSB no endereço <code className="text-lake-blue">0x1003</code> e retroceder a leitura.
+            <strong className="text-off-black font-semibold">Ordem da rede, endereço da ponta pesada: </strong>
+            O ponteiro base <code className="text-lake-blue">{baseAddress}</code> contém o <strong className="text-off-black">MSB (0x{rawBytes.b3.toString(16).padStart(2, '0').toUpperCase()})</strong>. Para ler só os bytes leves a partir da base, o compilador soma o deslocamento até <code className="text-lake-blue">0x1003</code>. É a ordem padronizada na rede (network byte order).
           </div>
         )}
       </div>

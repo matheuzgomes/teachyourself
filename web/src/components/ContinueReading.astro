@@ -1,0 +1,120 @@
+---
+/**
+ * Retomada de leitura: mostra ONDE a pessoa parou, nunca o quanto aprendeu.
+ *
+ * Sem JS: nada é exibido (retomar é um atalho opcional; o conteúdo segue
+ * acessível pelos catálogos). Com JS: lê a posição validada do localStorage
+ * e exibe um link interno com o contexto da seção. Sem autoplay, sem
+ * rolagem forçada, sem marcar visitado como aprendido.
+ */
+interface Props {
+  modules: { track: string; slug: string; title: string }[];
+  /** Caminho da página atual (raiz do site), para não sugerir a si mesma. */
+  currentPath?: string | null;
+}
+
+const { modules, currentPath = null } = Astro.props;
+const payload = JSON.stringify({ modules, currentPath }).replace(/</g, "\\u003c");
+---
+
+<section
+  aria-label="Continuar leitura"
+  class="hidden rounded-card border border-lake-blue/30 bg-white p-6 shadow-sm"
+  data-continue-reading
+>
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <span class="font-mono text-xs uppercase tracking-widest text-smoke">Você parou aqui</span>
+      <p class="my-1 font-serif text-xl text-off-black" data-continue-title></p>
+      <p class="my-0 font-mono text-xs text-smoke" data-continue-context></p>
+      <p class="mt-2 mb-0 font-sans text-xs text-smoke">
+        Posição de leitura guardada só neste navegador. Não indica domínio do assunto.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a
+        href="#"
+        class="min-h-[44px] inline-flex items-center rounded-full bg-off-black px-6 py-3 font-mono text-xs uppercase tracking-wider text-white hover:bg-black active:scale-[0.98] transition-all"
+        data-continue-link
+      >
+        Continuar leitura
+      </a>
+      <button
+        type="button"
+        class="min-h-[44px] rounded-full border border-ash bg-white px-5 py-3 font-mono text-xs uppercase tracking-wider text-graphite hover:text-off-black hover:border-off-black transition-all"
+        data-continue-dismiss
+      >
+        Dispensar
+      </button>
+    </div>
+  </div>
+
+  <script type="application/json" is:inline data-continue-data set:html={payload} />
+
+  <script>
+    import {
+      buildResumeHref,
+      clearReadingPosition,
+      matchCatalogEntry,
+      normalizeBasePath,
+      normalizeInternalPath,
+      readReadingPosition,
+    } from "../utils/reading-position";
+    import type { CatalogEntry } from "../utils/reading-position";
+
+    (function () {
+      const root = document.querySelector("[data-continue-reading]");
+      if (!root || root.hasAttribute("data-resume-ready")) return;
+      root.setAttribute("data-resume-ready", "true");
+      const dataEl = root.querySelector("[data-continue-data]");
+      const titleEl = root.querySelector("[data-continue-title]");
+      const ctxEl = root.querySelector("[data-continue-context]");
+      const linkEl = root.querySelector("[data-continue-link]");
+      const dismissEl = root.querySelector("[data-continue-dismiss]");
+      if (!dataEl || !titleEl || !ctxEl || !(linkEl instanceof HTMLAnchorElement) || !(dismissEl instanceof HTMLButtonElement)) return;
+
+      let config: { modules: CatalogEntry[]; currentPath: string | null } = { modules: [], currentPath: null };
+      try {
+        config = JSON.parse(dataEl.textContent ?? "{}");
+      } catch {
+        return;
+      }
+
+      const base = normalizeBasePath(import.meta.env.BASE_URL || "/");
+      const baseArg = base === "" ? "/" : base;
+      let position = null;
+      try {
+        position = readReadingPosition(window.localStorage, baseArg);
+      } catch {
+        return;
+      }
+      if (!position) return;
+
+      // Só exibe o que o catálogo conhece: sem caminhos arbitrários.
+      const mod = matchCatalogEntry(config.modules, position.path);
+      if (!mod) return;
+
+      const href = buildResumeHref(baseArg, position);
+      if (!href) return;
+      // Não sugere a página atual sem âncora de seção.
+      const current = config.currentPath ? normalizeInternalPath(config.currentPath, baseArg) : null;
+      if (current && position.path === current && !position.sectionId) return;
+
+      titleEl.textContent = mod.title;
+      ctxEl.textContent = position.sectionLabel
+        ? `Seção: ${position.sectionLabel}`
+        : "Topo do módulo";
+      linkEl.setAttribute("href", href);
+      root.classList.remove("hidden");
+
+      dismissEl.addEventListener("click", () => {
+        try {
+          clearReadingPosition(window.localStorage, baseArg);
+        } catch {
+          // Retomar é opcional.
+        }
+        root.classList.add("hidden");
+      });
+    })();
+  </script>
+</section>

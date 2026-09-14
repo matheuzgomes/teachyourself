@@ -1,0 +1,761 @@
+{
+  "$id": "https://teachyourself.dev/data/curriculum.json",
+  "contract_version": "0.1.0",
+  "description": "Contrato curricular versionado do percurso-piloto. Fonte única para Astro e validadores Python. Leitura concluída NAO equivale a dominio; retomada local guarda posição de leitura, nunca nível de competência.",
+  "audience": {
+    "profile": "Pessoas que trabalham com software ou estudam computação, do estágio ao nível sênior, e querem entender os mecanismos internos das máquinas.",
+    "assumes": [
+      "leitura atenta em linguagem natural"
+    ],
+    "does_not_assume": [
+      "programação prévia, variáveis, funções, laços ou sintaxe de qualquer linguagem",
+      "noções de informática ou eletrônica",
+      "representação binária e aritmética modular",
+      "organização de memória e registradores",
+      "chamadas de sistema e privilégio",
+      "concorrência em hardware",
+      "uso avançado de terminal e depuradores"
+    ],
+    "terminal_required": false,
+    "terminal_note": "Terminal é opcional: todo objetivo obrigatório é atingível só com leitura e simuladores na página, sem executar comandos."
+  },
+  "reading_vs_mastery": "Progresso de leitura (página visitada, seção expandida, simulador aberto) não certifica domínio do mecanismo. Sondas de transferência e rastreamento de sinais são evidências de estudo, não avaliação somativa. Nenhum campo deste contrato registra nota, percentual ou ranking por pessoa leitora.",
+  "tracks": [
+    {
+      "id": "01-hardware-and-os",
+      "title": "01. Sistemas de Computação: Do Bit ao Kernel",
+      "description": "Da física do transistor ao kernel: portas lógicas, representação de dados, assembly, pipelining, caches, memória virtual, processos, concorrência e durabilidade de E/S.",
+      "catalog_href": "/tracks/01-hardware-and-os",
+      "status": "active"
+    },
+    {
+      "id": "02-networks",
+      "title": "02. Redes e Comunicação de Dados",
+      "description": "Do envelope IPv4 e DNS ao princípio fim a fim: como pacotes atravessam hardwares incompatíveis e onde as garantias realmente residem.",
+      "catalog_href": "/tracks/02-networks",
+      "status": "active"
+    }
+  ],
+  "planned_tracks": [
+    {
+      "id": "03-databases",
+      "title": "03. Bancos de Dados e Storage Engines",
+      "description": "Planejada: B-Trees paginadas em disco, LSM-Trees e SSTables, write-ahead logging com o protocolo ARIES e isolamento transacional MVCC.",
+      "catalog_href": null,
+      "status": "planned"
+    },
+    {
+      "id": "04-distributed-systems",
+      "title": "04. Sistemas Distribuídos e Consenso",
+      "description": "Planejada: relógios lógicos de Lamport, impossibilidade FLP, teorema CAP, Paxos clássico e o algoritmo de consenso Raft.",
+      "catalog_href": null,
+      "status": "planned"
+    },
+    {
+      "id": "05-algorithms-and-design",
+      "title": "05. Algoritmos e Design de Software",
+      "description": "Planejada: information hiding de Parnas, módulos profundos de Ousterhout, interpretador metacircular do SICP e combinatória formal.",
+      "catalog_href": null,
+      "status": "planned"
+    }
+  ],
+  "sources": [
+    {
+      "id": "nand2tetris-nisan-schocken",
+      "kind": "textbook",
+      "role": "primary",
+      "citation": "Nisan, N.; Schocken, S. The Elements of Computing Systems. 2nd ed. 2021. Capítulos 1 a 3 (portas booleanas, somadores e ALU, registradores sincronizados por clock).",
+      "url": "https://www.nand2tetris.org/",
+      "corpus_ref": "knowledge/sources/textbooks/nand2tetris-nisan-schocken.yaml (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Fonte principal do módulo 00: universalidade funcional da porta NAND e construção de portas booleanas, somadores, ALU e registradores sincronizados por clock.",
+      "used_by": [
+        "00-logica-digital-transistores-circuitos-clock"
+      ]
+    },
+    {
+      "id": "weste-harris-cmos",
+      "kind": "textbook",
+      "role": "supporting",
+      "citation": "Weste, N. H. E.; Harris, D. M. CMOS VLSI Design: A Circuits and Systems Perspective. 4th ed. 2010.",
+      "corpus_ref": "knowledge/sources/textbooks/weste-harris-cmos.yaml (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Apoio pontual ao módulo 00: física de MOSFETs NMOS/PMOS e par complementar. No modelo ideal, o inversor CMOS não consome corrente estática em repouso; em dispositivos reais há correntes de fuga (leakage), além de restrições de setup/hold e atraso de propagação.",
+      "used_by": [
+        "00-logica-digital-transistores-circuitos-clock"
+      ]
+    },
+    {
+      "id": "petzold-code",
+      "kind": "textbook",
+      "role": "supporting",
+      "citation": "Petzold, C. Code: The Hidden Language of Computer Hardware and Software. 2nd ed. 2022.",
+      "corpus_ref": "knowledge/sources/textbooks/petzold-code.yaml (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Apoio pontual ao módulo 00: construção progressiva de circuitos lógicos a partir de interruptores e transistores; exposição intuitiva de somadores, latches, flip-flops e clock.",
+      "used_by": [
+        "00-logica-digital-transistores-circuitos-clock"
+      ]
+    },
+    {
+      "id": "csapp-bryant-ohallaron",
+      "kind": "textbook",
+      "role": "primary",
+      "citation": "Bryant, R. E.; O'Hallaron, D. R. Computer Systems: A Programmer's Perspective. 3rd ed. 2016. Capítulo 2 (representação de inteiros, aritmética modular, complemento de dois, overflow e ponto flutuante).",
+      "url": "https://csapp.cs.cmu.edu/",
+      "corpus_ref": "knowledge/sources/textbooks/csapp-bryant-ohallaron.yaml (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Fonte principal do módulo 01: progressão bits -> aritmética inteira -> ponto flutuante; largura fixa, overflow e limites de representação.",
+      "used_by": [
+        "01-representacao-informacao-inteiros-ponto-flutuante"
+      ]
+    },
+    {
+      "id": "ieee-754-2019",
+      "kind": "standard",
+      "role": "supporting",
+      "citation": "IEEE Std 754-2019, Standard for Floating-Point Arithmetic.",
+      "url": "https://standards.ieee.org/ieee/754/6210/",
+      "corpus_ref": "knowledge/sources/standards/ieee-754-2019.yaml (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Formato, arredondamento e casos especiais do ponto flutuante (apoio pontual ao módulo 01).",
+      "used_by": [
+        "01-representacao-informacao-inteiros-ponto-flutuante"
+      ]
+    },
+    {
+      "id": "goldberg-1991-fp",
+      "kind": "paper",
+      "role": "supporting",
+      "citation": "Goldberg, D. What Every Computer Scientist Should Know About Floating-Point Arithmetic. 1991.",
+      "url": "https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html",
+      "corpus_ref": "knowledge/sources/seminal-papers/ (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Aprofundamento pontual sobre erro e arredondamento em ponto flutuante (apoio ao módulo 01).",
+      "used_by": [
+        "01-representacao-informacao-inteiros-ponto-flutuante"
+      ]
+    },
+    {
+      "id": "sterbenz-1974-fp",
+      "kind": "textbook",
+      "role": "supporting",
+      "citation": "Sterbenz, P. H. Floating-Point Computation. Prentice-Hall, 1974 (livro de apoio; lema de Sterbenz citado no módulo 01).",
+      "corpus_ref": "knowledge/sources/seminal-papers/ (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Livro de apoio pontual: lema de Sterbenz sobre subtração exata em ponto flutuante (módulo 01).",
+      "used_by": [
+        "01-representacao-informacao-inteiros-ponto-flutuante"
+      ]
+    },
+    {
+      "id": "sei-cert-c-int",
+      "kind": "standard",
+      "role": "supporting",
+      "citation": "SEI CERT C Coding Standard, regras INT31/FLP34 (conversões inteiras e ponto flutuante).",
+      "url": "https://wiki.sei.cmu.edu/confluence/display/c/SEI+CERT+C+Coding+Standard",
+      "corpus_ref": "knowledge/sources/standards/sei-cert-c-int31.yaml e sei-cert-c-flp34.yaml (local, ignorado no git; nao dependencia de CI)",
+      "covers": "Armadilhas de casting e conversão em C (apoio pontual ao módulo 01).",
+      "used_by": [
+        "01-representacao-informacao-inteiros-ponto-flutuante"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "slug": "00-logica-digital-transistores-circuitos-clock",
+      "track": "01-hardware-and-os",
+      "title": "00. Da Chave ao Clock: Lógica Digital, Circuitos e Registradores",
+      "description": "Física do transistor MOSFET, tecnologia CMOS, portas universais NAND, somadores, latches, flip-flops e o relógio do sistema.",
+      "status": "active",
+      "study_state": "pilot",
+      "review_status": "agent-reviewed; avaliação humana pendente",
+      "sources": [
+        "nand2tetris-nisan-schocken",
+        "weste-harris-cmos",
+        "petzold-code"
+      ],
+      "primary_source": "nand2tetris-nisan-schocken",
+      "objectives": [
+        {
+          "id": "bit",
+          "label": "Explicar o bit como informação 0/1 representada por níveis elétricos no modelo do módulo",
+          "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#bit"
+        },
+        {
+          "id": "soma-binaria",
+          "label": "Somar dois bits com meio-somador e cadeias com somador completo",
+          "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#soma-binaria"
+        },
+        {
+          "id": "estado",
+          "label": "Descrever como a realimentação guarda estado (latch) e como o flip-flop trava um valor por borda de clock",
+          "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#estado"
+        },
+        {
+          "id": "clock",
+          "label": "Explicar o papel do clock e o orçamento do período (propagação, cálculo e setup) na sincronização",
+          "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#clock"
+        }
+      ],
+      "prerequisites": [
+        {
+          "id": "somar-no-papel",
+          "label": "Somar números no papel, incluindo o vai-um entre colunas",
+          "href": null
+        }
+      ],
+      "sections": [
+        {
+          "id": "bit",
+          "label": "O bit como informação 0/1, chave, inversor e NAND",
+          "requires": [],
+          "provides": [
+            "bit",
+            "chave",
+            "transistor",
+            "inversor",
+            "NAND"
+          ],
+          "optional": false
+        },
+        {
+          "id": "soma-binaria",
+          "label": "Soma binária com transporte e ALU",
+          "requires": [
+            "bit"
+          ],
+          "provides": [
+            "soma",
+            "ALU"
+          ],
+          "optional": false
+        },
+        {
+          "id": "estado",
+          "label": "Guarda de estado por realimentação",
+          "requires": [
+            "soma"
+          ],
+          "provides": [
+            "latch",
+            "flip-flop",
+            "registrador"
+          ],
+          "optional": false
+        },
+        {
+          "id": "clock",
+          "label": "Clock e orçamento temporal",
+          "requires": [
+            "flip-flop"
+          ],
+          "provides": [
+            "clock"
+          ],
+          "optional": false
+        }
+      ],
+      "has_inline_navigation": false,
+      "concepts": {
+        "known": [
+          "leitura em linguagem natural",
+          "somar no papel"
+        ],
+        "current": [
+          "bit",
+          "chave",
+          "transistor",
+          "inversor",
+          "NAND",
+          "soma",
+          "ALU",
+          "latch",
+          "flip-flop",
+          "clock",
+          "registrador"
+        ],
+        "deferred": [
+          "byte",
+          "overflow",
+          "complemento de dois",
+          "assembly",
+          "ISA",
+          "ABI",
+          "cache",
+          "memória virtual",
+          "C",
+          "GDB"
+        ]
+      }
+    },
+    {
+      "slug": "01-representacao-informacao-inteiros-ponto-flutuante",
+      "track": "01-hardware-and-os",
+      "title": "01. Representação de Informação, Inteiros e Ponto Flutuante",
+      "description": "Dissecção física do byte, endianness, complemento de dois, perigos de casting em C e o padrão IEEE 754.",
+      "status": "active",
+      "study_state": "pilot",
+      "review_status": "agent-reviewed; avaliação humana pendente",
+      "sources": [
+        "csapp-bryant-ohallaron",
+        "ieee-754-2019",
+        "goldberg-1991-fp",
+        "sterbenz-1974-fp",
+        "sei-cert-c-int"
+      ],
+      "primary_source": "csapp-bryant-ohallaron",
+      "objectives": [
+        {
+          "id": "largura-fixa",
+          "label": "Prever quando uma conta estoura a largura fixa (overflow) e o que a máquina faz nesse caso",
+          "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#largura-fixa"
+        },
+        {
+          "id": "complemento-de-dois",
+          "label": "Converter negativos em complemento de dois e explicar como o somador subtrai com inversão e transporte inicial",
+          "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#complemento-de-dois"
+        },
+        {
+          "id": "bytes",
+          "label": "Ler bytes na memória linear, em hexadecimal, e prever a ordem dos bytes (endianness)",
+          "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#bytes"
+        },
+        {
+          "id": "ponto-flutuante",
+          "label": "Descrever o formato IEEE 754, o arredondamento e os casos especiais como subnormais",
+          "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#ponto-flutuante"
+        }
+      ],
+      "prerequisites": [
+        {
+          "id": "bit",
+          "label": "Bit como nível elétrico e soma binária com transporte (módulo 00)",
+          "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#soma-binaria"
+        }
+      ],
+      "sections": [
+        {
+          "id": "largura-fixa",
+          "label": "Largura fixa e overflow",
+          "requires": [
+            "bit",
+            "soma"
+          ],
+          "provides": [
+            "byte",
+            "inteiro de largura fixa",
+            "overflow",
+            "transporte de saída"
+          ],
+          "optional": false
+        },
+        {
+          "id": "complemento-de-dois",
+          "label": "Negativos em complemento de dois",
+          "requires": [
+            "inteiro de largura fixa"
+          ],
+          "provides": [
+            "complemento de dois",
+            "subtração no somador",
+            "sinal de estouro",
+            "flags de condição",
+            "extensão de largura"
+          ],
+          "optional": false
+        },
+        {
+          "id": "bytes",
+          "label": "Bytes, hexadecimal e endianness",
+          "requires": [
+            "byte",
+            "complemento de dois"
+          ],
+          "provides": [
+            "memória linear",
+            "hexadecimal",
+            "endianness",
+            "variável e tipo em C",
+            "casting",
+            "shift"
+          ],
+          "optional": false
+        },
+        {
+          "id": "ponto-flutuante",
+          "label": "Ponto flutuante IEEE 754",
+          "requires": [
+            "casting",
+            "overflow"
+          ],
+          "provides": [
+            "fração binária",
+            "IEEE 754",
+            "arredondamento",
+            "conversão validada"
+          ],
+          "optional": false
+        }
+      ],
+      "has_inline_navigation": true,
+      "concepts": {
+          "known": [
+            "somar no papel",
+            "bit",
+            "chave",
+            "transistor",
+            "porta lógica",
+            "soma",
+            "somador completo",
+            "cascata",
+            "latch",
+            "flip-flop",
+            "registrador",
+            "clock"
+          ],
+          "current": [
+            "byte",
+            "inteiro de largura fixa",
+            "overflow",
+            "transporte de saída",
+            "complemento de dois",
+            "subtração no somador",
+            "sinal de estouro",
+            "flags de condição",
+            "extensão de largura",
+            "memória linear",
+            "hexadecimal",
+            "endianness",
+            "variável e tipo em C",
+            "casting",
+            "shift",
+            "fração binária",
+            "IEEE 754",
+            "arredondamento",
+            "conversão validada"
+          ],
+        "deferred": [
+          "assembly",
+          "ISA",
+          "ABI",
+          "pipeline",
+          "cache",
+          "MMU",
+          "processos",
+          "concorrência",
+          "GDB"
+        ]
+      }
+    },
+    {
+      "slug": "02-representacao-programas-assembly-x86-64",
+      "track": "01-hardware-and-os",
+      "title": "02. Assembly x86-64, Registradores e a Pilha",
+      "description": "Execução de programas no nível de máquina: compiladores, registradores, instruções assembly, stack frames e defesas contra buffer overflow.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": true
+    },
+    {
+      "slug": "03-arquitetura-processadores-pipelining-hazards",
+      "track": "01-hardware-and-os",
+      "title": "03. Arquitetura de Processadores: Pipelining e Hazards",
+      "description": "A linha de montagem de instruções: estágios de execução, pipeline registers, conflitos estruturais, de dados e de controle, e a mecânica das bolhas de stall.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": true
+    },
+    {
+      "slug": "04-hierarquia-memoria-caches-localidade",
+      "track": "01-hardware-and-os",
+      "title": "04. Hierarquia de Memória e Caches: A Barreira da Memória",
+      "description": "A física da SRAM vs DRAM, o abismo da Barreira da Memória (Memory Wall), a partição Tag/Set/Offset de 64 bytes e os princípios de localidade temporal e espacial.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": true
+    },
+    {
+      "slug": "05-memoria-virtual-mmu-paginacao",
+      "track": "01-hardware-and-os",
+      "title": "05. Memória Virtual e a MMU: Paginação e Isolamento",
+      "description": "A matemática do espaço canônico de 48 bits, a tradução hierárquica PML4 de 4 níveis, aceleração via TLB e o ciclo de vida de Page Faults.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": true
+    },
+    {
+      "slug": "06-processos-threads-kernel-syscalls",
+      "track": "01-hardware-and-os",
+      "title": "06. Processos, Threads e a Fronteira do Kernel: System Calls e Troca de Contexto",
+      "description": "A separação Ring 3 vs Ring 0, a instrução syscall via IA32_LSTAR, a equivalência ontológica de clone(), a mecânica de switch_to e o ciclo de sinais POSIX.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": true
+    },
+    {
+      "slug": "07-concorrencia-silicio-atomicos-sincronizacao",
+      "track": "01-hardware-and-os",
+      "title": "07. Concorrência Multi-Core e Sincronização: Da Coerência de Cache às Travas do Kernel",
+      "description": "O protocolo MESI de coerência de cache, falso compartilhamento (false sharing), modelo Total Store Order (TSO), primitivas atômicas RMW e Compare-And-Swap, ISO C11 stdatomic, o futex do Linux e prevenção de deadlocks por condições de Coffman.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": false
+    },
+    {
+      "slug": "08-io-page-cache-sistemas-arquivos-durabilidade",
+      "track": "01-hardware-and-os",
+      "title": "08. I/O, Page Cache, Sistemas de Arquivos e Durabilidade: Do Barramento ao Disco",
+      "description": "Da fronteira de hardware com MMIO e DMA ao Page Cache do kernel, garantias reais de durabilidade com fsync/fdatasync e consistência de sistemas de arquivos com journaling.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": false
+    },
+    {
+      "slug": "00-rede-ipv4-dns-requisitos-host",
+      "track": "02-networks",
+      "title": "00. Camada de Rede e Nomeação: Datagramas IPv4, Fragmentação e Resolução DNS",
+      "description": "O envelope comum da internetwork: cabeçalho IPv4 de 20 bytes, TTL e checksum, fragmentação com offset em unidades de 8 octetos, mensagem DNS, requisitos de host e o incidente Kaminsky de 2008.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": true
+    },
+    {
+      "slug": "01-principio-fim-a-fim-internetworking",
+      "track": "02-networks",
+      "title": "01. O Princípio Fim a Fim e a Arquitetura de Internetworking",
+      "description": "O dilema de Saltzer, Reed e Clark (1984), a crítica de Padlipsky ao modelo OSI de sete camadas, e o desacoplamento de Cerf e Kahn: como construir uma rede global sem estado com confiabilidade garantida exclusivamente nas pontas.",
+      "status": "active",
+      "study_state": "content-unreviewed",
+      "review_status": "metadata-only; revisao de conteudo nao realizada neste percurso",
+      "sources": [],
+      "primary_source": null,
+      "concepts": {
+        "known": [],
+        "current": [],
+        "deferred": []
+      },
+      "has_inline_navigation": true
+    }
+  ],
+  "study_index": [
+    {
+      "id": "q-bit",
+      "question": "O que é um bit dentro da máquina?",
+      "terms": [
+        "bit",
+        "nível lógico",
+        "tensão",
+        "0 e 1"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "00-logica-digital-transistores-circuitos-clock",
+      "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#bit"
+    },
+    {
+      "id": "q-soma-binaria",
+      "question": "Como o hardware soma dois bits?",
+      "terms": [
+        "soma binária",
+        "meio-somador",
+        "somador completo",
+        "carry",
+        "vai-um",
+        "transporte"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "00-logica-digital-transistores-circuitos-clock",
+      "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#soma-binaria"
+    },
+    {
+      "id": "q-estado",
+      "question": "Como um circuito guarda um valor sem disco?",
+      "terms": [
+        "estado",
+        "latch",
+        "flip-flop",
+        "realimentação",
+        "memória"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "00-logica-digital-transistores-circuitos-clock",
+      "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#estado"
+    },
+    {
+      "id": "q-clock",
+      "question": "Para que serve o clock e o que são setup e hold?",
+      "terms": [
+        "clock",
+        "relógio",
+        "setup",
+        "hold",
+        "sincronização"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "00-logica-digital-transistores-circuitos-clock",
+      "href": "/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock#clock"
+    },
+    {
+      "id": "q-largura-fixa",
+      "question": "O que acontece quando a conta não cabe no registrador?",
+      "terms": [
+        "largura fixa",
+        "overflow",
+        "estouro",
+        "caixinha finita",
+        "limite máximo"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "01-representacao-informacao-inteiros-ponto-flutuante",
+      "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#largura-fixa"
+    },
+    {
+      "id": "q-complemento-de-dois",
+      "question": "Como a máquina representa números negativos?",
+      "terms": [
+        "complemento de dois",
+        "negativo",
+        "sinal",
+        "subtração",
+        "odômetro"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "01-representacao-informacao-inteiros-ponto-flutuante",
+      "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#complemento-de-dois"
+    },
+    {
+      "id": "q-bytes",
+      "question": "Como os bytes ficam organizados na memória?",
+      "terms": [
+        "bytes",
+        "endianness",
+        "hexadecimal",
+        "memória linear",
+        "little endian",
+        "big endian"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "01-representacao-informacao-inteiros-ponto-flutuante",
+      "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#bytes"
+    },
+    {
+      "id": "q-ponto-flutuante",
+      "question": "Como a máquina guarda números com casas decimais?",
+      "terms": [
+        "ponto flutuante",
+        "IEEE 754",
+        "arredondamento",
+        "subnormal",
+        "float",
+        "double"
+      ],
+      "track": "01-hardware-and-os",
+      "slug": "01-representacao-informacao-inteiros-ponto-flutuante",
+      "href": "/tracks/01-hardware-and-os/01-representacao-informacao-inteiros-ponto-flutuante#ponto-flutuante"
+    }
+  ],
+  "claims_registry": {
+    "scope": "Registro minimo versionado para testes e validacao em checkout sem knowledge/ (ignorado). O livro-razao completo vive em knowledge/concepts/ (local).",
+    "claims": {
+      "CLAIM-CIRC-003": {
+        "statement": "Um meio-somador combina XOR (soma) e AND (transporte); o somador completo incorpora o carry de entrada.",
+        "sources": [
+          "nand2tetris-nisan-schocken",
+          "weste-harris-cmos"
+        ]
+      }
+    }
+  },
+  "visual_models": {
+    "scope": "Registro minimo versionado (id -> componente Astro/React). A especificacao formal V1-V5 vive em knowledge/visual-models/ (local).",
+    "models": {
+      "VIS-01-SR-LATCH-NOR": {
+        "component": "circuits/SrLatchInteractive"
+      },
+      "VIS-02-MOSFET-TRANSISTOR": {
+        "component": "circuits/MosfetTransistorCard"
+      },
+      "VIS-03-CMOS-INVERTER": {
+        "component": "circuits/CmosInverterCard"
+      },
+      "VIS-04-CMOS-NAND": {
+        "component": "circuits/CmosNandCard"
+      },
+      "VIS-05-ARITHMETIC-ADDERS": {
+        "component": "circuits/AdderCircuitsCard"
+      },
+      "VIS-06-EDGE-TRIGGERED-FLIPFLOP": {
+        "component": "circuits/MasterSlaveFlipFlopCard"
+      },
+      "VIS-07-CLOCK-CHRONOGRAM-SETUP": {
+        "component": "circuits/ClockChronogramCard"
+      },
+      "VIS-08-REGISTER-BANK-64BIT": {
+        "component": "circuits/RegisterBankCard"
+      },
+      "VIS-09-E2E-FUNCTION-PLACEMENT": {
+        "component": "EndToEndTransferSimulator"
+      },
+      "VIS-10-ALU-ADDER-SUBTRACTOR": {
+        "component": "AluCircuitVisualizer"
+      }
+    }
+  }
+}

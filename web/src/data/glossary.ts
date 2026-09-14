@@ -172,15 +172,15 @@ export const glossary: Record<string, GlossaryTerm> = {
     abbr: 'MOSFET',
     fullName: 'Metal-Oxide-Semiconductor Field-Effect Transistor (Transistor de Efeito de Campo)',
     category: 'Hardware',
-    location: 'Bloco construtivo do chip, entre fonte e dreno sob a porta isolada',
-    description: 'Chave sem peças móveis que usa tensão na porta para abrir ou fechar o caminho entre fonte e dreno. É a peça repetida bilhões de vezes no processador.',
+    location: 'Bloco construtivo do chip, com canal sob a porta isolada por óxido',
+    description: 'Chave sem peças móveis: a tensão na porta induz por campo elétrico o canal entre os terminais, sem corrente atravessando o óxido. Qual terminal atua como fonte depende das tensões aplicadas no dispositivo simétrico ideal.',
   },
   CMOS: {
     abbr: 'CMOS',
     fullName: 'Complementary Metal-Oxide-Semiconductor (Semicondutor Metal-Óxido Complementar)',
     category: 'Hardware',
     location: 'Técnica de montagem de portas lógicas no chip',
-    description: 'Par de transistores complementares onde um puxa a saída para a energia e o outro para o terra. Garante que nunca haja caminho direto entre energia e terra em repouso.',
+    description: 'Par de transistores complementares onde um puxa a saída para a energia e o outro para o terra. No modelo ideal nunca há caminho direto entre energia e terra em repouso; no silício real resta a fuga reversa de junção.',
   },
   NMOS: {
     abbr: 'NMOS',
@@ -250,7 +250,7 @@ export const glossary: Record<string, GlossaryTerm> = {
     fullName: 'Overflow Flag (Sinalizador de Estouro com Sinal)',
     category: 'Hardware',
     location: 'Bit de estado no registrador de flags da CPU',
-    description: 'Aviso do hardware de que uma soma com sinal saiu da caixinha e inverteu o sinal. O circuito descarta o excesso e acende esse aviso.',
+    description: 'Aviso do hardware de que uma operação com sinal ultrapassou a faixa representável e inverteu o sinal. O circuito entrega os bits baixos e acende esse aviso.',
   },
   CF: {
     abbr: 'CF',
@@ -277,8 +277,8 @@ export const glossary: Record<string, GlossaryTerm> = {
     abbr: 'POSIX',
     fullName: 'Portable Operating System Interface (Interface Portátil de Sistema)',
     category: 'Padrões',
-    location: 'Biblioteca padrão do Linux e Unix para rede e arquivos',
-    description: 'Conjunto de funções que todo Unix oferece, como htons para converter bytes antes de enviar pela rede.',
+    location: 'Norma técnica adotada pelos sistemas Linux e Unix',
+    description: 'Padrão que especifica a interface que todo Unix oferece, incluindo funções como htons para converter bytes antes de enviar pela rede.',
   },
   PC: {
     abbr: 'PC',
@@ -489,5 +489,12 @@ export const glossary: Record<string, GlossaryTerm> = {
     category: 'Padrões',
     location: 'Cabeçalho da mensagem DNS, campo ID de 16 bits',
     description: 'O número que casa cada pergunta DNS com sua resposta. Com só 16 bits e porta de origem fixa, um atacante podia adivinhar a combinação e forjar respostas, como no incidente Kaminsky de 2008.',
+  },
+  NAN: {
+    abbr: 'NaN',
+    fullName: 'Not a Number (Não-Numérico)',
+    category: 'Padrões',
+    location: 'Codificação IEEE 754: expoente todo em 1 com fração diferente de zero, nos registradores da FPU',
+    description: 'O valor que a aritmética de ponto flutuante devolve para operações sem sentido real, como zero dividido por zero ou raiz de negativo. Propaga-se pelas contas seguintes em vez de travar o programa.',
   },
 };

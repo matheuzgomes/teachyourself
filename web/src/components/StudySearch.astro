@@ -1,0 +1,160 @@
+---
+/**
+ * Busca por mecanismos e perguntas do percurso-piloto.
+ *
+ * Sem JS: a lista completa de perguntas é renderizada no HTML como links
+ * reais, então a página continua navegável e útil. O formulário usa GET
+ * para a mesma âncora, de modo que `?q=` pode ser compartilhado.
+ * Com JS: filtragem instantânea com o mesmo ranqueamento do utilitário,
+ * sem recarregar, com contagem anunciada via aria-live.
+ */
+import { withBase } from "../utils/paths";
+import type { SearchableEntry } from "../utils/study-search";
+
+interface Props {
+  entries: SearchableEntry[];
+  /** Valor inicial vindo de `?q=` quando a página é carregada com consulta. */
+  initialQuery?: string;
+}
+
+const { entries, initialQuery = "" } = Astro.props;
+const payload = JSON.stringify(entries).replace(/</g, "\\u003c");
+---
+
+<section id="encontrar-mecanismo" aria-labelledby="buscar-titulo" class="scroll-mt-24 rounded-card border border-ash bg-white p-6 md:p-10 shadow-sm">
+  <div>
+    <span class="font-mono text-xs uppercase tracking-widest text-smoke">Busca no percurso</span>
+    <h2 id="buscar-titulo" class="mt-1 border-0 pb-0">Encontrar um mecanismo</h2>
+    <p class="max-w-[70ch]">
+      Pergunte com suas palavras. A busca entende acentos e sugere a seção
+      exata do módulo piloto onde o mecanismo é explicado.
+    </p>
+  </div>
+
+  <form role="search" aria-label="Buscar mecanismo" method="get" action="#encontrar-mecanismo" class="mt-6 flex flex-col sm:flex-row gap-3" data-study-search-form>
+    <label for="busca-mecanismo" class="sr-only">Buscar por mecanismo ou pergunta</label>
+    <input
+      id="busca-mecanismo"
+      name="q"
+      type="search"
+      value={initialQuery}
+      autocomplete="off"
+      placeholder="Ex.: como somar bits, overflow, endianness"
+      class="min-h-[44px] flex-1 rounded-full border border-ash bg-parchment px-5 py-3 font-sans text-base text-off-black placeholder:text-smoke focus:border-lake-blue focus:outline-none"
+      data-study-search-input
+    />
+    <button
+      type="submit"
+      class="min-h-[44px] rounded-full bg-off-black px-6 py-3 font-mono text-xs uppercase tracking-wider text-white hover:bg-black active:scale-[0.98] transition-all"
+    >
+      Buscar
+    </button>
+  </form>
+
+  <p class="mt-3 font-mono text-xs text-smoke" aria-live="polite" data-study-search-count>
+    {entries.length} perguntas no roteiro piloto. Sem filtro, a lista completa está abaixo.
+  </p>
+
+  <ul class="mt-4 space-y-2" data-study-search-list>
+    {entries.map((e) => (
+      <li data-entry-id={e.id}>
+        <a
+          href={withBase(e.href)}
+          class="group flex flex-col gap-1 rounded-2xl border border-ash bg-parchment/60 p-4 transition-all hover:border-lake-blue/50 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lake-blue"
+        >
+          <span class="font-sans text-base font-medium text-off-black group-hover:text-lake-blue">{e.question}</span>
+          <span class="font-mono text-xs text-smoke">{e.moduleTitle}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  <div class="mt-4 hidden rounded-2xl border border-ash bg-parchment p-5" data-study-search-empty>
+    <p class="my-0 font-sans text-base text-graphite">
+      Nenhuma pergunta do roteiro piloto corresponde a essa busca.
+    </p>
+    <p class="mb-0 font-sans text-sm text-graphite">
+      Tente um termo do mecanismo (bit, soma, clock, overflow, byte, ponto flutuante)
+      ou comece pelo início do roteiro:
+      <a href={withBase("/tracks/01-hardware-and-os/00-logica-digital-transistores-circuitos-clock")} class="font-medium text-lake-blue hover:underline">Módulo 00: Da Chave ao Clock</a>.
+    </p>
+  </div>
+
+  <script type="application/json" is:inline data-study-search-data set:html={payload} />
+
+  <script>
+    import { searchStudy, normalizeText } from "../utils/study-search";
+    import type { SearchableEntry } from "../utils/study-search";
+
+    (function () {
+      const root = document.querySelector("[data-study-search-form]")?.closest("section");
+      if (!root || root.hasAttribute("data-search-ready")) return;
+      root.setAttribute("data-search-ready", "true");
+
+      const form = root.querySelector("[data-study-search-form]");
+      const input = root.querySelector("[data-study-search-input]");
+      const list = root.querySelector("[data-study-search-list]");
+      const empty = root.querySelector("[data-study-search-empty]");
+      const count = root.querySelector("[data-study-search-count]");
+      const dataEl = root.querySelector("[data-study-search-data]");
+      if (!(form instanceof HTMLFormElement) || !(input instanceof HTMLInputElement) || !list || !empty || !count || !dataEl) return;
+      const listBox = list as HTMLElement;
+      const emptyBox = empty as HTMLElement;
+      const countBox = count as HTMLElement;
+
+      let entries: SearchableEntry[] = [];
+      try {
+        entries = JSON.parse(dataEl.textContent ?? "[]");
+      } catch {
+        return;
+      }
+      const items = [...list.querySelectorAll("[data-entry-id]")];
+
+      function apply(query: string) {
+        const q = normalizeText(query);
+        if (!q) {
+          for (const li of items) (li as HTMLElement).hidden = false;
+          emptyBox.classList.add("hidden");
+          countBox.textContent = `${entries.length} perguntas no roteiro piloto. Sem filtro, a lista completa está abaixo.`;
+          return;
+        }
+        const ranked = searchStudy(entries, q, 50);
+        const order = new Map(ranked.map((r, i) => [r.entry.id, i]));
+        const visible = new Set(order.keys());
+        for (const li of items) {
+          const id = (li as HTMLElement).dataset.entryId ?? "";
+          (li as HTMLElement).hidden = !visible.has(id);
+          if (visible.has(id)) listBox.appendChild(li);
+        }
+        const sorted = [...listBox.children].sort((a, b) => {
+          const ia = order.get((a as HTMLElement).dataset.entryId ?? "") ?? 999;
+          const ib = order.get((b as HTMLElement).dataset.entryId ?? "") ?? 999;
+          return ia - ib;
+        });
+        for (const li of sorted) listBox.appendChild(li);
+        emptyBox.classList.toggle("hidden", ranked.length > 0);
+        countBox.textContent =
+          ranked.length === 0
+            ? "Nenhum resultado para essa busca."
+            : `${ranked.length} ${ranked.length === 1 ? "resultado" : "resultados"} para essa busca.`;
+      }
+
+      form.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        apply(input.value);
+        const url = new URL(window.location.href);
+        if (input.value.trim()) url.searchParams.set("q", input.value.trim());
+        else url.searchParams.delete("q");
+        window.history.replaceState(null, "", url.toString());
+      });
+      input.addEventListener("input", () => apply(input.value));
+
+      const params = new URLSearchParams(window.location.search);
+      const initial = params.get("q");
+      if (initial) {
+        input.value = initial;
+        apply(initial);
+      }
+    })();
+  </script>
+</section>

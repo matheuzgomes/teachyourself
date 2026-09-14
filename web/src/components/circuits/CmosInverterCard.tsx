@@ -227,9 +227,9 @@ export default function CmosInverterCard() {
 
           <div className="rounded-2xl border border-ash bg-white p-4 text-xs md:text-sm text-graphite leading-relaxed">
             <strong className="block font-serif font-normal text-base text-off-black mb-1.5">
-              Consumo Estático Quase Nulo:
+              Consumo Estático Quase Nulo (Modelo Ideal):
             </strong>
-            Em qualquer estado estável (0 ou 1), exatamente um dos transistores está aberto e o outro conduzindo. Nunca há caminho direto entre VDD e GND em regime permanente.
+            Em qualquer estado estável (0 ou 1), exatamente um dos transistores está aberto e o outro conduzindo. Nunca há caminho direto entre VDD e GND em regime permanente. No silício real resta a fuga reversa de junção (SCAA035B: ICC de 10 a 40 µA) e corrente extra se a entrada não alcança os trilhos.
           </div>
         </div>
       </div>

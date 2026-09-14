@@ -1,7 +1,7 @@
 ---
 layout: ../../../layouts/TrackLayout.astro
-title: "07. Concorrência Multi-Core e Sincronização: Da Coerência de Cache às Travas do Kernel"
-description: "O protocolo MESI de coerência de cache, falso compartilhamento (false sharing), modelo Total Store Order (TSO), primitivas atômicas RMW e Compare-And-Swap, ISO C11 stdatomic, o futex do Linux e prevenção de deadlocks por condições de Coffman."
+title: "07. Concorrência no Hardware: Coerência, Atômicos e Travas"
+description: "A física da coerência de cache com o protocolo MESI, a patologia de falso compartilhamento, o modelo de memória TSO no x86-64, primitivas atômicas RMW e CAS, o subsistema futex do Linux e a prevenção de deadlocks por condições de Coffman."
 trackId: "01-hardware-and-os"
 trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 ---
@@ -19,284 +19,444 @@ import Term from "../../../components/Term.astro";
 
 # Módulo 07: Concorrência no Hardware: Coerência, Atômicos e Travas
 
-> **O que você precisa aqui:** 1. Ter visto que linha de cache tem 64 bytes. 2. Ter visto que trocar de tarefa troca pilha e às vezes mapa. 3. Aceitar que 2 núcleos rodam ao mesmo tempo de verdade. Nada de terminal, nada de medir contenção.
+No módulo anterior, investigamos como o sistema operacional alterna tarefas em um único núcleo de processamento através da rotina assembly `switch_to()`, criando a ilusão de tempo compartilhado através de multiplexação temporal.
 
-No módulo anterior, vimos como o kernel alterna tarefas em 1 núcleo fingindo simultaneidade.
+Contudo, os processadores contemporâneos não se limitam a multiplexar um núcleo no tempo: eles integram múltiplos núcleos físicos de computação executando tarefas simultaneamente em verdadeiro paralelismo de hardware, compartilhando o mesmo espaço de endereçamento de memória virtual (`mm_struct` e o registrador de controle `%cr3`).
 
-Contudo, com 2 núcleos físicos rodando threads ao mesmo tempo, surge o dilema deste módulo:
-Se cada núcleo tem caches privadas L1 e L2, como a escrita do Núcleo 0 aparece para o Núcleo 1?
+Essa coexistência física instaura uma nova fronteira de atrito na microarquitetura:
+*Se cada núcleo físico possui suas próprias caches privadas ultrarrápidas L1 e L2 para sustentar o avanço de sua esteira de execução, como a escrita do Núcleo 0 em uma variável compartilhada torna-se visível para o Núcleo 1 sem corromper a memória?*
 
-A memória <Term id="RAM">RAM</Term> é lenta demais para sincronizar cada acesso.
-E para não parar a cada escrita, o hardware usa store buffer que reordena operações, quebrando a ideia de ordem cronológica estrita.
+A memória principal <Term id="DRAM">DRAM</Term> é ordens de grandeza lenta demais para sincronizar cada acesso do processador. Ao mesmo tempo, para evitar que a esteira pare a cada gravação, a CPU emprega buffers de escrita intermediários que reordenam operações na memória, quebrando a suposição intuitiva de que as instruções são observadas em estrita ordem cronológica.
 
-Neste módulo, em 5 perguntas:
+Neste módulo, decompomos a física da concorrência no silício e suas abstrações de software em cinco fundamentos de engenharia:
 
-1. Como 2 caches privadas concordam sobre o mesmo endereço?
-2. Por que variáveis vizinhas mas independentes se atrapalham?
-3. Que ordem de leitura e escrita cada núcleo pode esperar?
-4. Como somar sem travar com 1 ordem indivisível?
-5. Quando dormir no kernel vence girar na <Term id="CPU">CPU</Term>, e como não travar para sempre?
+1. **A coerência de cache no hardware:** a máquina de estados do protocolo <Term id="MESI">MESI</Term> e a espionagem de barramento (*bus snooping*).
+2. **A patologia do falso compartilhamento:** o impacto do alinhamento em linhas físicas de 64 bytes e sua mitigação via software.
+3. **Modelos de consistência e o TSO do x86-64:** o papel dos *store buffers*, a mecânica de *store forwarding* e as instruções de barreira de memória (*memory fences*).
+4. **Primitivas atômicas no silício:** a decomposição de operações de Leitura-Modificação-Escrita (RMW), o prefixo `lock`, a instrução universal Compare-And-Swap (`lock cmpxchg`) e o modelo de memória C11.
+5. **A coordenação no sistema operacional:** o compromisso entre spinlocks em espaço de usuário e o subsistema `futex` do Linux, culminando na prevenção matemática de impasses (*deadlocks*) através das quatro condições de Coffman.
 
 ---
 
-## 7.1 A Ilusão da Memória Compartilhada e o Protocolo <Term id="MESI">MESI</Term>
+## 7.1 A Ilusão da Memória Compartilhada e o Protocolo MESI
 
-Em processadores com 2 ou mais núcleos, cada núcleo tem registradores e caches privadas L1 e L2.
-Só a última cache (L3) e a <Term id="DRAM">DRAM</Term> são de todos.
-Daí o problema de coerência:
-Quando o Núcleo 0 lê o endereço 0x1000, o bloco vai para sua L1 privada.
-Se o Núcleo 1 lê o mesmo endereço, uma cópia igual mora na L1 dele.
-
+Em processadores multinúcleo modernos, a hierarquia de memória é bifurcada em camadas privadas e compartilhadas:
+* Cada núcleo físico possui registradores próprios e caches privadas dedicadas de nível 1 (L1 de dados e L1 de instruções, com latência de ~4 a 5 ciclos) e de nível 2 (L2, com latência de ~12 a 14 ciclos).
+* Apenas a cache de último nível (L3 / *Last Level Cache*, LLC) e a memória principal <Term id="DRAM">DRAM</Term> são fisicamente compartilhadas por todos os núcleos através de um barramento de interconexão ou malha (*interconnect ring/mesh*).
 
 <CoherenceTopology />
 
-Se o Núcleo 0 grava 42 no endereço 0x1000, como o Núcleo 1 descobre que sua cópia local ficou obsoleta?
-Sem hardware, o Núcleo 1 leria sua cópia local obsoleta para sempre.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Topologia de Coerência Multicore**
+> - **O que inspecionar:** A segregação física entre as caches privadas L1/L2 de cada núcleo de processamento e as estruturas compartilhadas (L3 e DRAM), mediadas pelo barramento de interconexão.
+> - **Controle e estímulo:** Acompanhe os trajetos elétricos de acesso local a dados residentes em L1/L2 em contraste com os caminhos que exigem transmissão de sinais pelo barramento de coerência.
+> - **Verificação do mecanismo:** Observe que acessos a dados privados não geram tráfego externo, enquanto alterações em blocos potencialmente compartilhados forçam a emissão de mensagens de sincronização para todos os outros núcleos do sistema.
 
-Para resolver sem coordenação manual, os controladores implementam o protocolo <Term id="MESI">MESI</Term> de coerência no hardware.
-O <Term id="MESI">MESI</Term> marca cada linha de 64 bytes com 1 de 4 estados:
+Essa topologia gera o dilema fundamental da coerência de cache:
+Quando o Núcleo 0 lê o endereço `0x1000`, a linha de 64 bytes correspondente é carregada em sua cache L1 privada. Se o Núcleo 1 lê esse mesmo endereço, uma cópia idêntica passa a residir em sua própria cache L1 privada.
+
+Se o Núcleo 0 grava o valor `42` no endereço `0x1000`, como o circuito do computador impede que o Núcleo 1 leia indefinidamente sua cópia local obsoleta?
+
+Para resolver essa consistência sem sobrecarregar a memória RAM, os controladores de cache implementam em hardware o protocolo **<Term id="MESI">MESI</Term>**. O protocolo classifica cada linha de 64 bytes presente nas caches em um de quatro estados mutuamente exclusivos:
 
 1. **Modified (M - Modificado):**
-   Só este núcleo tem a linha, e ela mudou contra a memória, por isso lê e grava à vontade. Antes de descartar, salva na <Term id="DRAM">DRAM</Term> ou na compartilhada.
-
+   A linha física está presente exclusivamente na cache deste núcleo e seu conteúdo foi modificado em relação à memória L3/DRAM (a linha está "suja"). O núcleo possui permissão total de leitura e escrita local imediata sem emitir tráfego no barramento. Se a linha precisar ser descartada ou se outro núcleo solicitar sua leitura, ela deve ser descarregada para a memória ou fornecida diretamente via transferência entre caches (*cache-to-cache transfer*).
 2. **Exclusive (E - Exclusivo):**
-   Só este núcleo tem, igual à memória. Lê na hora e, na primeira escrita, vira Modificado sem avisar o barramento.
-
+   A linha física está presente exclusivamente na cache deste núcleo, mas seu conteúdo permanece idêntico ao da memória L3/DRAM (a linha está "limpa"). O núcleo pode ler o dado instantaneamente. Caso vá escrever na linha, o estado transita silenciosamente para *Modified* sem necessidade de emitir invalidações pelo barramento, economizando ciclos de clock.
 3. **Shared (S - Compartilhado):**
-   Pode morar em vários núcleos, igual à memória, com permissão só de leitura. Escrever exige invalidar os outros.
+   A linha física pode estar presente simultaneamente nas caches privadas de dois ou mais núcleos, contendo valor idêntico ao da memória. O acesso é estritamente de **somente leitura**. Para que qualquer núcleo execute uma escrita em uma linha compartilhada, ele deve emitir previamente um sinal de invalidação no barramento para que todos os demais núcleos descartem suas cópias.
 4. **Invalid (I - Inválido):**
-   Sem dado válido, então ler ou gravar pede a linha pelo barramento.
+   A linha física não contém dados válidos. Qualquer tentativa de leitura resulta em falta de cache (*cache miss*) e exige a busca do bloco através de uma requisição de leitura no barramento; qualquer tentativa de escrita exige uma requisição de posse exclusiva com invalidação das demais cópias.
 
-### Espionagem de Barramento (Bus Snooping)
-Para sincronizar, vale a espionagem de barramento: cada controlador espia o barramento entre os núcleos:
+### Espionagem de Barramento (*Bus Snooping*)
 
-* **BusRd (leitura):** núcleo sem a linha pede. Quem tem em Modificado entrega o novo.
-* **BusRdX (leitura para modificar):** núcleo quer escrever e pede a linha exigindo que os outros invalidem as cópias.
-* **BusInv (invalidação):** quem já tem em Compartilhado e vai escrever avisa os outros para marcarem Inválido.
+Para coordenar os estados do protocolo MESI sem uma autoridade centralizada lenta, os controladores de cache utilizam a técnica de **espionagem de barramento (bus snooping)**. Cada núcleo monitora ativamente todos os sinais que trafegam pelo barramento de interconexão:
 
-Resultado: ninguém lê velho, porque toda escrita invalida as cópias em coordenação.
+* **`BusRd` (Bus Read):** Emitido quando um núcleo sofre uma falta de leitura. Solicita a linha sem intenção de escrita. Se outro núcleo detém a linha no estado *Modified*, ele intercepta a mensagem, descarrega a linha e transita para *Shared*.
+* **`BusRdX` (Bus Read with Intent to Modify):** Emitido quando um núcleo precisa escrever em uma linha que não possui. Requisita os dados e intima simultaneamente todos os outros núcleos a invalidarem suas cópias locais.
+* **`BusInv` (Bus Invalidate):** Emitido por um núcleo que já possui a linha no estado *Shared* e pretende escrever nela. Todos os núcleos concorrentes que escutam a mensagem mudam o estado de suas linhas locais para *Invalid*.
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **4 letras, 1 dono da escrita:** M e E só aqui, S leitura em vários, I vazio;
-> 2. **Escrever avisa:** barramento invalida cópia alheia antes;
-> 3. **Linha de 64B manda:** a unidade de acordo é a linha inteira, nunca o byte.
+Dessa forma, o hardware garante que nenhuma CPU execute leituras em cópias defasadas: qualquer gravação exige a anulação prévia de todas as cópias concorrentes no sistema.
 
 ---
 
 ## 7.2 O Efeito Colateral: Falso Compartilhamento (False Sharing)
 
-A coerência vale para a linha inteira de 64 bytes, não para o byte.
-Daí a patologia: 2 threads em núcleos distintos gravam variáveis independentes que caíram na mesma linha física.
+A máquina de estados do protocolo MESI opera sobre a unidade elementar de transferência das caches: **a linha física de 64 bytes**. O circuito elétrico da CPU não possui granularidade para rastrear acessos a bytes individuais ou inteiros de 4 ou 8 bytes dentro dessa linha.
 
-Duas variáveis de 8 bytes em sequência: `contador_a` só do Núcleo 0, `contador_b` só do Núcleo 1. Sem colisão lógica, só coincidência física.
+Essa limitação física dá origem a uma das patologias mais severas de desempenho em sistemas multicore: o **falso compartilhamento (false sharing)**.
 
+Considere duas variáveis inteiras independentes de 8 bytes, `contador_a` e `contador_b`, alocadas sequencialmente na memória. O `contador_a` é atualizado exclusivamente pela Thread 0 no Núcleo 0, enquanto o `contador_b` é atualizado exclusivamente pela Thread 1 no Núcleo 1. Não existe nenhuma colisão lógica entre os dados manipulados pelas duas aplicações.
 
 <FalseSharingStrip />
 
-Mecanicamente, o resultado é catastrófico:
-O Núcleo 0 grava e invalida a linha do Núcleo 1. No ciclo seguinte o Núcleo 1 falha, busca a linha e invalida a do Núcleo 0.
-A linha quica sem parar entre as L1 (ping-pong de linha clássico), saturando o barramento e custando dezenas de vezes em padrão típico de contenção, sem disputa lógica nenhuma.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Anatomia da Linha de Falso Compartilhamento**
+> - **O que inspecionar:** O posicionamento de duas variáveis logicamente desacopladas compartilhando a mesma moldura física de 64 bytes.
+> - **Controle e estímulo:** Observe como a operação de escrita na variável A pelo Núcleo 0 altera o estado MESI de todo o bloco de 64 bytes.
+> - **Verificação do mecanismo:** Confirme que a invalidação atinge a linha integralmente, forçando a variável B a transitar para o estado *Invalid* no Núcleo 1, gerando faltas de cache em cascata a cada ciclo de escrita.
 
-### A Solução: 1 variável por linha
-Force variáveis disputadas em linhas físicas separadas. Em C11, `alignas(64)`:
+Mecanicamente, o resultado é desastroso:
+1. O Núcleo 0 grava em `contador_a`: a linha completa transita para o estado *Modified* no Núcleo 0 e é invalidada (*Invalid*) no Núcleo 1.
+2. No ciclo de instrução imediatamente seguinte, a Thread 1 no Núcleo 1 tenta gravar em `contador_b`: como sua linha local está em estado *Invalid*, o Núcleo 1 sofre uma falta compulsória de cache e emite um `BusRdX` no barramento.
+3. O Núcleo 0 é forçado a suspender sua operação para transferir a linha atualizada, e sua própria cópia local é rebaixada para *Invalid*.
+4. A linha de 64 bytes passa a oscilar sem cessar entre as caches privadas dos dois núcleos (**ping-pong de linha de cache**), saturando a largura de banda do barramento e elevando a latência de acesso aos níveis de barramento de DRAM, degradando a taxa de transferência em até duas ordens de grandeza.
+
+### A Solução via Software: Alinhamento de Linha de Cache
+
+Para neutralizar o falso compartilhamento, o código de aplicação deve forçar variáveis concorrentes a residirem em linhas físicas separadas de 64 bytes através do especificador de alinhamento em C11/C++11:
 
 ```c
-struct Ruim { uint64_t a; uint64_t b; };
-struct Bom {
-  alignas(64) uint64_t a;
-  alignas(64) uint64_t b;
+/* Disposição vulnerável: ambos os campos residem na mesma linha de 64 bytes */
+struct ContadoresContenciosos {
+    uint64_t contador_nucleo_0;
+    uint64_t contador_nucleo_1;
+};
+
+/* Disposição blindada: alinhamento forçado a 64 bytes */
+struct ContadoresIsolados {
+    alignas(64) uint64_t contador_nucleo_0;
+    alignas(64) uint64_t contador_nucleo_1;
 };
 ```
 
-O compilador insere enchimento entre os campos, de modo que cada núcleo grava só sua linha e o ping-pong de linha some. Leia como ilustração, sem compilar.
+Ao declarar `alignas(64)`, o compilador insere bytes de preenchimento (*padding*) entre os campos da estrutura. Cada variável passa a ocupar o início de uma linha física independente de 64 bytes, permitindo que ambos os núcleos mantenham suas respectivas linhas no estado *Modified* simultaneamente, eliminando por completo o tráfego de invalidação no barramento.
 
 <MesiCacheSimulator client:visible />
 
-O simulador acima responde: quem invalida quem?
-1. Grave no Núcleo 0 e veja a linha do Núcleo 1 cair para Inválido.
-2. Grave no Núcleo 1 e veja a volta pelo barramento.
-3. Separe em linhas distintas e veja as invalidações sumirem.
-Conclusão em 1 frase: mesma linha divide invalidação, linhas separadas isolam.
-Cada núcleo grava só sua linha e o ping-pong de linha some.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Simulador Interativo do Protocolo MESI**
+> - **O que inspecionar:** A alternância dos estados MESI (M, E, S, I) nas caches L1 de múltiplos núcleos conforme leituras e escritas são disparadas sobre a mesma linha física ou sobre linhas isoladas.
+> - **Controle e estímulo:** Dispare uma operação de escrita a partir do Núcleo 0 e acompanhe a transmissão da mensagem `BusInv` provocando a transição imediata para o estado *Invalid* no Núcleo 1.
+> - **Verificação do mecanismo:** Execute escritas contínuas alternadas sobre o mesmo endereço para reproduzir a oscilação de *cache ping-pong* e, em seguida, separe os endereços em molduras distintas de 64 bytes para comprovar que as invalidações cessam por completo.
 
 ---
 
-## 7.3 Que Ordem Vale? <Term id="TSO">TSO</Term> no x86-64
+## 7.3 Modelos de Memória, Store Buffers e a Consistência TSO no x86-64
 
-Coerência e consistência não são sinônimos:
+Na engenharia de sistemas computacionais, coerência e consistência representam garantias ortogonais:
+* **Coerência de Memória:** Trata do comportamento de **um único endereço de memória** replicado entre múltiplos núcleos. Garante que todos os núcleos observem a mesma sequência monotônica de escritas naquele endereço específico.
+* **Consistência de Memória:** Trata da ordem temporal relativa e da visibilidade de operações sobre **múltiplos endereços distintos**. Define quais reordenações de leituras e escritas a microarquitetura do processador e os compiladores têm autorização para efetuar.
 
-* **Coerência:** 1 endereço entre núcleos. Todos veem as mudanças dele na mesma sequência.
-* **Consistência:** vários endereços no tempo. Diz que reordenação a <Term id="CPU">CPU</Term> pode fazer.
+### O Desafio do Pipeline e o Store Buffer
 
-### Por que reordenar: o Store Buffer
-Para não parar a cada escrita esperando o barramento, a <Term id="CPU">CPU</Term> joga endereço e dado num store buffer interno e segue. O store buffer descarrega na L1 quando o barramento libera. O próprio núcleo enxerga suas pendências por store forwarding local, mas o vizinho só vê ao descarregar na cache.
+Se a esteira de execução da CPU precisasse suspender seu avanço a cada instrução de escrita até que a mensagem de coerência (`BusRdX` ou `BusInv`) fosse transmitida, processada e confirmada por todos os outros núcleos do sistema, o pipeline sofreria dezenas de ciclos de atraso (*stalls*).
 
+Para desacoplar a frequência de execução do pipeline da latência do barramento de coerência, os processadores inserem uma fila intermediária entre os estágios de execução e a cache L1: o **Store Buffer**.
 
 <StoreBufferFlow />
 
-O núcleo local enxerga suas próprias escritas pendentes por store forwarding.
-Mas o vizinho não vê o store buffer alheio até descarregar na cache.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Fluxo do Store Buffer e Store Forwarding**
+> - **O que inspecionar:** O desacoplamento temporal entre o pipeline de instruções, o Store Buffer intermediário e a cache L1 privada de cada núcleo.
+> - **Controle e estímulo:** Acompanhe a trajetória de uma instrução de escrita (Store) sendo armazenada no buffer e a execução de uma leitura subsequente (Load) no mesmo endereço versus em endereços distintos.
+> - **Verificação do mecanismo:** Observe que o mecanismo de *Store Forwarding* fornece o dado localmente para o próprio núcleo antes do descarregamento na cache, enquanto núcleos remotos continuam enxergando a memória defasada até que o Store Buffer seja efetivamente drenado.
 
-### O Modelo <Term id="TSO">TSO</Term> (Total Store Order) do x86-64
-O x86-64 proíbe quase tudo, menos 1 caso de store-load reordering: leitura posterior pode passar na frente de escrita anterior em endereço diferente, enquanto leitura não passa leitura, escrita não passa escrita e escrita não passa leitura anterior. ARM e RISC-V relaxados permitem quase qualquer combinação sem barreira explícita.
+Ao emitir uma instrução de escrita, o núcleo armazena a tupla `(endereço, dado)` no Store Buffer e avança imediatamente para a instrução seguinte. O Store Buffer descarrega seus dados na cache L1 de forma assíncrona assim que o barramento de coerência concede a posse exclusiva da linha.
 
-### Barreiras (Memory Fences) em 1 parágrafo
-Quando o programa precisa que tudo anterior apareça antes de seguir, emite barreira: `mfence` trava tudo e drena o buffer, `sfence` só escritas, `lfence` só leituras e especulação.
+### O Modelo Total Store Order (TSO) do x86-64
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Falso é físico:** vizinhas na mesma linha se invalidam sem colisão lógica;
-> 2. **Ordem tem regra:** no x86 só leitura passa escrita anterior;
-> 3. **Barreira trava:** fence drena e segura o que vem depois.
+Diferentemente de arquiteturas fracamente ordenadas (como ARM e RISC-V, que autorizam quase qualquer reordenação em nível de circuito), a arquitetura x86-64 adota o modelo **Total Store Order (TSO)**, caracterizado por garantias estruturais estritas:
 
----
+1. **Reads não passam Reads anteriores (`Load-Load` preservado):** Leituras da memória ocorrem na ordem exata do programa.
+2. **Writes não passam Writes anteriores (`Store-Store` preservado):** Escritas são descarregadas na cache na mesma ordem em que foram geradas.
+3. **Writes não passam Reads anteriores (`Load-Store` preservado):** Uma escrita não pode ser antecipada antes de uma leitura prévia.
+4. **O Único Relaxamento Permitido pelo x86-64: Store-Load Reordering:** Uma leitura posterior em um endereço B pode ser executada **antes** que uma escrita anterior em um endereço A seja globalmente visível.
 
-## 7.4 Somar Junto Sem Perder: Leitura-Modificação-Escrita
+Isso ocorre porque a escrita em A permanece temporariamente retida no Store Buffer local aguardando a drenagem para a cache L1, enquanto a leitura em B é resolvida instantaneamente a partir de sua própria cache L1.
 
-`x++` parece 1 ordem, mas são 3 gestos: ler para gaveta, somar na <Term id="ALU">ALU</Term>, gravar de volta.
+### A Quebra de Algoritmos Clássicos de Exclusão (Dekker e Peterson)
 
-Se 2 núcleos leem 0 juntos, somam 1 cada e gravam 1 cada, o resultado é 1 quando deveria ser 2: perda de atualização clássica. A atualização de um se perde porque a sequência de leitura-modificação-escrita não foi indivisível.
-
-### O prefixo `lock`: travar a linha, não o barramento
-No x86-64, o prefixo `lock` torna a sequência atômica. Processadores antigos travavam o barramento inteiro pelo sinal LOCK# e paravam todo mundo. Hoje, se o endereço cabe em 1 linha alinhada, a <Term id="CPU">CPU</Term> segura a linha em Modificado ou Exclusivo e adia a coerência só ali, de modo que o resto do barramento segue livre.
-
-<DeepDive title="Detalhe de implementação: LOCK# histórico e cache locking">
-No 80486 e primeiros Pentium, `lock` acendia o sinal LOCK# e bloqueava o barramento para todos. No hardware moderno com linha contida e alinhada, vale o travamento de linha via <Term id="MESI">MESI</Term>, sem sinal externo. Nada aqui muda a regra da Trilha 1, só ancora a evolução do mecanismo.
-</DeepDive>
-
----
-
-## 7.5 A Primitiva Comparar-e-Trocar (`lock cmpxchg`)
-
-A ordem atômica fundamental é o Compare-And-Swap (<Term id="CAS">CAS</Term>): compara o valor na memória com o esperado na gaveta `%rax`. Igual, grava o novo e acende `ZF`. Diferente, copia o atual para `%rax` e apaga `ZF`.
-
+A consequência matemática do relaxamento Store-Load é que algoritmos puramente em software para exclusão mútua (como o Algoritmo de Dekker ou o Algoritmo de Peterson) falham no hardware x86-64 se implementados sem primitivas explícitas de sincronização:
 
 ```text
-Entrada: Endereço M, Valor Esperado E (no registrador %rax), Novo Valor V
-Execução Atômica de Hardware:
-    se (conteúdo de M == E) então
-        grava V em M
-        ativa ZF = 1  (Sucesso)
-    senão
-        carrega conteúdo de M em %rax
-        desativa ZF = 0 (Falha por colisão)
+Cenário de Quebra sob TSO:
+  Inicialmente: flag0 = 0, flag1 = 0
+
+  Núcleo 0:                 Núcleo 1:
+  flag0 = 1;                flag1 = 1;
+  r0 = flag1;               r1 = flag0;
 ```
 
-A primitiva <Term id="CAS">CAS</Term> constrói atualização sem trava com repetição. Leia como ilustração, sem compilar:
+Sob uma análise intuitiva sequencial, seria matematicamente impossível que ambos os núcleos observassem `r0 == 0` e `r1 == 0`. Contudo, sob TSO:
+* O Núcleo 0 grava `flag0 = 1` no seu Store Buffer local.
+* O Núcleo 1 grava `flag1 = 1` no seu Store Buffer local.
+* Ambos os núcleos leem imediatamente a flag adversária a partir de suas caches L1 privadas, onde ambas ainda residem com o valor `0`.
+* Ambos os núcleos obtêm `0` e entram simultaneamente na seção crítica, violando a exclusão mútua e corrompendo o estado compartilhado.
 
-```c
-uint64_t old = atomic_load(&alvo);
-uint64_t new;
-do {
-  new = old + inc;
-} while (!atomic_compare_exchange(&alvo, &old, new));
-```
+### Instruções de Barreira de Hardware (*Memory Fences*)
 
-A thread lê, calcula e tenta gravar em laço de repetição: se ninguém mexeu no meio, grava de 1 vez em atualização atômica; se mexeu, o valor observado atualiza com o novo estado e o laço tenta de novo.
+Para conter reordenações quando múltiplos endereços exigem sincronização rigorosa, a ISA x86-64 fornece três instruções de barreira:
+
+1. **`mfence` (Memory Fence):** Serializa todas as operações de leitura e escrita. Força a drenagem completa do Store Buffer para a cache L1 e bloqueia a emissão de qualquer instrução subsequente de memória até que todas as operações pendentes estejam globalmente visíveis para todos os núcleos. Elimina por completo a reordenação Store-Load.
+2. **`sfence` (Store Fence):** Serializa exclusivamente instruções de escrita. Garante que todas as escritas emitidas anteriormente estejam drenadas na cache antes de liberar escritas subsequentes. É indispensável após a execução de instruções que contornam as caches (*non-temporal stores*, como `movntq`/`movnti`).
+3. **`lfence` (Load Fence):** Serializa operações de leitura e atua como barreira contra execução especulativa de instruções no pipeline da CPU.
 
 ---
 
-## 7.6 O Modelo C11: Relaxado, Par e Sequencial
+## 7.4 Primitivas Atômicas RMW e o Prefixo `LOCK`
 
-Por décadas o C não tinha modelo de memória formal para concorrência, até o ISO C11 trazer `_Atomic` com 3 níveis. Leia como ilustração.
+Em linguagens de alto nível, uma instrução elementar como `x++` aparenta ser um comando atômico e unitário. No entanto, o compilador decodifica essa expressão obrigatoriamente em três instruções de máquina no x86-64:
+
+```text
+Desconstrução de x++ em assembly x86-64:
+  1. movq (%rdi), %rax    ; Leitura da memória para registrador de propósito geral (Load)
+  2. addq $1, %rax        ; Incremento aritmético na ALU
+  3. movq %rax, (%rdi)    ; Gravação do resultado de volta na memória (Store)
+```
+
+Essa sequência é denominada operação de **Leitura-Modificação-Escrita (Read-Modify-Write, ou RMW)**.
+
+Se duas threads executando simultaneamente em núcleos distintos tentam incrementar a mesma variável `x` inicializada em `0`:
+* Ambos os núcleos leem o valor `0` para seus respectivos registradores de propósito geral `%rax`.
+* Ambos somam `1` na ALU, obtendo `1`.
+* Ambos gravam o valor `1` de volta no mesmo endereço de memória.
+* Ao final, `x` contém o valor `1`, quando o resultado matemático correto deveria ser `2`. Esse erro clássico é denominado **perda de atualização (lost update)**.
+
+### O Prefixo `lock`: Travamento de Cache vs Travamento de Barramento
+
+Para garantir que uma operação RMW seja executada de forma atômica e indivisível, a arquitetura x86-64 disponibiliza o prefixo de instrução **`lock`** (por exemplo, `lock incq (%rdi)`).
+
+A implementação física desse prefixo evoluiu drasticamente ao longo das gerações de silício:
+
+* **Mecanismo Histórico (Pino `LOCK#` no barramento):** Nos processadores Intel 80486 e primeiros Pentium, a instrução com prefixo `lock` ativava um sinal elétrico no pino físico `LOCK#` do encapsulamento da CPU. Esse sinal bloqueava eletricamente o barramento de memória, impedindo que qualquer outro núcleo ou dispositivo realizasse acessos à RAM durante toda a duração da transação, gerando severa degradação de paralelismo.
+* **Mecanismo Contemporâneo (Cache Locking via MESI):** Nos processadores modernos, se o operando de memória estiver contido integralmente em uma única linha física de 64 bytes alinhada, a CPU dispensa o travamento do barramento. O controlador de cache adquire a linha exclusivamente nos estados *Modified* ou *Exclusive* do protocolo MESI e adia o processamento de mensagens de espionagem de outros núcleos relativas àquele endereço até que a sequência RMW se complete. A atomicidade é garantida localmente na cache L1 do núcleo, permitindo que os barramentos de interconexão permaneçam livres para o tráfego dos demais núcleos.
+
+---
+
+## 7.5 A Primitiva Universal Compare-And-Swap (`lock cmpxchg`)
+
+A primitiva atômica fundamental utilizada para construir estruturas de dados concorrentes e primitivas de sincronização no silício é a instrução **Compare-And-Swap (CAS)**, materializada no x86-64 pela instrução `lock cmpxchg`.
+
+A semântica de hardware da instrução é governada pelo registrador de propósito geral **`%rax`** e pela flag Zero (**`ZF`**):
+
+```text
+Entrada: Endereço M, Novo Valor V (em registrador), Valor Esperado E (no registrador %rax)
+Operação Atômica no Silício:
+    se (conteúdo de M == %rax) então
+        conteúdo de M <- V
+        ZF <- 1              ; Sucesso atômico
+    senão
+        %rax <- conteúdo de M ; Atualiza o registrador com o dado real
+        ZF <- 0              ; Falha por colisão concorrente
+```
+
+### O Padrão de Laço de CAS (*CAS Loop*)
+
+Com o CAS, algoritmos concorrentes podem realizar transformações atômicas de estado sem recorrer a bloqueios de threads via kernel:
 
 ```c
-atomic_bool pronto = false;
-int msg = 0;
-void publica(void) {
-  msg = 42;
-  atomic_store(&pronto, true);   /* release */
+/* Padrão canônico de laço CAS otimista em C11 */
+uint64_t esperado = atomic_load(&contador);
+uint64_t novo;
+do {
+    novo = esperado + incremento;
+} while (!atomic_compare_exchange_weak(&contador, &esperado, novo));
+```
+
+A thread lê o valor atual, calcula a transformação aritmética e tenta gravá-la atomicamente:
+* Se nenhuma outra thread alterou o endereço no intervalo, a instrução `lock cmpxchg` grava o novo valor e seta `ZF = 1`, encerrando o laço em poucos ciclos de clock.
+* Se outra thread gravou no endereço antes da conclusão da operação, a instrução detecta a discrepância, desativa `ZF = 0`, carrega o valor atualizado da memória diretamente no registrador de propósito geral `%rax` (atualizando a variável `esperado`) e o laço reexecuta o cálculo imediatamente.
+
+### O Problema ABA em Estruturas Sem Trava (*Lock-Free*)
+
+Em algoritmos avançados sem trava manipulando listas encadeadas ou pilhas dinâmicas, o laço de CAS pode sofrer do **Problema ABA**:
+1. Uma thread lê o endereço de um nó `A` que aponta para `B`.
+2. A thread é suspensa pelo sistema operacional antes de aplicar o CAS.
+3. Outras threads desalocam `B`, desalocam `A`, alocam novos nós e, por coincidência de alocação de memória, um novo nó recebe exatamente o mesmo ponteiro `A`.
+4. A thread suspensa acorda e executa `cmpxchg`: como o endereço na memória continua sendo `A`, o CAS tem sucesso, mas a cadeia de ponteiros subjacente foi corrompida.
+
+Para neutralizar o problema ABA, algoritmos sem trava empregam técnicas de versionamento por ponteiros marcados (*tagged pointers* ou geração numérica) manipulados atomicamente através de instruções CAS de tamanho duplo, como **`lock cmpxchg16b`** no x86-64.
+
+---
+
+## 7.6 O Modelo de Memória do C11 (`stdatomic.h`)
+
+Durante décadas, a linguagem C não definiu formalmente um modelo de concorrência em sua especificação, delegando o comportamento a extensões proprietárias de compiladores e bibliotecas de threads. O padrão ISO C11 unificou a semântica de concorrência através do tipo `_Atomic` e de modelos formais de ordenação de memória:
+
+```c
+#include <stdatomic.h>
+
+atomic_bool flag_pronto = false;
+int payload_dados = 0;
+
+/* Thread Produtora */
+void publicar_dados(void) {
+    payload_dados = 42;
+    atomic_store_explicit(&flag_pronto, true, memory_order_release);
 }
-int consome(void) {
-  while (!atomic_load(&pronto)); /* acquire */
-  return msg; /* garantido 42 */
+
+/* Thread Consumidora */
+int consumir_dados(void) {
+    while (!atomic_load_explicit(&flag_pronto, memory_order_acquire)) {
+        /* Espera pela publicação */
+    }
+    return payload_dados; /* Garantido retornar 42 sem corrupção */
 }
 ```
 
-1. **Relaxado:** só atomicidade da variável, sem ordem com o resto, o que serve para contador estatístico.
-2. **Par release e acquire:** escrita release descarrega tudo antes de publicar e leitura acquire segura tudo depois, formando a passagem de mensagem segura.
-3. **Sequencial (`seq_cst`, o padrão):** ordem global única para todos, com custo de `lock` ou barreira no x86-64.
+O C11 classifica a visibilidade das operações atômicas em três modelos fundamentais:
 
+1. **`memory_order_relaxed`:**
+   Assegura exclusivamente a atomicidade da operação sobre a variável em questão, sem impor nenhuma barreira ou relação de ordem temporal com variáveis adjacentes. Utilizado para contadores estatísticos e métricas operacionais independentes.
+2. **Par Acquire-Release:**
+   * **`memory_order_release`:** Impõe que nenhuma leitura ou escrita prévia no código possa ser reordenada pelo compilador ou CPU para depois desta operação. Utilizado para publicar dados na memória antes de ativar uma flag.
+   * **`memory_order_acquire`:** Impõe que nenhuma leitura ou escrita subsequente no código possa ser antecipada para antes desta leitura. Utilizado para consumir a flag garantindo que todas as modificações do produtor estejam visíveis.
+   * O pareamento de um Store Release com um Load Acquire estabelece formalmente a relação de sincronização temporal **`happens-before`**.
+3. **`memory_order_seq_cst` (Sequencialmente Consistente):**
+   O modelo padrão de execução. Estabelece uma ordem temporal linear global única observada identicamente por todos os núcleos físicos da máquina. Em arquiteturas x86-64, impõe a emissão de instruções atômicas com prefixo `lock` ou barreiras `mfence`.
 
 ---
 
 ## 7.7 Girar ou Dormir: Spinlock vs Futex
 
-A trava mais simples é o spinlock: girar em laço com atômico até liberar. Leia como ilustração, sem compilar:
+A primitiva de trava mais elementar no nível de hardware é o **spinlock**:
 
 ```c
-void lock(spinlock_t *t) {
-  while (atomic_test_and_set(t)) pause();
+typedef atomic_flag spinlock_t;
+
+void spin_lock(spinlock_t *lock) {
+    while (atomic_flag_test_and_set_explicit(lock, memory_order_acquire)) {
+        __builtin_ia32_pause(); /* Emite instrução assembly PAUSE */
+    }
 }
-void unlock(spinlock_t *t) { atomic_clear(t); }
+
+void spin_unlock(spinlock_t *lock) {
+    atomic_flag_clear_explicit(lock, memory_order_release);
+}
 ```
 
-O `pause` evita rajada de falsas previsões de salto na saída do laço com atraso de pipeline curto e economiza energia.
+### O Papel Crítico da Instrução `pause`
 
-### Quando girar quebra
-Girar vale por poucos ciclos, mas se o dono da trava dorme preemptado, os outros queimam 100% da <Term id="CPU">CPU</Term> à toa esperando quem está na fila. Daí o futex: tenta rápido em usuário com <Term id="CAS">CAS</Term> e, só com contenção real, dorme no kernel e acorda depois, rápido sem disputa e disciplinado com disputa.
+Dentro de um laço de espera ocupada (*busy-waiting*), a emissão da instrução assembly **`pause`** é obrigatória em código de engenharia:
+* Ela introduz um ligeiro atraso na execução do laço, reduzindo o consumo elétrico e térmico da CPU.
+* Evita que o decodificador de instruções dispare uma descarga desnecessária de pipeline (*memory order violation pipeline flush*) no momento em que a trava for liberada e o laço for abandonado.
 
+### O Limite do Spinlock e a Degradação por Preempção
+
+Um spinlock é altamente eficiente apenas quando a seção crítica dura poucas dezenas de ciclos de clock e as threads concorrentes executam em núcleos físicos distintos sem preempção.
+
+Contudo, se a thread proprietária da trava for preemptada pelo escalonador do sistema operacional devido ao término de sua fatia de tempo, todas as demais threads concorrentes que tentarem adquirir a trava queimarão **100% dos seus ciclos úteis de CPU** girando em laço vazio, aguardando uma tarefa que sequer está executando no escalonador.
 
 ---
 
-## 7.8 O Futex: Rápido Sem Disputa, Disciplinado Com Disputa
+## 7.8 O Subsistema Futex: Rápido Sem Disputa, Disciplinado Com Disputa
 
-Mutex clássico pagava 1 syscall por trava mesmo livre. Como a imensa maioria das aquisições ocorre sem nenhuma contenção, era desperdício.
+O modelo tradicional de mutex exigia uma chamada de sistema (`syscall`) para cada tentativa de aquisição e liberação da trava, penalizando a aplicação com os custos da transição de privilégios (Ring 3 $\to$ Ring 0) mesmo quando a trava estava completamente livre.
 
-O `futex` divide em 2 caminhos.
+Para suprimir esse overhead, o kernel Linux implementa a infraestrutura do **`futex`** (*Fast Userspace Mutex*), dividida em dois caminhos complementares:
 
 <LockPaths />
 
-1. **Caminho rápido:**
-   1 ordem <Term id="CAS">CAS</Term> em Ring 3. Livre, resolve em poucos ciclos, zero syscall.
-2. **Caminho lento:**
-   Com contenção, dorme no kernel e acorda depois. Só paga a syscall quando precisa.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Os Dois Caminhos do Futex**
+> - **O que inspecionar:** A bifurcação de execução entre o Caminho Rápido (*Fast Path* em espaço de usuário) e o Caminho Lento (*Slow Path* em espaço de kernel).
+> - **Controle e estímulo:** Observe o fluxo de aquisição da trava quando o valor da variável atômica indica disponibilidade versus quando indica contenção por outra thread.
+> - **Verificação do mecanismo:** Comprove que na ausência de disputa a trava é obtida inteiramente em Ring 3 através de uma instrução CAS (`lock cmpxchg`) em ~15 ciclos, recorrendo à chamada de sistema `sys_futex(FUTEX_WAIT)` apenas na presença de concorrência real.
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Somar junto exige 1 gesto só:** `lock` ou <Term id="CAS">CAS</Term> com repetição;
-> 2. **Ordem tem nível:** relaxado, par release e acquire, sequencial;
-> 3. **Girar ou dormir:** livre resolve em usuário, disputa dorme no kernel.
-
-Graças ao futex, os mutexes modernos da biblioteca C do Linux (`glibc`) operam com velocidade quase idêntica à de um spinlock quando não há disputa, e com a disciplina ordenada do kernel quando há contenção.
+1. **Caminho Rápido (Fast Path - Espaço de Usuário / Ring 3):**
+   A tentativa de aquisição consiste em uma única instrução atômica CAS executada sobre um inteiro de 32 bits compartilhado na memória da aplicação. Se a trava estiver livre, ela é conquistada instantaneamente em ~15 a 25 ciclos de clock, com **zero chamadas de sistema e zero intervenções do kernel**.
+2. **Caminho Lento (Slow Path - Núcleo do Sistema / Ring 0):**
+   Se o CAS detectar colisão (a trava já está retida por outra tarefa), a aplicação emite a chamada de sistema `sys_futex()` com a operação `FUTEX_WAIT`. O kernel altera o estado da tarefa para `TASK_INTERRUPTIBLE`, remove-a da fila de prontos e a suspende em uma tabela hash de espera associada ao endereço físico do futex.
+   Ao concluir a seção crítica, a thread detentora libera a trava via CAS: se houver tarefas adormecidas na fila de espera, ela emite a chamada de sistema `sys_futex(FUTEX_WAKE)` para que o kernel acorde a próxima tarefa apta a executar.
 
 ---
 
 ## 7.9 Corridas e Impasses: Nomear Para Prevenir
 
-**Corrida de dados:** 2 acessos juntos ao mesmo endereço sem sincronismo, 1 deles escrita. Em C11 é <Term id="UB">UB</Term>: o compilador pode sumir com leitura e escrita.
+No diagnóstico e depuração de sistemas concorrentes, é fundamental distinguir formalmente duas anomalias comumente confundidas:
 
-**Condição de corrida:** ordem relativa que muda o resultado. Pode existir mesmo com tudo travado e sem corrida de dados.
+* **Corrida de Dados (Data Race):** Ocorre quando duas ou mais instruções em threads distintas acessam a mesma posição física de memória concorrentemente sem sincronização, sendo pelo menos uma das operações uma escrita. No padrão formal das linguagens C e C++, uma corrida de dados constitui **Comportamento Indefinido (Undefined Behavior - UB)**: o compilador tem permissão para assumir que a situação é impossível e pode eliminar checagens de código, fundir acessos ou descartar leituras de memória.
+* **Condição de Corrida (Race Condition):** Representa uma falha lógica de alto nível onde a correção do programa depende da temporização ou ordem relativa dos eventos entre tarefas, mesmo que todas as variáveis estejam protegidas por travas e o código não contenha nenhuma corrida de dados em nível de memória.
 
-### As 4 Condições de Coffman em 1 lista
-Impasse precisa das 4 juntas: exclusão mútua, posse com espera, sem preempção e espera circular. Quebre 1 e o impasse fica impossível, e a técnica padrão para isso é a ordem global de travas da próxima seção.
+### As Quatro Condições de Coffman para Deadlock
 
+Um impasse fatal (**deadlock**) entre tarefas concorrentes só pode se manifestar se e somente se as quatro condições formais enunciadas por Edward G. Coffman Jr. (1971) forem satisfeitas simultaneamente:
 
 <DeadlockCycle />
 
-### Prevenção: Ordem Global de Travas
-Se 1 rotina precisa de 2 travas, adquira sempre na mesma ordem global, por exemplo pelo identificador crescente. A técnica padrão quebra a circular com ordenação hierárquica de travas: sem ciclo que feche, sem impasse.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Ciclo de Deadlock e Condições de Coffman**
+> - **O que inspecionar:** O grafo direcionado de dependências entre threads e recursos, destacando a formação de uma cadeia cíclica fechada.
+> - **Controle e estímulo:** Acompanhe a posse cruzada de recursos onde a Thread 0 retém a Trava A e aguarda a Trava B, enquanto a Thread 1 retém a Trava B e aguarda a Trava A.
+> - **Verificação do mecanismo:** Verifique que a formação do ciclo depende simultaneamente da exclusão mútua, da retenção durante a espera e da não-preempção, e observe que a quebra de qualquer uma dessas condições (notadamente a eliminação da espera circular via ordenação hierárquica) torna o deadlock impossível.
+
+1. **Exclusão Mútua:** Os recursos envolvidos só podem ser retidos por uma única thread de cada vez.
+2. **Posse e Espera (Hold and Wait):** Threads retêm recursos concedidos enquanto aguardam a alocação de novos recursos exclusivos.
+3. **Não-Preempção:** Um recurso alocado não pode ser compulsoriamente confiscado de uma thread; sua liberação ocorre exclusivamente de forma voluntária pela própria thread dona.
+4. **Espera Circular:** Existe uma cadeia fechada de dependência $T_0 \to T_1 \to T_2 \dots \to T_0$, onde cada thread aguarda um recurso detido pela thread seguinte no ciclo.
+
+### Prevenção Matemática: Ordenação Global de Travas
+
+Como as três primeiras condições de Coffman decorrem da própria natureza de exclusão mútua de recursos, a técnica universal de engenharia para erradicar deadlocks consiste em **quebrar compulsoriamente a quarta condição: a Espera Circular**.
+
+Para isso, estabelece-se uma **ordem global e estrita de aquisição de travas**:
+* Se uma rotina precisa adquirir simultaneamente as travas $L_1$ e $L_2$, ela deve adquiri-las sempre na mesma ordem predeterminada (por exemplo, ordenando as travas numericamente pelo seu endereço de memória física ou por um identificador monótono único).
+* Ao impor que nenhuma tarefa pode requisitar uma trava de hierarquia inferior enquanto retém uma trava de hierarquia superior, a formação de ciclos direcionados torna-se matematicamente impossível, prevenindo impasses de forma definitiva no sistema.
 
 ---
 
-## 7.10 Síntese: Custos e Heurísticas
+## 7.10 Síntese: Custos e Heurísticas de Engenharia
 
-A tabela traz ordens de grandeza típicas em multi-core x86-64 contemporâneo classe servidor e desktop. Não são constantes universais, variam por microarquitetura e contenção.
+A tabela abaixo sumariza as ordens de grandeza típicas observadas em microarquiteturas x86-64 multinúcleo contemporâneas de classe desktop e servidor (sujeitas a variações de frequência, topologia de interconexão e nível de contenção):
 
-| Mecanismo de Acesso / Sincronização | Latência Típica Estimada | Camada de Execução | Observações de Engenharia |
+| Mecanismo de Acesso / Sincronização | Latência Típica Estimada | Camada de Execução | Impacto Físico e Microarquitetural |
 | :--- | :---: | :--- | :--- |
-| **Leitura em Cache Privada L1** | ~4 a 5 ciclos | Núcleo | Quente e sem colisão no barramento |
-| **Atômica com `lock` (`lock cmpxchg`)** | ~15 a 25 ciclos | Cache L1 | Linha exclusiva, adia coerência local |
-| **Barreira (`mfence`)** | ~30 a 50 ciclos | Pipeline e buffer | Drena escritas antes de seguir |
-| **Futex livre** | ~15 a 25 ciclos | Usuário (Ring 3) | 1 atômica, zero syscall |
-| **Futex com disputa** | ~1.000 a 3.000 ciclos | Kernel (Ring 3 para Ring 0) | Syscall, suspensão e troca |
+| **Leitura em Cache Privada L1** | ~4 a 5 ciclos | Núcleo (L1d) | Acesso local imediato sem tráfego de barramento. |
+| **Leitura com Falha em L1 / Acerto em L2** | ~12 a 14 ciclos | Núcleo (L2) | Resolução na cache privada intermediária. |
+| **Operação Atômica com `lock` (`lock cmpxchg`)** | ~15 a 25 ciclos | Cache L1 | Linha em estado Modified/Exclusive; adia coerência local. |
+| **Barreira Completa (`mfence`)** | ~30 a 50 ciclos | Pipeline / Buffer | Drena compulsoriamente todo o Store Buffer para a L1. |
+| **Aquisição de Futex Livre (Sem Disputa)** | ~15 a 25 ciclos | Usuário (Ring 3) | 1 instrução CAS atômica; zero chamadas de sistema. |
+| **Aquisição de Futex Contencioso (Com Disputa)** | ~1.000 a 3.000 ciclos | Kernel (Ring 0) | Syscall `sys_futex`, suspensão da tarefa e troca de contexto. |
+| **Falso Compartilhamento (Cache Ping-Pong)** | ~100 a 300 ciclos | Barramento / LLC | Linha oscila continuamente entre caches privadas L1. |
 
-### Quatro Diretrizes e Heurísticas de Concorrência
+### Quatro Diretrizes de Engenharia para Sistemas Concorrentes
 
-1. **1 variável quente por linha:** `alignas(64)` em contador disputado elimina falso compartilhamento.
-2. **Prefira mutex a lock-free manual:** relaxado exige modelo formal na ponta da língua. Futex entrega quase o mesmo com risco menor.
-3. **Ordem global de travas:** nunca adquira em ordem arbitrária para não fechar espera circular. Mesma sequência sempre.
-4. **Meça com ferramenta em vez de adivinhar:** ThreadSanitizer encontra corrida de dados em teste e `perf c2c` localiza linha quicando em produção, então leia a dupla como recomendação sem executar nada.
+1. **Isole variáveis quentes em linhas independentes com `alignas(64)`:**
+   Em estruturas compartilhadas onde múltiplos núcleos gravam continuamente em variáveis contíguas (como contadores estatísticos, métricas por thread ou ponteiros de filas), aplique preenchimento forçado para garantir que cada variável ocupe uma linha física exclusiva de 64 bytes, eliminando a patologia de falso compartilhamento.
+2. **Priorize mutexes fundamentados em `futex` sobre algoritmos *lock-free* manuais:**
+   Algoritmos livres de trava baseados em modelos de memória relaxados (`memory_order_relaxed`/`acquire-release`) exigem verificação formal rigorosa e são extremamente propensos a sutilezas microarquiteturais e problemas de ABA. O subsistema `futex` oferece desempenho comparável ao de um spinlock quando não há disputa e protege o sistema contra saturação térmica e desperdício de CPU sob alta contenção.
+3. **Adquira múltiplas travas em estrita ordem hierárquica global:**
+   Se uma operação necessitar de duas ou mais travas simultâneas, ordene a aquisição sempre pelo mesmo critério monótono (como o endereço de memória dos ponteiros de trava). Essa disciplina de projeto elimina a possibilidade de espera circular e garante imunidade arquitetural a impasses (*deadlocks*).
+4. **Instrumente com ferramentas analíticas formais em vez de especular:**
+   Utilize o **ThreadSanitizer (TSan)** durante o desenvolvimento para identificar violações de corrida de dados em tempo de compilação/execução, e utilize o comando **`perf c2c`** (*Cache-to-Cache*) no Linux para mapear linhas de cache que estejam sofrendo contenção severa e ping-pong de coerência no silício.
 
-Com isso, núcleos concordam pela coerência e travas ordenam sem impasse. Mas todo esse mundo ainda mora na <Term id="RAM">RAM</Term> volátil: desligou, sumiu. No Módulo 08, o caminho até o disco decide o que sobrevive à queda de energia.
+---
+
+## Ponte para o Módulo 08: I/O, Page Cache e a Persistência de Dados
+
+Até este ponto da nossa jornada, toda a computação investigada — desde a comutação de transistores, passando pela esteira de instruções, memória virtual e coerência multicore — operou estritamente sobre componentes eletrônicos **voláteis**: registradores de silício, células SRAM de cache e bancos DRAM de memória principal.
+
+Se o computador sofrer uma interrupção elétrica ou for desligado neste instante, cada bit armazenado nessas estruturas se dissipa irreversivelmente.
+
+Para que um sistema computacional execute bancos de dados, preserve sistemas operacionais e retenha arquivos de usuários através do tempo, os dados voláteis da memória precisam transitar para dispositivos de armazenamento não-volátil (SSDs NVMe, discos magnéticos e mídias Flash).
+
+Contudo, ler e gravar blocos em meios de armazenamento não-volátil consome microssegundos ou milissegundos — uma eternidade geológica comparada aos nanossegundos do pipeline da CPU.
+
+Como o sistema operacional mascara essa disparidade abissal de velocidade através do subsistema de **Page Cache**? Como o kernel implementa escrita atrasada (*dirty page writeback*), sincronização explícita com `fsync()`, organização estruturada de arquivos em árvores de inodes e garantias de durabilidade e consistência contra quedas de energia através de registros em diário (*journaling*) e propriedades ACID?
+
+Essa travessia da memória volátil para a durabilidade física é o tema central do **Módulo 08**.
+
+<div class="mt-16 pt-8 border-t border-ash flex flex-col sm:flex-row items-center justify-between gap-4">
+  <a
+    href="/tracks/01-hardware-and-os/06-processos-threads-kernel-syscalls"
+    class="group inline-flex items-center gap-3 rounded-full border border-ash bg-white hover:border-off-black text-off-black px-8 py-3.5 font-mono text-xs uppercase tracking-wider font-medium shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment w-full sm:w-auto justify-center sm:justify-start"
+  >
+    <span class="group-hover:-translate-x-1 transition-transform text-base">&larr;</span>
+    <div class="text-left">
+      <div class="text-[10px] text-smoke uppercase tracking-wider">Módulo Anterior</div>
+      <div class="font-semibold text-off-black">06. Processos, Threads e a Fronteira do Kernel: System Calls e Troca de Contexto</div>
+    </div>
+  </a>
+
+  <a
+    href="/tracks/01-hardware-and-os/08-io-page-cache-sistemas-arquivos-durabilidade"
+    class="group inline-flex items-center gap-3 rounded-full border border-ash bg-white hover:border-off-black text-off-black px-8 py-3.5 font-mono text-xs uppercase tracking-wider font-medium shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment w-full sm:w-auto justify-center sm:justify-end"
+  >
+    <div class="text-right">
+      <div class="text-[10px] text-smoke uppercase tracking-wider">Próximo Módulo</div>
+      <div class="font-semibold text-off-black">08. I/O, Page Cache e Sistemas de Arquivos: Da Memória Volátil à Durabilidade</div>
+    </div>
+    <span class="group-hover:translate-x-1 transition-transform text-base">&rarr;</span>
+  </a>
+</div>

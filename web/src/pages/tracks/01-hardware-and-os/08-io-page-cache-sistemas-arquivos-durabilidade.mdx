@@ -1,7 +1,7 @@
 ---
 layout: ../../../layouts/TrackLayout.astro
 title: "08. I/O, Page Cache, Sistemas de Arquivos e Durabilidade: Do Barramento ao Disco"
-description: "Da fronteira de hardware com MMIO e DMA ao Page Cache do kernel, garantias reais de durabilidade com fsync/fdatasync e consistência de sistemas de arquivos com journaling."
+description: "Da fronteira de hardware com MMIO e DMA ao Page Cache do kernel, garantias reais de durabilidade com fsync/fdatasync e consistência de sistemas de arquivos com journaling baseado em WAL."
 trackId: "01-hardware-and-os"
 trackTitle: "01. Sistemas de Computação: Do Bit ao Kernel"
 ---
@@ -16,172 +16,309 @@ import Term from '../../../components/Term.astro';
 
 # Módulo 08: I/O, Page Cache, Sistemas de Arquivos e Durabilidade
 
-> **O que você precisa aqui:** 1. Ter visto que RAM perde tudo sem energia. 2. Ter visto que syscall pede ao kernel. 3. Aceitar que disco é lento e sobrevive. Nada de terminal, nada de medir disco.
+No módulo anterior, investigamos a física da concorrência no silício: coerência de cache com o protocolo <Term id="MESI">MESI</Term>, consistência de memória sob o modelo <Term id="TSO">TSO</Term>, operações atômicas e primitivas de sincronização via `futex`.
 
-Nos módulos anteriores, vimos o processador calcular em nanossegundos sobre memórias eletrônicas rápidas.
+Contudo, todas as estruturas computacionais operadas até este ponto residem estritamente em circuitos eletrônicos **voláteis**: registradores de silício, células SRAM de cache e bancos <Term id="DRAM">DRAM</Term> de memória principal. Se a máquina sofrer uma interrupção de energia elétrica neste exato instante, todo o estado computacional se dissipa irreversivelmente.
 
-Contudo, <Term id="RAM">RAM</Term> e cache são puramente voláteis.
-Sem energia, as memórias voláteis perdem todo o estado da máquina.
+Para que transações financeiras, bancos de dados, arquivos de sistema e mensagens sobrevivam através do tempo e de reinicializações da máquina, os dados precisam transitar da memória volátil para mídias de armazenamento não-volátil (SSDs NVMe, discos magnéticos ou memórias Flash).
 
-Para que transação, mensagem ou registro sobreviva, os bits precisam ir para mídia não-volátil (SSD NVMe ou disco magnético).
-Mas a travessia tem um abismo: leitura de L1 em 1 nanossegundo típico e <Term id="DRAM">DRAM</Term> em dezenas de nanossegundos típicos contra SSD em dezenas de microssegundos típicos e disco magnético em milissegundos típicos, ordens de grandeza de diferença em hardware contemporâneo típico, mais de cinco ordens de grandeza entre ponta e ponta.
+Essa travessia expõe um abismo físico sem precedentes na arquitetura de computadores:
+* Leitura em cache L1 privada (SRAM): ~1 ns (~1 ciclo de clock).
+* Leitura em memória principal (<Term id="DRAM">DRAM</Term>): ~60 a 80 ns (~200 ciclos de clock).
+* Acesso a um bloco em SSD NVMe (PCIe): ~10 a 50 µs (~30.000 a 150.000 ciclos de clock).
+* Acesso a um setor em disco magnético (HDD): ~5 a 10 ms (~15.000.000 a 30.000.000 ciclos de clock).
 
-Neste módulo, em 5 perguntas:
+Existe uma disparidade de cinco a mais de sete ordens de grandeza entre o pipeline do processador e os dispositivos de armazenamento secundário.
 
-1. Como a <Term id="CPU">CPU</Term> fala com periférico sem travar esperando?
-2. Para onde vai a escrita antes de chegar ao disco?
-3. Por que retorno de sucesso não é persistência?
-4. Como forçar a gravação de verdade?
-5. Como o disco não corrompe a estrutura se a luz cai no meio?
+Neste módulo final da Trilha 01, decompomos os mecanismos de hardware e as abstrações de sistema operacional que tornam a persistência viável sob cinco fundamentos de engenharia:
+
+1. **A fronteira física de I/O:** o desacoplamento entre CPU e periféricos via Memory-Mapped I/O (<Term id="MMIO">MMIO</Term>) e Acesso Direto à Memória (<Term id="DMA">DMA</Term>).
+2. **O ciclo de vida da escrita e o Page Cache:** a retenção de páginas sujas na <Term id="RAM">RAM</Term> e o mito de que o retorno de `write()` garante persistência.
+3. **Primitivas de durabilidade real:** o funcionamento de `fsync()`, `fdatasync()`, o bypass de cache via `O_DIRECT` e a armadilha do diretório pai.
+4. **Consistência contra quedas e Journaling:** a resolução de corrupção estrutural de sistemas de arquivos através de Write-Ahead Logging (<Term id="WAL">WAL</Term>) em ext4 e XFS.
+5. **A síntese definitiva da Trilha 01:** o fechamento do arco do computador individual e a transição arquitetural para as Redes de Computadores na Trilha 02.
 
 <IoPageCacheSandbox client:visible />
 
-O simulador acima responde: onde a escrita dorme antes do disco?
-1. Escreva e veja o dado parar no Page Cache como sujo.
-2. Aguarde o descarregamento e veja a fila encher.
-3. Force a sincronização e veja a mídia confirmar.
-Conclusão em 1 frase: sucesso de `write` é recibo da RAM, persistência é confirmação do disco.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Caixa de Areia do Page Cache e Persistência**
+> - **O que inspecionar:** O ciclo de vida de uma operação de escrita na memória, acompanhando o acúmulo de páginas sujas (*Dirty Pages*) na memória RAM e sua subsequente transferência para a mídia não-volátil.
+> - **Controle e estímulo:** Emita operações de escrita consecutivas observando o avanço do Page Cache e acione a sincronização forçada (`fsync`) ou simule um corte de energia elétrica antes da descarga.
+> - **Verificação do mecanismo:** Comprove que o retorno de sucesso da escrita ocorre instantaneamente na memória RAM enquanto a página está marcada como suja, mas uma interrupção elétrica prematura destrói os dados não sincronizados, confirmando que a durabilidade só existe após o flush na mídia física.
 
 ---
 
-## 8.1 A Fronteira de I/O: Portas, <Term id="MMIO">MMIO</Term> e <Term id="DMA">DMA</Term>
+## 8.1 A Fronteira de I/O: Portas, MMIO e DMA
 
-No nível da placa, o processador conversa com periféricos pelo barramento PCIe/NVMe, e para não criar fios dedicados por periférico valem 2 modelos:
+No nível da placa-mãe, o processador conecta-se aos controladores de periféricos através de barramentos seriais de alta velocidade, como o PCI Express (PCIe). Para coordenar comandos, estados e transferências de blocos sem requerer fiação dedicada por dispositivo, a arquitetura de computadores disponibiliza dois modelos de interface de hardware:
 
-1. **Port I/O legado:**
-   Espaço separado de 16 bits com ordens privilegiadas `in` e `out`. Cada byte trava o núcleo até o barramento responder. Lento e ruim para volume.
-2. **<Term id="MMIO">MMIO</Term> (I/O Mapeado em Memória):**
-   Registradores do periférico moram no espaço de endereços físicos. Ordem comum de cópia no endereço certo cai no circuito da placa pelo PCIe. O kernel configura hardware rápido com a <Term id="ISA">ISA</Term> normal.
-
+1. **Port I/O Legado (Programmed I/O - PIO):**
+   A arquitetura x86 original introduziu um espaço de endereçamento de 16 bits completamente separado da memória, acessado exclusivamente através das instruções privilegiadas `in` e `out`. O processador precisa executar uma instrução de máquina explícita para cada byte ou palavra transferida, mantendo o pipeline paralisado à espera da resposta do barramento lento. É um mecanismo inviável para tráfego volumoso de dados.
+2. **Memory-Mapped I/O (<Term id="MMIO">MMIO</Term>):**
+   Os registradores de comando, controle e status da controladora de armazenamento são mapeados diretamente dentro do espaço de endereçamento físico da CPU através dos registradores de endereço base (Base Address Registers, ou BARs) do barramento PCIe.
+   O kernel pode inspecionar ou programar o dispositivo utilizando instruções ordinárias da <Term id="ISA">ISA</Term> (como `movq` e `movl`). Os circuitos da ponte hospedeira (*PCIe Host Bridge*) interceptam os acessos físicos àquelas faixas de endereços e direcionam os pacotes elétricos diretamente para o controlador do periférico.
 
 <DmaTopology />
 
-### O Controlador de <Term id="DMA">DMA</Term> (Acesso Direto à Memória)
-Imagine a <Term id="CPU">CPU</Term> lendo 1 GiB do SSD em fatias de 8 bytes: bilhões de ciclos presa em laço, máquina congelada.
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Topologia de DMA e Desacoplamento da CPU**
+> - **O que inspecionar:** A segregação de tarefas entre o pipeline de instruções da CPU, a memória principal DRAM e o controlador de armazenamento físico (NVMe/SSD).
+> - **Controle e estímulo:** Acompanhe o instante em que a CPU programa a transferência através de registradores MMIO e retoma a execução de outras tarefas enquanto o controlador de DMA opera de forma autônoma.
+> - **Verificação do mecanismo:** Observe que o transporte de blocos volumosos ocorre diretamente entre o barramento PCIe e a memória RAM sem passar pelos registradores da CPU, confirmando que a interrupção física de hardware (MSI-X) é emitida apenas após o término da transferência.
 
-Por isso existe o **Acesso Direto à Memória (Direct Memory Access, ou <Term id="DMA">DMA</Term>)**:
-1. O driver descreve na <Term id="RAM">RAM</Term> origem, destino e tamanho, e avisa o controlador pelos registradores <Term id="MMIO">MMIO</Term>.
-2. O processador fica livre para escalonar e executar outros processos da fila.
-3. O controlador move os blocos direto para a <Term id="RAM">RAM</Term>, sem intervir o pipeline da <Term id="CPU">CPU</Term>.
-4. No fim, o hardware interrompe a <Term id="CPU">CPU</Term>.
-5. O kernel acorda a thread solicitante e entrega os dados.
+### O Controlador de DMA (Direct Memory Access)
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Periférico é endereço:** <Term id="MMIO">MMIO</Term> recebe ordem comum no endereço da placa;
-> 2. **Bloco grande é <Term id="DMA">DMA</Term>:** controlador move sozinho e avisa no fim;
-> 3. **<Term id="CPU">CPU</Term> não espera:** interrupção acorda quem pediu.
+Se a CPU fosse encarregada de transferir individualmente cada bloco de 4 KiB de um arquivo lido do disco através de um laço de instruções em assembly, o processador gastaria bilhões de ciclos de clock em espera ocupada (*busy-wait*), congelando o sistema operacional.
+
+Para solucionar esse gargalo, os sistemas modernos utilizam o **Acesso Direto à Memória (Direct Memory Access, ou <Term id="DMA">DMA</Term>)**:
+
+1. **Configuração via MMIO:** O driver do kernel aloca um buffer físico na memória <Term id="RAM">RAM</Term> e grava nos registradores <Term id="MMIO">MMIO</Term> da controladora o endereço físico do buffer, a quantidade de bytes a transferir e a direção (leitura ou escrita).
+2. **Liberação do Pipeline:** A CPU conclui a configuração em poucos ciclos e fica imediatamente liberada para escalonar e executar outras threads e processos concorrentes da fila de prontos.
+3. **Transferência Autônoma:** O controlador do dispositivo assume o papel de mestre do barramento (*Bus Master*) e transfere os blocos de dados diretamente entre o barramento PCIe e a memória RAM, sem utilizar nenhum ciclo da esteira de instruções da CPU.
+4. **Notificação Assíncrona:** Ao concluir a transferência física do último bloco, o hardware do dispositivo dispara uma interrupção física na CPU (geralmente uma interrupção sinalizada por mensagem, *MSI-X*, processada pelo Local APIC).
+5. **Retomada no Kernel:** O tratador de interrupção do sistema operacional identifica a conclusão da operação, atualiza as estruturas de I/O e altera o estado da tarefa solicitante de `TASK_UNINTERRUPTIBLE` para `TASK_RUNNING`.
 
 ---
 
 ## 8.2 O Ciclo de Vida da Escrita e o Page Cache
 
-Quando um programa grava 4096 bytes num arquivo, existe a crença de que o disco grava na hora. Leia o exemplo como ilustração, sem executar:
+Quando um programa em espaço de usuário grava 4096 bytes em um arquivo através de funções de biblioteca ou chamadas diretas ao sistema operacional:
+
 ```c
-FILE *f = fopen("dados.txt", "w");
+FILE *f = fopen("dados_transacionais.log", "w");
 fwrite(buffer, 1, 4096, f);
 ```
-Na realidade, os dados atravessam camadas de buffer antes da mídia não-volátil.
 
-O ciclo de vida de uma escrita tem 4 etapas:
-
-1. **Buffer em usuário:**
-   `fwrite()` acumula bytes em buffer privado. Só no enchimento ou no `fflush()` sai a syscall `write()`.
-2. **Page Cache no kernel:**
-   O kernel **não grava no disco**.
-   Ele copia para a moldura do arquivo no Page Cache da <Term id="RAM">RAM</Term> e marca como **página suja (Dirty Page)**. Neste instante o `write()` retorna sucesso!
-3. **Fila de I/O:**
-   Páginas sujas esperam na <Term id="RAM">RAM</Term>. Threads de fundo do kernel agrupam as vizinhas no escalonador de I/O do driver.
-4. **Controladora e sua cache interna:**
-   O driver despacha via PCIe. Mas o SSD tem cache volátil própria: sem descarregar de verdade, os dados ainda serão perdidos na queda, pois a energia elétrica interrompida zera a volátil.
-
+Existe a suposição intuitiva (e incorreta) de que os dados foram gravados de forma permanente no disco antes de a função retornar. Na realidade física, os bytes percorrem quatro estágios distintos de bufferização:
 
 <WritePath />
+
+> [!NOTE]
+> **Contrato de Bancada de Laboratório: Os Quatro Estágios da Escrita**
+> - **O que inspecionar:** O caminho percorrido pelos bytes a partir do espaço de usuário (Ring 3) até as células de memória Flash do SSD.
+> - **Controle e estímulo:** Acompanhe a transição do buffer de stdio em Ring 3 para a cópia em memória RAM no Page Cache em Ring 0, seguida do empacotamento em requisições de bloco (`struct bio`) e retenção na cache da controladora.
+> - **Verificação do mecanismo:** Observe que a chamada de sistema `write()` retorna imediatamente após a cópia para a memória RAM (com o bit `PG_dirty`), comprovando que a persistência física só é consumada quando uma primitiva de sincronização (`fsync`) força a emissão do comando de flush na controladora.
+
+1. **Buffer em Espaço de Usuário (Ring 3):**
+   Funções de biblioteca como `fwrite()` acumulam bytes em um buffer privado em memória de usuário mantido pela biblioteca de tempo de execução (`FILE *`, tipicamente de 4 a 8 KiB). Nenhuma chamada de sistema é emitida enquanto esse buffer não estiver cheio ou enquanto a aplicação não invocar `fflush()`.
+2. **Page Cache no Kernel (Ring 0):**
+   Ao emitir a chamada de sistema `write()`, a CPU comuta para o Modo Supervisor.
+   **O kernel não grava os dados no disco.** Ele copia os dados do buffer de usuário para molduras físicas de 4 KiB na memória RAM pertencentes ao **Page Cache** (estruturadas sob a `struct address_space` associada ao inode do arquivo).
+   O kernel marca a moldura de página com o bit atômico **`PG_dirty`** (página suja).
+   **Neste exato instante, a chamada de sistema `write()` retorna sucesso reportando a quantidade de bytes copiados!**
+3. **Fila de I/O e Escalonador de Bloco:**
+   As páginas sujas permanecem na memória RAM. Threads dedicadas de descarregamento assíncrono do kernel (`kworker/flusher`, `wb_workfn`) inspecionam periodicamente as páginas sujas conforme limiares de sysctl (`vm.dirty_background_ratio`, `vm.dirty_ratio`, `vm.dirty_expire_centisecs`).
+   O kernel agrupa páginas sujas fisicamente contíguas em estruturas de requisição de bloco (`struct bio`), despachando-as para a fila do escalonador de I/O do driver de armazenamento.
+4. **Cache Volátil Interna da Controladora de Armazenamento:**
+   O driver despacha os blocos via DMA através do barramento PCIe para o controlador do SSD NVMe ou HDD.
+   Contudo, controladores modernos de armazenamento integram sua própria memória cache volátil (frequentemente centenas de megabytes ou gigabytes de DRAM/SRAM) para algoritmos de nivelamento de desgaste (*wear leveling*) e consolidação de gravações.
+   Mesmo após o kernel transmitir os blocos pela interface PCIe, eles ainda repousam na cache volátil da controladora do disco!
 
 ---
 
 ## 8.3 O Mito do `write()` Seguro
 
-**`write()` com sucesso não é persistência.**
-O cenário bancário clássico: conta debitada, `write()` no log retorna 4096, cliente avisado e, 2 segundos depois, queda de energia. Os bytes ainda moravam em transistores voláteis e o log volta ao estado anterior: transação sumiu.
+> [!CAUTION]
+> **O Paradoxo do Retorno de Sucesso:**
+> **O retorno de sucesso da chamada de sistema `write()` não garante persistência física de dados.**
+> O valor retornado por `write()` certifica apenas que os bytes foram copiados com sucesso para a memória RAM volátil do sistema operacional.
 
-Por que o sistema arrisca? Porque `write()` síncrono sempre mataria o rendimento em mais de 99% neste padrão típico, e o Page Cache transforma centenas de escritas esparsas em descargas contíguas rápidas.
+Considere o cenário clássico de processamento de transações financeiras:
+1. Uma aplicação debita R$ 10.000 de uma conta e grava o registro contábil no arquivo de log via `write()`.
+2. O `write()` retorna `4096` indicando sucesso absoluto.
+3. A aplicação notifica o cliente confirmando a operação.
+4. Dois segundos depois, ocorre uma pane elétrica no data center.
 
+Como os bytes residiam exclusivamente em molduras com bit `PG_dirty` na memória RAM e na cache volátil interna do SSD, a interrupção da alimentação elétrica dissipa os dados instantaneamente. Ao religar o servidor, o sistema de arquivos recupera o arquivo no estado anterior à transação: **o dinheiro desapareceu e o log não existe**.
+
+Por que os sistemas operacionais operam com esse modelo assíncrono?
+Porque se o sistema operacional sincronizasse cada `write()` diretamente nas células não-voláteis da mídia física, a taxa de transferência da máquina sofreria uma degradação de mais de 99%, paralisando o computador a cada linha de log. O Page Cache transforma centenas de escritas esparsas em descargas contíguas e ordenadas de alta eficiência.
 
 ---
 
 ## 8.4 Primitivas de Durabilidade: `fsync()`, `fdatasync()` e `O_DIRECT`
 
-Banco de dados e mensageria não podem contar com descarregamento assíncrono. O <Term id="POSIX">POSIX</Term> dá 3 ferramentas:
+Aplicações de missão crítica — como sistemas de gerenciamento de bancos de dados relacionais e corretores de mensagens — não podem depender do descarregamento assíncrono arbitrário do kernel. Para governar a durabilidade de dados, o padrão <Term id="POSIX">POSIX</Term> e o Linux fornecem três mecanismos:
 
-### 1. `fsync()` (tudo, dados e metadados)
-Trava o programa, enfileira as páginas sujas do arquivo, atualiza metadados e manda barreira à controladora para esvaziar a cache interna, só retornando com confirmação da mídia, ao custo de milissegundos típicos contra nanossegundos do `write()`.
+### 1. `fsync()` (Dados e Metadados Completos)
 
-### 2. `fdatasync()` (só dados, metadados se preciso)
-O `fdatasync()` descarrega os dados e pula metadados dispensáveis, gravando-os só se a leitura futura precisar, o que economiza 1 I/O por chamada em transacional típico.
+A chamada de sistema `fsync(int fd)` impõe a sincronização completa:
+* Bloqueia a execução da thread chamadora.
+* Enfileira compulsoriamente todas as páginas sujas do arquivo no Page Cache e comanda sua gravação para o dispositivo.
+* Força a gravação de todos os metadados associados ao arquivo (tamanho `st_size`, carimbos de modificação `mtime` e `ctime`, e mapa de ponteiros de blocos do inode).
+* Emite um comando de barreira física para a controladora do disco (como o comando NVMe Flush ou ATA FLUSH CACHE), forçando-a a descarregar sua cache volátil interna para as células Flash.
+* A chamada só retorna após a mídia física confirmar que os dados e metadados estão gravados de forma não-volátil (ao custo de ~1 a 5 ms, contra menos de 1 µs de um `write()` em RAM).
 
-### 3. `O_DIRECT` (pula o Page Cache)
-Leitura e escrita vão direto entre buffer do usuário e controladora via <Term id="DMA">DMA</Term>. Evita **dupla paginação (Double Buffering)**: sem ele, banco com pool próprio guardaria tudo 2 vezes na <Term id="RAM">RAM</Term>.
+### 2. `fdatasync()` (Dados e Metadados Estritamente Essenciais)
 
-> [!TIP]
-> **Checkpoint de Retenção: O que você precisa ter em mente até aqui**
-> 1. **Sucesso não é cofre:** `write()` reciba na <Term id="RAM">RAM</Term>, `fsync()` confirma na mídia;
-> 2. **Metadado também cai:** diretório pai precisa do próprio `fsync()` na criação;
-> 3. **Direto não é síncrono:** `O_DIRECT` pula a cache, mas sem `fsync()` a cache do SSD ainda perde.
+A chamada `fdatasync(int fd)` otimiza o caminho de persistência em bancos de dados:
+* Descarrega integralmente todas as páginas de dados sujas do arquivo e comanda o flush na controladora.
+* **Otimização de Metadados:** Ignora a gravação de metadados puramente informativos (como o carimbo de data/hora `mtime` ou `atime`), gravando metadados somente se a alteração for indispensável para a localização futura dos dados (por exemplo, se o tamanho `st_size` mudou).
+* Em sistemas com logs transacionais pré-alocados de tamanho fixo (como o WAL do PostgreSQL ou redo logs do Oracle), o `fdatasync()` elimina pelo menos uma operação de I/O de metadados por commit, reduzindo pela metade a latência de confirmação.
 
-<DeepDive title="Detalhe de implementação: armadilhas de O_DIRECT e do diretório pai">
-`O_DIRECT` exige alinhamento de ponteiro, offset e tamanho ao bloco do dispositivo, tipicamente 4096 bytes. E não equivale a síncrono: sem `fsync()`, `fdatasync()` ou `O_SYNC`, a cache volátil da controladora perde tudo na queda. Na criação por temporário e renomeação, o `fsync()` do arquivo cobre dados e inode, mas a entrada de diretório mora no Page Cache do pai: sem `fsync()` no descritor do diretório, o arquivo some da árvore no reboot. Nada aqui muda a regra da Trilha 1, só ancora as 3 armadilhas clássicas.
+### 3. `O_DIRECT` (Bypass Completo do Page Cache)
+
+A flag `O_DIRECT` na chamada `open()` comanda o kernel a ignorar completamente o Page Cache:
+* As operações de leitura e escrita realizam transferências de <Term id="DMA">DMA</Term> diretamente entre o buffer de memória da aplicação em espaço de usuário e o controlador de armazenamento.
+* **Objetivo de Engenharia:** Elimina o fenômeno da **dupla paginação (Double Buffering)** em sistemas de banco de dados que já gerenciam seus próprios pools de memória em espaço de usuário, evitando duplicar terabytes de páginas na memória RAM do sistema operacional.
+* **Restrições Rígidas de Hardware:** O endereço do buffer na memória, o deslocamento no arquivo (*offset*) e o tamanho da transferência devem ser rigorosamente múltiplos inteiros do tamanho do setor do dispositivo (tipicamente 4096 bytes).
+
+<DeepDive title="Armadilha Crítica: O_DIRECT não equivale a escrita síncrona durável">
+Uma das falhas conceituais mais perigosas em sistemas computacionais é supor que `O_DIRECT` garante persistência imediata contra quedas de energia.
+Embora o `O_DIRECT` contorne o Page Cache do kernel, os blocos transferidos via DMA pelo barramento PCIe ainda são acolhidos pela memória cache volátil interna da controladora do SSD. Se a energia falhar, os dados na cache do SSD são perdidos!
+Para obter persistência real com `O_DIRECT`, a aplicação deve emitir explicitamente uma chamada `fsync()` ou abrir o descritor combinando as flags `O_DIRECT | O_SYNC`.
 </DeepDive>
+
+### A Armadilha do Diretório Pai (*Parent Directory fsync*)
+
+Considere a criação atômica de um arquivo através do padrão de substituição segura: gravar os dados em um arquivo temporário, invocar `fsync()` no arquivo e substituí-lo no destino final através da chamada atômica `rename()`.
+
+O desenvolvedor pode supor que seus dados estão 100% seguros contra quedas. Contudo:
+* O `fsync()` sobre o descritor do arquivo garante a gravação dos blocos de dados e do inode na partição.
+* No entanto, a entrada de diretório (*dentry*) que vincula o nome textual do arquivo ao seu número de inode reside no Page Cache pertencente ao **diretório pai**!
+* Se ocorrer um corte de energia antes que o diretório pai seja gravado no disco, após o reinício o inode existirá gravado na partição como um bloco alocado órfão, mas o nome do arquivo terá desaparecido da árvore visível!
+
+> [!IMPORTANT]
+> **Regra Canônica de Durabilidade em Sistemas de Arquivos:**
+> Toda operação que crie, renomeie ou remova arquivos de forma durável exige a abertura explícita do diretório pai (`open(".", O_RDONLY)`) e a emissão de um `fsync()` sobre o descritor do diretório após a operação.
 
 ---
 
 ## 8.5 Consistência Contra Quedas e Journaling
 
-Além do conteúdo, existe a estrutura: anexar 1 bloco mexe em 3 lugares em locais físicos distintos no disco, bloco de dados, inode e bitmap, por isso nunca gravam juntos de 1 vez.
+Além do conteúdo dos arquivos, um sistema de arquivos precisa gerenciar sua própria estrutura interna. Em sistemas hierárquicos modernos (como ext4, XFS e NTFS), uma operação básica como anexar um novo bloco a um arquivo requer a gravação atômica de três estruturas em setores físicos não contíguos do disco:
 
-Se a energia for interrompida no meio da operação, surgem três estados inconsistentes clássicos:
+1. **Bloco de Dados ($D$):** O conteúdo bruto recém-gravado pela aplicação.
+2. **Inode do Arquivo ($I$):** A estrutura que armazena o tamanho atualizado (`st_size`), os carimbos de tempo (`mtime`) e o novo ponteiro de endereço para o bloco físico.
+3. **Bitmap de Alocação de Blocos ($B$):** O mapa de bits que sinaliza que aquele bloco específico do disco está reservado e ocupado.
 
-* **Só inode gravou:** aponta para lixo nunca escrito.
-* **Só dado gravou:** bytes sem dono, bitmap diz livre e outro arquivo pisa em cima.
-* **Inode sem bitmap:** 2 arquivos donos do mesmo bloco se corrompem juntos.
+Como o disco realiza gravações em setores individuais sequenciais, essas três gravações nunca acontecem em simultaneidade física absoluta.
 
-### Antes do Diário: FSCK Levava Horas
-A saída antiga era varrer o disco inteiro no boot conferindo ponteiro por ponteiro, o que em disco grande deixava o servidor horas fora do ar.
+Se a alimentação elétrica for interrompida no meio dessa sequência, o sistema pode reiniciar em um de três estados catastróficos de corrupção:
+* **Apenas o Inode ($I$) gravou:** O ponteiro do inode aponta para um bloco que nunca foi inicializado, expondo lixo ou dados confidenciais de arquivos apagados anteriormente.
+* **Apenas o Bloco de Dados ($D$) gravou:** Os bytes repousam na mídia, mas o bitmap marca o bloco como livre; uma gravação futura alocará o mesmo bloco e destruirá os dados silenciosamente.
+* **Inode ($I$) e Bloco ($D$) gravaram, mas o Bitmap ($B$) não:** O arquivo utiliza o bloco, mas o bitmap o reporta como disponível. O sistema concederá o mesmo bloco para dois arquivos distintos, provocando corrupção mútua irrecuperável.
 
-### A Solução: Journaling com <Term id="WAL">WAL</Term>
-Sistemas como ext4, XFS e NTFS usam **Journaling**, do Write-Ahead Logging de Mohan e Gray: em vez de mexer no original, o kernel grava a intenção inteira numa área contígua, o **Journal**, com bloco de início, blocos alterados, barreira e bloco de confirmação. Confirmado o commit, a transação é atômica: copia com calma para o lugar definitivo e libera o diário.
+### O Esgotamento do `fsck` Legado
 
-Na volta da queda: sem commit, descarta os blocos incompletos do diário e segue íntegro. Com commit sem cópia, refaz do diário em milissegundos, sem varrer nada.
+Nos sistemas Unix clássicos, a resolução desse dilema dependia do utilitário `fsck` (*File System Consistency Check*).
 
+Após uma reinicialização não limpa, o `fsck` realizava uma varredura linear exaustiva inspecionando cada inode, diretório e bloco de toda a partição para verificar contadores de referência e mapas de bits. Em sistemas de arquivos modernos com terabytes ou petabytes de capacidade contendo milhões de arquivos, a varredura do `fsck` consumia horas ou dias, mantendo servidores inteiros fora do ar (*downtime* inaceitável).
 
+### A Solução Moderna: Journaling Baseado em Write-Ahead Logging (WAL)
+
+Para eliminar varreduras globais, os sistemas de arquivos contemporâneos implementam a técnica de **Journaling**, derivada do protocolo de **Write-Ahead Logging (<Term id="WAL">WAL</Term>)** concebido por C. Mohan (algoritmo ARIES na IBM) e Jim Gray para sistemas de banco de dados:
+
+O sistema de arquivos reserva uma área circular contígua no início da partição: o **Journal (Diário de Transações)**.
+
+Qualquer alteração estrutural no sistema é tratada como uma transação atômica em três etapas:
+
+```text
+Ciclo de Transação do Journaling (WAL):
+  1. Journal Write:
+     Kernel grava sequencialmente no Journal:
+     [Descritor de Transação] -> [Bloco de Dados D] -> [Inode I] -> [Bitmap B]
+  2. Journal Commit:
+     Kernel emite barreira física e grava o bloco [Commit Record].
+     -> NO INSTANTE EM QUE O COMMIT RECORD É GRAVADO, A TRANSAÇÃO É ATÔMICA!
+  3. Checkpointing:
+     Kernel copia assincronamente os blocos D, I e B para seus locais definitivos no disco.
+     Libera o espaço no anel do Journal.
+```
+
+### Recuperação Instantânea Pós-Queda (*Crash Recovery*)
+
+Se ocorrer uma queda abrupta de energia durante a operação:
+* **Queda antes do Commit Record:** O registro da transação no diário está incompleto. No reinício, o kernel simplesmente descarta os blocos incompletos. O sistema de arquivos permanece íntegro no estado consistente anterior à transação.
+* **Queda após o Commit Record, mas antes do Checkpointing:** O kernel detecta o bloco de commit íntegro no diário e reaplica (**replay**) os blocos salvos do diário para suas posições definitivas no disco.
+* Essa recuperação leva **poucos milissegundos**, independentemente do tamanho da partição (seja 10 GB ou 100 TB), eliminando totalmente a necessidade de execução do `fsck`.
+
+### Modos de Journaling no ext4
+
+O Linux oferece três políticas de journaling através de parâmetros de montagem:
+1. **`data=journal`:** Dados e metadados são gravados previamente no diário antes de atingirem o sistema de arquivos. Garante integridade máxima, mas reduz a vazão pela metade devido à dupla gravação de todos os dados no disco.
+2. **`data=ordered` (Padrão do Linux):** Apenas metadados são gravados no diário, mas o kernel força a gravação física dos blocos de dados na mídia antes de autorizar a gravação do Commit Record no diário. Garante que nenhum inode aponte para blocos não inicializados sem o custo de gravar os dados duas vezes.
+3. **`data=writeback`:** Apenas metadados vão para o diário, sem sincronização estrita com a ordem dos dados. Oferece velocidade máxima, mas dados antigos podem ser expostos em arquivos que estavam sendo ampliados no momento de uma queda de energia.
 
 ---
 
-## 8.6 Síntese da Trilha: Latências e Heurísticas
+## 8.6 Síntese da Trilha 01: Latências, Heurísticas e o Computador Isolado
 
-A tabela traz ordens de grandeza típicas em hardware contemporâneo classe desktop e servidor. Não são constantes universais, variam por dispositivo e carga.
+A tabela abaixo consolida as ordens de grandeza típicas da pirâmide de latência em sistemas contemporâneos de computação (classe desktop e servidor x86-64):
 
-| Operação de I/O | Mecanismo Subjacente | Latência Típica | Custo Relativo (Base: Ciclo de CPU) |
+| Operação de Execução / I/O | Mecanismo Físico Subjacente | Latência Típica | Custo Relativo (Base: Ciclo de CPU) |
 | :--- | :--- | :---: | :---: |
-| **Leitura de Cache L1** | SRAM interna do núcleo da CPU | ~1 ns | 1 ciclo de clock |
-| **Leitura de Memória DRAM** | Barramento DDR físico externo | ~60 ns | ~200 ciclos |
-| **Escrita no Page Cache (`write()`)** | Cópia entre buffers na memória RAM | ~500 ns a 1 µs | ~1.500 a 3.000 ciclos |
-| **Leitura de SSD NVMe (DMA)** | Barramento PCIe e células Flash NAND | ~10 a 50 µs | ~30.000 a 150.000 ciclos |
-| **Chamada `fdatasync()` em SSD** | Esvaziamento de Page Cache e comando flush | ~1 a 3 ms | ~3.000.000 a 9.000.000 ciclos |
-| **Leitura Aleatória em Disco Magnético** | Rotação mecânica e deslocamento do braço | ~10 ms | ~30.000.000 ciclos |
+| **Leitura em Cache L1** | Células SRAM internas do núcleo | ~1 ns | 1 ciclo de clock |
+| **Leitura em Cache L2** | SRAM interna do núcleo | ~3 a 4 ns | ~12 a 14 ciclos |
+| **Leitura em Cache L3 (LLC)** | SRAM compartilhada no die | ~15 a 20 ns | ~40 a 60 ciclos |
+| **Leitura em Memória Principal** | Barramento DDR físico externo (DRAM) | ~60 a 80 ns | ~200 ciclos |
+| **Chamada de Sistema Nula** | Instrução atômica `syscall`/`sysret` | ~15 a 30 ns | ~50 a 100 ciclos |
+| **Troca de Contexto de Threads** | Rotina assembly `switch_to` | ~300 a 600 ns | ~1.000 a 2.000 ciclos |
+| **Escrita no Page Cache (`write()`)** | Cópia em memória RAM (`PG_dirty`) | ~500 ns a 1 µs | ~1.500 a 3.000 ciclos |
+| **Leitura em SSD NVMe (DMA)** | Barramento PCIe e células Flash NAND | ~10 a 50 µs | ~30.000 a 150.000 ciclos |
+| **Chamada `fdatasync()` em SSD** | Esvaziamento de Page Cache e flush na mídia | ~1 a 3 ms | ~3.000.000 a 9.000.000 ciclos |
+| **Leitura Aleatória em HDD Magnético** | Rotação mecânica e deslocamento do braço | ~5 a 10 ms | ~15.000.000 a 30.000.000 ciclos |
+
+### Quatro Diretrizes de Engenharia para Armazenamento e I/O
+
+1. **Recibo de memória não é garantia de persistência:**
+   Qualquer dado cuja perda seja inaceitável para a aplicação exige a emissão explícita de `fsync()` ou `fdatasync()`. Em sistemas transacionais, utilize motores de armazenamento com Write-Ahead Logging (<Term id="WAL">WAL</Term>) e coordenação de commits.
+2. **Agrupe sincronizações em lote (*Group Commit*):**
+   Emitir uma chamada `fsync()` para cada transação individual limita a taxa de processamento a poucas centenas de operações por segundo devido à latência física de gravação na mídia. Agrupar transações de múltiplas threads concorrentes em uma única operação de sincronização física (*Group Commit*) eleva o throughput para dezenas de milhares de transações por segundo.
+3. **Adote `O_DIRECT` exclusivamente com buffers alinhados e cache própria:**
+   Para aplicações de propósito geral, o Page Cache do kernel é insuperável em desempenho. O uso da flag `O_DIRECT` só se justifica em sistemas gerenciadores de banco de dados que mantenham pools de páginas altamente otimizados em espaço de usuário, sempre respeitando o alinhamento estrito a setores físicos de 4096 bytes.
+4. **Monitore e governe as páginas sujas no sistema operacional:**
+   O acúmulo excessivo de páginas sujas na memória RAM pode provocar congelamentos abruptos de I/O quando o kernel atinge o limiar de estrangulamento (`vm.dirty_ratio`). Monitore métricas de escrita através de `/proc/meminfo` (campos `Dirty` e `Writeback`) e ajuste os parâmetros de descarregamento assíncrono para manter fluxos uniformes de gravação no barramento.
 
 ---
 
-### Quatro Heurísticas de Engenharia para Armazenamento
+## O Fechamento do Computador Isolado e a Fronteira de Redes
 
-1. **Recibo não é cofre:**
-   Dado que não pode sumir exige `fsync()` ou `fdatasync()`. Em banco, use motor com <Term id="WAL">WAL</Term> e commit coordenado.
-2. **Agrupe confirmações (Group Commit):**
-   1 `fsync()` por evento rende centenas por segundo. Juntar transações de várias threads em 1 confirmação física multiplica a vazão.
-3. **`O_DIRECT` só com pool próprio:**
-   Para programa normal, o Page Cache vence. Direto só em motor com cache próprio ajustado à carga.
-4. **Olhe páginas sujas (leitura, sem executar):**
-   Volume pendente aparece em contadores do Linux, pois acúmulo demais vira congelamento no descarregamento em lote.
+Com este módulo, encerramos a jornada integral da **Trilha 01: Sistemas de Computação: Do Bit ao Kernel**.
 
-Com isso fecha a Trilha 01 inteira: do interruptor ao clock, da caixinha ao número, da ordem à pilha, da esteira à cache, do mapa privado à troca de tarefas, da trava ao disco que sobrevive. O bit virou conta, a conta virou programa, o programa virou sistema que não perde dado.
+Construímos, camada por camada, a anatomia mecânica completa de um computador moderno autônomo:
+* Do interruptor físico de silício (**transistor CMOS**) e sincronização por **clock** (Módulo 00);
+* À codificação matemática finita em **complemento de dois** e ponto flutuante **IEEE 754** (Módulo 01);
+* À representação de programas em **assembly x86-64**, convenções da **ABI** e quadros de pilha (Módulo 02);
+* À esteira de execução em **pipeline**, resolução de conflitos por forwarding e previsão de saltos (Módulo 03);
+* À quebra do Memory Wall através de **hierarquias de cache SRAM** e localidade de referência (Módulo 04);
+* Ao isolamento linear de endereçamento via **Memória Virtual**, tradução pela **MMU** e árvore **PML4** (Módulo 05);
+* À fronteira de privilégios de hardware **Ring 3 vs Ring 0**, chamadas de sistema atômicas via `SYSCALL` e troca de tarefas por `switch_to()` (Módulo 06);
+* À concorrência multicore no silício, protocolos de coerência **MESI**, consistência **TSO** e primitivas de sincronização via `futex` (Módulo 07);
+* Até a persistência não-volátil de dados através de **DMA**, subsistemas de **Page Cache**, primitivas de durabilidade `fsync` e consistência contra quedas por **Journaling WAL** (Módulo 08).
 
+O bit elétrico transformou-se em número; o número transformou-se em instrução; a instrução transformou-se em esteira; a esteira organizou-se em sistema operacional; e o sistema operacional consolidou um ambiente seguro, concorrente e imune à perda de dados.
+
+### A Nova Fronteira: Da Máquina Isolada às Redes de Computadores
+
+Dominamos a máquina individual em sua totalidade física e lógica. Contudo, a computação contemporânea não opera em isolamento: nenhum sistema bancário, plataforma web, inteligência artificial ou infraestrutura em nuvem vive dentro dos limites de uma única placa-mãe.
+
+A computação moderna é inerentemente **distribuída**: sistemas operacionais autônomos comunicam-se através de cabos de cobre, fibras ópticas e enlaces de rádio espalhados por continentes, sujeitos a atrasos de propagação, perdas de pacotes e corrupção em trânsito.
+
+Como dois computadores independentes, separados por milhares de quilômetros de infraestrutura não confiável, transmitem dados estruturados sem perder a integridade? Como o protocolo **IPv4** fragmenta e endereça datagramas em uma malha planetária? Como o sistema de nomes **DNS** traduz identidades textuais em números de 32 bits? E como o **Princípio Fim a Fim** governa a arquitetura da maior máquina já construída pela humanidade: a Internet?
+
+Essa é a fronteira que exploramos a seguir na **Trilha 02: Redes e Comunicação de Dados**.
+
+<div class="mt-16 pt-8 border-t border-ash flex flex-col sm:flex-row items-center justify-between gap-4">
+  <a
+    href="/tracks/01-hardware-and-os/07-concorrencia-silicio-atomicos-sincronizacao"
+    class="group inline-flex items-center gap-3 rounded-full border border-ash bg-white hover:border-off-black text-off-black px-8 py-3.5 font-mono text-xs uppercase tracking-wider font-medium shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment w-full sm:w-auto justify-center sm:justify-start"
+  >
+    <span class="group-hover:-translate-x-1 transition-transform text-base">&larr;</span>
+    <div class="text-left">
+      <div class="text-[10px] text-smoke uppercase tracking-wider">Módulo Anterior</div>
+      <div class="font-semibold text-off-black">07. Concorrência no Hardware: Coerência, Atômicos e Travas</div>
+    </div>
+  </a>
+
+  <a
+    href="/tracks/02-networks/00-rede-ipv4-dns-requisitos-host"
+    class="group inline-flex items-center gap-3 rounded-full border border-ash bg-white hover:border-off-black text-off-black px-8 py-3.5 font-mono text-xs uppercase tracking-wider font-medium shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-off-black focus-visible:ring-offset-2 focus-visible:ring-offset-parchment w-full sm:w-auto justify-center sm:justify-end"
+  >
+    <div class="text-right">
+      <div class="text-[10px] text-smoke uppercase tracking-wider">Próxima Trilha (Trilha 02)</div>
+      <div class="font-semibold text-off-black">00. Camada de Rede e Nomeação: Datagramas IPv4, Fragmentação e DNS</div>
+    </div>
+    <span class="group-hover:translate-x-1 transition-transform text-base">&rarr;</span>
+  </a>
+</div>

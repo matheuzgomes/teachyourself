@@ -9,7 +9,7 @@ export default function RegisterBankCard() {
   const pulseClock = () => {
     if (writeEnable === 1) {
       setStoredHex(inputHex);
-      setLastClockAction(`Gravação Bem-Sucedida: Borda de subida capturou ${inputHex} em 64 Flip-Flops paralelos.`);
+      setLastClockAction(`Gravação Bem-Sucedida: Borda de subida capturou ${inputHex} no modelo de 64 flip-flops paralelos.`);
     } else {
       setLastClockAction("Gravação Bloqueada: Write Enable = 0 isolou os flip-flops. O valor armazenado permaneceu intacto.");
     }
@@ -37,6 +37,9 @@ export default function RegisterBankCard() {
           <h3 className="mt-2 font-serif text-xl md:text-2xl font-normal text-off-black tracking-tight">
             Banco de Registradores de 64 bits: Arranjo Paralelo com Write Enable
           </h3>
+          <p className="mt-1 font-mono text-xs text-smoke">
+            Modelo de um registrador (%rax): não representa o banco completo nem os registradores físicos de um processador real.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -65,7 +68,7 @@ export default function RegisterBankCard() {
           <div className="rounded-2xl border border-ash bg-parchment p-4 md:p-5">
             <div className="mb-3 flex items-center justify-between">
               <span className="font-mono text-xs md:text-sm font-medium text-graphite">
-                Arranjo Físico de 64 Flip-Flops D Sincronizados
+                Arranjo Modelo de 64 Flip-Flops D (Um Registrador)
               </span>
               <span className="font-mono text-xs md:text-sm font-bold text-lake-blue">
                 Registrador %rax = {storedHex}
